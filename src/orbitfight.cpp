@@ -1,13 +1,9 @@
 #include <SFML/Graphics.hpp>
-#include <cmath>
-#include <entities.hpp>
+#include <globals.hpp>
 
-using namespace std;
+using namespace obf;
 
 int main(){
-    int windowWidth = 200;
-    int windowHeight = 200; // read-only
-    sf::RenderWindow window(sf::VideoMode(windowWidth, windowHeight), "Test");
     sf::CircleShape shape(50.f);
     shape.setFillColor(sf::Color::Green);
     sf::Clock deltaClock;
@@ -31,9 +27,9 @@ int main(){
                     break;
             }
         }
-        shape.setRadius(50 + sin(globalTime));
-        sf::Vector2f pos = shape.getPosition();
-        shape.setPosition(lerp(shape.getX(), mousePos.x, 0.5 * delta), lerp(shape.getY(), mousePos.y, 0.5 * delta));
+        // shape.setRadius(50 + sin(globalTime));
+        // sf::Vector2f pos = shape.getPosition();
+        // shape.setPosition(lerp(shape.getX(), mousePos.x, 0.5 * delta), lerp(shape.getY(), mousePos.y, 0.5 * delta));
         window.clear(sf::Color(25,5,40));
         window.draw(shape);
         window.display();

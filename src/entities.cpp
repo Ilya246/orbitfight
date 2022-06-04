@@ -1,4 +1,5 @@
 #include <SFML/Graphics.hpp>
+#include <globals.hpp>
 
 // entity type definitions
 
@@ -21,6 +22,6 @@ class Circle: public positionEntity, public updateEntity{
             shape = sf::CircleShape(radius);
         }
         void update(){
-            
+
         }
 };
