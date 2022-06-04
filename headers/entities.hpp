@@ -1,7 +1,7 @@
 #ifndef ENTITIES
 #define ENTITIES
 
-namespace ent{
+namespace obf{
     class positionEntity{
         public:
             int x;
