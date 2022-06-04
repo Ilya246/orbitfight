@@ -1,5 +1,4 @@
-#ifndef ENTITIES
-#define ENTITIES
+#pragma once
 
 namespace obf{
     class positionEntity{
@@ -18,5 +17,3 @@ namespace obf{
             void update();
     };
 }
-
-#endif

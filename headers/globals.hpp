@@ -1,10 +1,7 @@
-#ifndef GLOBALS
-#define GLOBALS
+#pragma once
 
 namespace obf{
-    int windowWidth;
-    int windowHeight; // read-only
-    sf::RenderWindow window;
+    inline int windowWidth = 200;
+    inline int windowHeight = 200; // read-only
+    inline sf::RenderWindow window(sf::VideoMode(windowWidth, windowHeight), "Test");
 }
-
-#endif

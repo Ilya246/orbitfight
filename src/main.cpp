@@ -1,5 +1,5 @@
 #include <SFML/Graphics.hpp>
-#include <globals.hpp>
+#include "globals.hpp"
 
 using namespace obf;
 
