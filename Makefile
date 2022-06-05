@@ -3,7 +3,7 @@ STRIP := strip
 
 STANDARD ?= c++20
 CXXFLAGS ?= -O3 -Wall -Wextra -pedantic -g
-override CXXFLAGS += -std=$(STANDARD) -c -Iheaders
+override CXXFLAGS += -std=$(STANDARD) -c -Iinclude
 LDFLAGS := $(shell pkg-config --libs sfml-window sfml-graphics sfml-system)
 
 sources := $(shell find src -type f -name "*.cpp")
@@ -20,7 +20,7 @@ build/%.o: src/%.cpp
 -include $(depends)
 
 orbitfight: $(objects)
-	@printf "CCLD\t%s\n" $@
+	@printf "LD\t%s\n" $@
 	@$(CXX) $^ -o $@ $(LDFLAGS)
 
 clean:

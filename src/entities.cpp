@@ -1,37 +1,46 @@
-#include <cmath>
-#include <iostream>
-#include <SFML/Graphics.hpp>
 #include "entities.hpp"
 #include "globals.hpp"
 
-using namespace obf;
+#include <cmath>
 
-void updateEntity::update() {}
+#include <SFML/Graphics.hpp>
 
-void positionEntity::setPosition(double x, double y) {
-    this->x = x;
-    this->y = y;
-}
-void posVelEntity::setVelocity(double x, double y) {
-    this->velX = x;
-    this->velY = y;
-}
-void posVelEntity::addVelocity(double x, double y) {
-    this->velX += x;
-    this->velY += y;
+namespace obf {
+
+Entity::Entity(double x, double y)
+		: x(x), y(y) {
+	updateGroup.push_back(this);
 }
 
-Circle::Circle(double x, double y, double radius) {
-    shape = sf::CircleShape(radius);
-    this->setPosition(x, y);
-    updateGroup.push_back(this);
+Entity::~Entity() noexcept {
+	// swap remove this from updateGroup
+	// O(n) complexity since iterates whole thing at worst
+	for (size_t i = 0; i < updateGroup.size(); i++) {
+		if (updateGroup[i] == this) [[unlikely]] {
+			updateGroup[i] = updateGroup[updateGroup.size() - 1];
+			updateGroup.pop_back();
+			break;
+		}
+	}
 }
-void Circle::setPosition(double x, double y) {
-    this->posVelEntity::positionEntity::setPosition(x, y);
-    this->shape.setPosition(x, y);
+
+void Entity::update() {
+	x += velX * delta;
+	y += velY * delta;
 }
+
+
+Circle::Circle(double x, double y, double radius)
+		: Entity(x, y) {
+	shape = sf::CircleShape(radius);
+	shape.setOrigin(radius, radius);
+}
+
 void Circle::update() {
-    this->addVelocity((mousePos.x - this->x) * delta * 0.0001, (mousePos.y - this->y) * delta * 0.0001);
-    this->setPosition(this->x + this->posVelEntity::velX, this->y + + this->posVelEntity::velY);
-    window.draw(shape);
+	addVelocity((mousePos.x - x) * delta * 0.0001, (mousePos.y - y) * delta * 0.0001);
+	Entity::update();
+	shape.setPosition(x, y);
+	window.draw(shape);
+}
+
 }
