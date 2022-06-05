@@ -11,7 +11,14 @@ namespace obf{
         public:
             virtual void update();
     };
-    class Circle: public positionEntity, public updateEntity{
+    class posVelEntity: public positionEntity, public updateEntity{
+        public:
+            double velX;
+            double velY;
+            void setVelocity(double, double);
+            void addVelocity(double, double);
+    };
+    class Circle: public posVelEntity{
         public:
             sf::CircleShape shape;
             Circle(double, double, double);

@@ -10,6 +10,14 @@ void positionEntity::setPosition(double x, double y){
     this->x = x;
     this->y = y;
 }
+void posVelEntity::setVelocity(double x, double y){
+    this->velX = x;
+    this->velY = y;
+}
+void posVelEntity::addVelocity(double x, double y){
+    this->velX += x;
+    this->velY += y;
+}
 
 Circle::Circle(double x, double y, double radius){
     shape = sf::CircleShape(radius);
@@ -17,10 +25,11 @@ Circle::Circle(double x, double y, double radius){
     updateGroup.push_back(this);
 }
 void Circle::setPosition(double x, double y){
-    this->positionEntity::setPosition(x, y);
+    this->posVelEntity::positionEntity::setPosition(x, y);
     this->shape.setPosition(x, y);
 }
 void Circle::update(){
-    this->setPosition(std::lerp(this->x, mousePos.x, std::min(0.0001f / delta, 1.f)), std::lerp(this->y, mousePos.y, std::min(0.0001f / delta, 1.f)));
+    this->addVelocity((mousePos.x - this->x) * delta * 0.0001, (mousePos.y - this->y) * delta * 0.0001);
+    this->setPosition(this->x + this->posVelEntity::velX, this->y + + this->posVelEntity::velY);
     window.draw(shape);
 }
