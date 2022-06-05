@@ -1,12 +1,14 @@
-#include <random>
-#include "globals.hpp"
 #include "math.hpp"
 
-using namespace obf;
+#include <random>
 
-std::random_device rand_d;
-std::mt19937 rand_g(rand_d());
+namespace obf {
 
-float rand_f(float from, float to){
-    return std::uniform_real_distribution<>(from, to)(rand_g);
+static std::random_device rand_d;
+static std::mt19937 rand_g(rand_d());
+
+float rand_f(float from, float to) {
+	return std::uniform_real_distribution(from, to)(rand_g);
+}
+
 }
