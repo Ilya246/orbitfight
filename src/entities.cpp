@@ -1,12 +1,14 @@
 #include <SFML/Graphics.hpp>
-#include <globals.hpp>
+#include "globals.hpp"
+
+using namespace obf;
 
 // entity type definitions
 
 class positionEntity{
     public:
-        int x;
-        int y;
+        double x;
+        double y;
 };
 class updateEntity{
     public:
@@ -22,6 +24,6 @@ class Circle: public positionEntity, public updateEntity{
             shape = sf::CircleShape(radius);
         }
         void update(){
-
+            window.draw(shape);
         }
 };

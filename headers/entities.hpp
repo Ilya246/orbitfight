@@ -3,8 +3,8 @@
 namespace obf{
     class positionEntity{
         public:
-            int x;
-            int y;
+            double x;
+            double y;
     };
     class updateEntity{
         public:
