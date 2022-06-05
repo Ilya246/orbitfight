@@ -1,6 +1,6 @@
 #include <SFML/Graphics.hpp>
-#include "globals.hpp"
 #include "entities.hpp"
+#include "globals.hpp"
 
 using namespace obf;
 
@@ -27,7 +27,9 @@ int main(){
         // sf::Vector2f pos = shape.getPosition();
         // shape.setPosition(lerp(shape.getX(), mousePos.x, 0.5 * delta), lerp(shape.getY(), mousePos.y, 0.5 * delta));
         window.clear(sf::Color(25,5,40));
-        circle.update();
+        for(updateEntity* entity_p : updateGroup){
+            (*entity_p).update();
+        }
         window.display();
         delta = deltaClock.restart().asSeconds() * 60;
         globalTime = globalClock.getElapsedTime().asSeconds();
