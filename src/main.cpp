@@ -22,7 +22,7 @@ int main() {
             }
         }
         window.clear(sf::Color(25,5,40));
-        for(updateEntity* entity_p : updateGroup) {
+        for (updateEntity* entity_p : updateGroup) {
             entity_p->update();
         }
         window.display();
