@@ -7,6 +7,7 @@ using namespace obf;
 int main(){
     Circle circle(10, 10, 500);
     while(window.isOpen()){
+        mousePos = sf::Mouse::getPosition(window);
         sf::Event event;
         while(window.pollEvent(event)){
             switch(event.type){

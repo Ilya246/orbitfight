@@ -1,4 +1,5 @@
 #include <cmath>
+#include <iostream>
 #include <SFML/Graphics.hpp>
 #include "entities.hpp"
 #include "globals.hpp"
@@ -20,6 +21,7 @@ void Circle::setPosition(double x, double y){
     this->shape.setPosition(x, y);
 }
 void Circle::update(){
-    this->setPosition(std::lerp(this->x, mousePos.x, std::min(60 * delta, 1.f)), std::lerp(this->y, mousePos.y, std::min(60 * delta, 1.f)));
+    this->setPosition(std::lerp(this->x, mousePos.x, std::min(0.0001f / delta, 1.f)), std::lerp(this->y, mousePos.y, std::min(0.0001f / delta, 1.f)));
+    std::cout << this->x << this->y << mousePos.x << mousePos.y << std::endl;
     window.draw(shape);
 }
