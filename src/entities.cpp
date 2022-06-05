@@ -22,6 +22,5 @@ void Circle::setPosition(double x, double y){
 }
 void Circle::update(){
     this->setPosition(std::lerp(this->x, mousePos.x, std::min(0.0001f / delta, 1.f)), std::lerp(this->y, mousePos.y, std::min(0.0001f / delta, 1.f)));
-    std::cout << this->x << this->y << mousePos.x << mousePos.y << std::endl;
     window.draw(shape);
 }
