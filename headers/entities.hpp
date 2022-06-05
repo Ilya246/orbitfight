@@ -5,6 +5,7 @@ namespace obf{
         public:
             double x;
             double y;
+            void setPosition(double, double);
     };
     class updateEntity{
         public:
@@ -13,7 +14,8 @@ namespace obf{
     class Circle: public positionEntity, public updateEntity{
         public:
             sf::CircleShape shape;
-            Circle(double radius);
+            Circle(double, double, double);
+            void setPosition(double, double);
             void update();
     };
 }
