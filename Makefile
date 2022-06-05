@@ -1,11 +1,10 @@
 CXX ?= g++
 STRIP := strip
 
-STANDARD := c++20
+STANDARD ?= c++20
 CXXFLAGS ?= -O3 -Wall -Wextra -pedantic -g
 override CXXFLAGS += -std=$(STANDARD) -c -Iinclude
-LDFLAGS ?= '-Wl,-rpath,$$ORIGIN'
-override LDFLAGS += $(shell pkg-config --libs sfml-graphics sfml-window)
+LDFLAGS := $(shell pkg-config --libs sfml-window sfml-graphics sfml-system)
 
 sources := $(shell find src -type f -name "*.cpp")
 objects := $(sources:src/%.cpp=build/%.o)

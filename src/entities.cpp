@@ -33,7 +33,7 @@ void Entity::update() {
 Circle::Circle(double x, double y, double radius)
 		: Entity(x, y) {
 	shape = sf::CircleShape(radius);
-	shape.setOrigin(radius / 2, radius / 2);
+	shape.setOrigin(radius, radius);
 }
 
 void Circle::update() {
