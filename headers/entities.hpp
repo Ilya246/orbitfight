@@ -13,7 +13,7 @@ namespace obf{
     class Circle: public positionEntity, public updateEntity{
         public:
             sf::CircleShape shape;
-            Circle(float radius);
+            Circle(double radius);
             void update();
     };
 }
