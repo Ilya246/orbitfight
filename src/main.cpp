@@ -6,7 +6,7 @@
 using namespace obf;
 
 int main() {
-	Circle circle(10, 10, 500);
+	Triangle triangle(50, 50, 75);
 	while (window.isOpen()) {
 		mousePos = sf::Mouse::getPosition(window);
 		sf::Event event;

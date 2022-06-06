@@ -8,7 +8,7 @@ namespace obf {
 
 struct Entity;
 
-inline sf::RenderWindow window(sf::VideoMode(200, 200), "Test");
+inline sf::RenderWindow window(sf::VideoMode(500, 500), "Test");
 inline std::vector<Entity*> updateGroup;
 inline sf::Vector2i mousePos = sf::Mouse::getPosition(window);
 inline sf::Clock deltaClock, globalClock;

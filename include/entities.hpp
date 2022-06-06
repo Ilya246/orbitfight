@@ -26,12 +26,13 @@ struct Entity {
 	double x, y, velX = 0, velY = 0;
 };
 
-struct Circle: public Entity {
-	Circle(double x, double y, double radius);
+struct Triangle: public Entity {
+	Triangle(double x, double y, double radius);
 
 	void update() override;
 
 	sf::CircleShape shape;
+	float rotation = 0;
 };
 
 }

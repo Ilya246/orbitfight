@@ -1,5 +1,6 @@
 #include "entities.hpp"
 #include "globals.hpp"
+#include "math.hpp"
 
 #include <cmath>
 
@@ -30,16 +31,18 @@ void Entity::update() {
 }
 
 
-Circle::Circle(double x, double y, double radius)
+Triangle::Triangle(double x, double y, double radius)
 		: Entity(x, y) {
-	shape = sf::CircleShape(radius);
+	shape = sf::CircleShape(radius, 3);
 	shape.setOrigin(radius, radius);
 }
 
-void Circle::update() {
+void Triangle::update() {
 	addVelocity((mousePos.x - x) * delta * 0.0001, (mousePos.y - y) * delta * 0.0001);
+	rotation = lerpRotation(rotation, std::atan2(mousePos.y - y, mousePos.x - x) * radToDeg, delta * 0.1f);
 	Entity::update();
 	shape.setPosition(x, y);
+	shape.setRotation(rotation + 90.f);
 	window.draw(shape);
 }
 
