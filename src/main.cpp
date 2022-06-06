@@ -5,29 +5,37 @@
 
 using namespace obf;
 
-int main() {
+int main(int argc, char** argv) {
+	if(!headless){
+		window = new sf::RenderWindow(sf::VideoMode(500, 500), "Test");
+	}
 	Triangle triangle(50, 50, 75);
-	while (window.isOpen()) {
-		mousePos = sf::Mouse::getPosition(window);
+	while (window->isOpen()) {
+		if(!headless){
+			mousePos = sf::Mouse::getPosition(*window);
+		}
 		sf::Event event;
-		while (window.pollEvent(event)) {
+		while (window->pollEvent(event)) {
 			switch (event.type) {
 			case sf::Event::Closed:
-				window.close();
+				window->close();
 				break;
 			case sf::Event::Resized:
-				window.setView(sf::View(sf::FloatRect(0, 0, event.size.width, event.size.height)));
+				window->setView(sf::View(sf::FloatRect(0, 0, event.size.width, event.size.height)));
 			default:
 				break;
 			}
 		}
-
-		window.clear(sf::Color(25, 5, 40));
 		for (auto *entity : updateGroup){
 			entity->update();
 		}
-
-		window.display();
+		if(!headless){
+			window->clear(sf::Color(25, 5, 40));
+			for (auto *entity : updateGroup){
+				entity->draw();
+			}
+			window->display();
+		}
 		delta = deltaClock.restart().asSeconds() * 60;
 		globalTime = globalClock.getElapsedTime().asSeconds();
 	}

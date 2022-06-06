@@ -9,6 +9,7 @@ struct Entity {
 	virtual ~Entity() noexcept;
 
 	virtual void update();
+	virtual void draw() = 0;
 
 	inline void setPosition(double x, double y) {
 		this->x = x;
@@ -30,6 +31,7 @@ struct Triangle: public Entity {
 	Triangle(double x, double y, double radius);
 
 	void update() override;
+	void draw() override;
 
 	sf::CircleShape shape;
 	float rotation = 0;
