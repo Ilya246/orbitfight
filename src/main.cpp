@@ -3,9 +3,14 @@
 
 #include <SFML/Graphics.hpp>
 
+#include <cstring>
+
 using namespace obf;
 
 int main(int argc, char** argv) {
+	for (int i = 1; i < argc; i++) {
+    	headless |= !std::strcmp(argv[i], "--headless");
+	}
 	if(!headless){
 		window = new sf::RenderWindow(sf::VideoMode(500, 500), "Test");
 	}
