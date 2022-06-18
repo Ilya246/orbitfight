@@ -16,8 +16,8 @@ int main(int argc, char** argv){
 	bool notDone = true;
 	if(!headless){
 		serverSocket = new sf::TcpSocket;
+		window = new sf::RenderWindow(sf::VideoMode(500, 500), "Test");
 		while(notDone){
-			window = new sf::RenderWindow(sf::VideoMode(500, 500), "Test");
 			printf("Specify server port: ");
 			std::cin >> port;
 			printf("Specify server address: ");
