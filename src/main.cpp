@@ -76,7 +76,7 @@ int main(int argc, char** argv){
 				entity->draw();
 			}
 			window->display();
-			sf::Socket::Status status;
+			sf::Socket::Status status = sf::Socket::Done;
 			while(status != sf::Socket::NotReady){
 				sf::Packet packet;
 				status = serverSocket->receive(packet);
@@ -129,25 +129,31 @@ int main(int argc, char** argv){
 					}
 					player->lastPingSent = globalTime;
 				}
-				sf::Socket::Status status;
-				while(status != sf::Socket::NotReady){
+				sf::Socket::Status status = sf::Socket::Done;
+				while(status != sf::Socket::NotReady && status != sf::Socket::Disconnected){
 					sf::Packet packet;
 					player->tcpSocket.setBlocking(false);
-					status = serverSocket->receive(packet);
+					status = player->tcpSocket.receive(packet);
 					player->tcpSocket.setBlocking(true);
-					if(status == sf::Socket::Done){
+					if(status == sf::Socket::Done) [[likely]]{
+						player->lastAck = globalTime;
 						unsigned char type;
 						packet >> type;
 						switch(type){
-							case 0:
-								break;
 						}
-						player->lastAck = globalTime;
+					}else if(status == sf::Socket::Disconnected){
+						playerGroup.erase(playerGroup.begin() + i);
+						i--;
+						to--;
+						printf("Player %s has disconnected.\n", player->name().c_str());
+						delete player;
+						continue;
 					}
 				}
 			}
 		}
 		delta = deltaClock.restart().asSeconds() * 60;
+		sf::sleep(sf::seconds(std::max(1.0 / 60.0 - delta, 0.0)));
 		globalTime = globalClock.getElapsedTime().asSeconds();
 	}
 	return 0;
