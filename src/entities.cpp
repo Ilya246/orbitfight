@@ -8,6 +8,10 @@
 
 namespace obf {
 
+std::string Player::name(){
+	return ip.append(":").append(std::to_string(port));
+}
+
 Entity::Entity(double x, double y)
 		: x(x), y(y) {
 	updateGroup.push_back(this);

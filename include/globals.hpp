@@ -19,8 +19,9 @@ inline sf::Vector2i mousePos;
 inline sf::Clock deltaClock, globalClock;
 inline std::string serverAddress;
 inline unsigned short port;
-inline float delta = 1.0 / 60.0,
-	globalTime = 0;
+inline double delta = 1.0 / 60.0,
+	globalTime = 0.0,
+	maxAckTime = 15.0;
 inline bool headless = false;
 
 }

@@ -1,13 +1,19 @@
 #pragma once
 
+#include <vector>
+
 #include <SFML/Graphics/CircleShape.hpp>
 #include <SFML/Network.hpp>
 
 namespace obf{
 
 struct Player{
+	std::string name();
+
 	sf::TcpSocket tcpSocket;
+	std::vector<sf::Packet> tcpQueue;
 	std::string ip;
+	double lastAck, lastPingSent;
 	unsigned short port;
 };
 
