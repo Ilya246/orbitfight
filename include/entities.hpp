@@ -1,10 +1,17 @@
 #pragma once
 
 #include <SFML/Graphics/CircleShape.hpp>
+#include <SFML/Network.hpp>
 
-namespace obf {
+namespace obf{
 
-struct Entity {
+struct Player{
+	sf::TcpSocket tcpSocket;
+	std::string ip;
+	unsigned short port;
+};
+
+struct Entity{
 	Entity(double x, double y);
 	virtual ~Entity() noexcept;
 
@@ -27,7 +34,7 @@ struct Entity {
 	double x, y, velX = 0, velY = 0;
 };
 
-struct Triangle: public Entity {
+struct Triangle: public Entity{
 	Triangle(double x, double y, double radius);
 
 	void update() override;

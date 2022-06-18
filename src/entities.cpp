@@ -13,11 +13,11 @@ Entity::Entity(double x, double y)
 	updateGroup.push_back(this);
 }
 
-Entity::~Entity() noexcept {
+Entity::~Entity() noexcept{
 	// swap remove this from updateGroup
 	// O(n) complexity since iterates whole thing at worst
-	for (size_t i = 0; i < updateGroup.size(); i++) {
-		if (updateGroup[i] == this) [[unlikely]] {
+	for(size_t i = 0; i < updateGroup.size(); i++){
+		if(updateGroup[i] == this) [[unlikely]]{
 			updateGroup[i] = updateGroup[updateGroup.size() - 1];
 			updateGroup.pop_back();
 			break;
@@ -25,7 +25,7 @@ Entity::~Entity() noexcept {
 	}
 }
 
-void Entity::update() {
+void Entity::update(){
 	x += velX * delta;
 	y += velY * delta;
 }
@@ -37,14 +37,14 @@ Triangle::Triangle(double x, double y, double radius)
 	shape.setOrigin(radius, radius);
 }
 
-void Triangle::update() {
+void Triangle::update(){
 	addVelocity((mousePos.x - x) * delta * 0.0001, (mousePos.y - y) * delta * 0.0001);
 	rotation = lerpRotation(rotation, std::atan2(mousePos.y - y, mousePos.x - x) * radToDeg, delta * 0.1f);
 	Entity::update();
 	shape.setPosition(x, y);
 	shape.setRotation(rotation + 90.f);
 }
-void Triangle::draw() {
+void Triangle::draw(){
 	window->draw(shape);
 }
 
