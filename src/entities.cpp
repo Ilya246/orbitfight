@@ -5,17 +5,29 @@
 #include <cmath>
 
 #include <SFML/Graphics.hpp>
+#include <SFML/Network.hpp>
 
 namespace obf {
 
 std::string Player::name(){
 	std::string ret;
-	return ret.append(ip).append(":").append(std::to_string(port));
+	ret.append(ip);
+	if(port != 0){
+		ret.append(":").append(std::to_string(port));
+	}
+	return ret;
 }
 
+Entity::Entity(){
+	updateGroup.push_back(this);
+	id = lastEntityID;
+	lastEntityID++;
+}
 Entity::Entity(double x, double y)
 		: x(x), y(y) {
 	updateGroup.push_back(this);
+	id = lastEntityID;
+	lastEntityID++;
 }
 
 Entity::~Entity() noexcept{
@@ -35,11 +47,23 @@ void Entity::update(){
 	y += velY * delta;
 }
 
-
+Triangle::Triangle() : Entity(){}
 Triangle::Triangle(double x, double y, double radius)
 		: Entity(x, y) {
 	shape = sf::CircleShape(radius, 3);
 	shape.setOrigin(radius, radius);
+}
+void Triangle::loadCreatePacket(sf::Packet& packet){
+	packet << id << x << y << velX << velY << rotation;
+}
+void Triangle::unloadCreatePacket(sf::Packet& packet){
+	packet >> id >> x >> y >> velX >> velY >> rotation;
+}
+void Triangle::loadSyncPacket(sf::Packet& packet){
+	packet << type << id << x << y << velX << velY << rotation;
+}
+void Triangle::unloadSyncPacket(sf::Packet& packet){
+	packet >> x >> y >> velX >> velY >> rotation;
 }
 
 void Triangle::update(){

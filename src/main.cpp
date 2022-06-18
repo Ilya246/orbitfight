@@ -9,40 +9,43 @@
 
 using namespace obf;
 
+void connectToServer(){
+	serverSocket = new sf::TcpSocket;
+	while(true){
+		printf("Specify server port: ");
+		std::cin >> port;
+		printf("Specify server address: ");
+		std::cin >> serverAddress;
+		if(serverSocket->connect(serverAddress, port) != sf::Socket::Done){
+			printf("Could not connect to %s:%u.\n", serverAddress.c_str(), port);
+		}else{
+			printf("Connected to %s:%u.\n", serverAddress.c_str(), port);
+			serverSocket->setBlocking(false);
+			break;
+		}
+	}
+}
+
 int main(int argc, char** argv){
 	for(int i = 1; i < argc; i++){
     	headless |= !std::strcmp(argv[i], "--headless");
 	}
-	bool notDone = true;
-	if(!headless){
-		serverSocket = new sf::TcpSocket;
-		window = new sf::RenderWindow(sf::VideoMode(500, 500), "Test");
-		while(notDone){
-			printf("Specify server port: ");
-			std::cin >> port;
-			printf("Specify server address: ");
-			std::cin >> serverAddress;
-			if(serverSocket->connect(serverAddress, port) != sf::Socket::Done){
-				printf("Could not connect to %s:%u.\n", serverAddress.c_str(), port);
-			}else{
-				printf("Connected to %s:%u.\n", serverAddress.c_str(), port);
-				serverSocket->setBlocking(false);
-				notDone = false;
-			}
-		}
-	}else{
+	if(headless){
 		connectListener = new sf::TcpListener;
 		connectListener->setBlocking(false);
-		while(notDone){
+		while(true){
 			printf("Specify port to host on: ");
 			std::cin >> port;
 			if(connectListener->listen(port) != sf::Socket::Done){
 				printf("Could not host server on port %u.\n", port);
 			}else{
 				printf("Hosted server on port %u.\n", port);
-				notDone = false;
+				break;
 			}
 		}
+	}else{
+		window = new sf::RenderWindow(sf::VideoMode(500, 500), "Test");
+		connectToServer();
 	}
 	while(headless || window->isOpen()){
 		if(headless){
@@ -53,6 +56,12 @@ int main(int argc, char** argv){
 				printf("%s has connected.\n", sparePlayer->name().c_str());
 				sparePlayer->lastAck = globalTime;
 				playerGroup.push_back(sparePlayer);
+				for(Entity* e : updateGroup){
+					sf::Packet packet;
+					packet << (uint16_t)1;
+					e->loadCreatePacket(packet);
+					sparePlayer->tcpSocket.send(packet);
+				}
 				sparePlayer = new Player;
 			}else if(status != sf::Socket::NotReady){
 				printf("An incoming connection has failed.\n");
@@ -85,13 +94,29 @@ int main(int argc, char** argv){
 					packet >> type;
 					serverSocket->setBlocking(true);
 					switch(type){
-						case 0:
+						case 0:{
 							sf::Packet ackPacket;
 							ackPacket << (uint16_t)0;
 							serverSocket->send(ackPacket);
-							break;
+						}
+						break;
+						case 1:{
+							unsigned char entityType;
+							packet >> entityType;
+							switch(entityType){
+								case 0:{
+									Triangle e;
+									e.unloadCreatePacket(packet);
+								}
+								break;
+							}
+						}
+						break;
 					}
 					serverSocket->setBlocking(false);
+				}else if(status == sf::Socket::Disconnected){
+					printf("Connection to server closed.\n");
+					connectToServer();
 				}
 			}
 		}

@@ -18,11 +18,17 @@ struct Player{
 };
 
 struct Entity{
+	Entity();
 	Entity(double x, double y);
 	virtual ~Entity() noexcept;
 
-	virtual void update();
+	virtual void update() = 0;
 	virtual void draw() = 0;
+
+	virtual void loadCreatePacket(sf::Packet& packet) = 0;
+	virtual void unloadCreatePacket(sf::Packet& packet) = 0;
+	virtual void loadSyncPacket(sf::Packet& packet) = 0;
+	virtual void unloadSyncPacket(sf::Packet& packet) = 0;
 
 	inline void setPosition(double x, double y) {
 		this->x = x;
@@ -41,10 +47,18 @@ struct Entity{
 };
 
 struct Triangle: public Entity{
+	Triangle();
 	Triangle(double x, double y, double radius);
 
 	void update() override;
 	void draw() override;
+
+	void loadCreatePacket(sf::Packet& packet) override;
+	void unloadCreatePacket(sf::Packet& packet) override;
+	void loadSyncPacket(sf::Packet& packet) override;
+	void unloadSyncPacket(sf::Packet& packet) override;
+
+	static const unsigned char type = 0;
 
 	sf::CircleShape shape;
 	float rotation = 0;
