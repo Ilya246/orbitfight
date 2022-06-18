@@ -9,7 +9,8 @@
 namespace obf {
 
 std::string Player::name(){
-	return ip.append(":").append(std::to_string(port));
+	std::string ret;
+	return ret.append(ip).append(":").append(std::to_string(port));
 }
 
 Entity::Entity(double x, double y)
