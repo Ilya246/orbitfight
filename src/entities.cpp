@@ -72,7 +72,7 @@ void Triangle::update(){
 	}
 	Entity::update();
 	shape.setPosition(x, y);
-	shape.setRotation(rotation + 90.f);
+	shape.setRotation(rotation - 90.f);
 }
 void Triangle::draw(){
 	window->draw(shape);

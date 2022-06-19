@@ -1,5 +1,6 @@
 #include "entities.hpp"
 #include "globals.hpp"
+#include "math.hpp"
 #include "toml.hpp"
 
 #include <SFML/Graphics.hpp>
@@ -98,7 +99,7 @@ int main(int argc, char** argv){
 			if(window->hasFocus()){
 				mousePos = sf::Mouse::getPosition(*window);
 			}else if(ownEntity != nullptr){
-				mousePos = sf::Vector2i((int)(viewSizeX + ownEntity->x - ownEntity->velX * 200.0), (int)(viewSizeY + ownEntity->y - ownEntity->velY * 200.0));
+				mousePos = sf::Vector2i((int)(viewSizeX * 0.5 - ownEntity->velX * 200.0), (int)(viewSizeY * 0.5 + ownEntity->velY * 200.0));
 			}
 			sf::Event event;
 			while(window->pollEvent(event)){
@@ -181,8 +182,11 @@ int main(int argc, char** argv){
 			}
 			if(ownEntity != nullptr){
 				sf::Packet mouseSyncPacket;
-				mouseSyncPacket << (uint16_t)4 << (double)mousePos.x + ownEntity->x - viewSizeX * 0.5 << (double)mousePos.y + ownEntity->y - viewSizeY * 0.5;
+				mouseSyncPacket << (uint16_t)4 << (double)mousePos.x + ownEntity->x - viewSizeX * 0.5 << viewSizeY * 0.5 - (double)mousePos.y - ownEntity->y;
 				serverSocket->send(mouseSyncPacket);
+				if(rand_f(0.0f, 1.0f) * delta < 0.02f){
+					printf("Coordinates: %f, %f\n", ownEntity->x, ownEntity->y);
+				}
 			}
 		}
 		for(auto* entity : updateGroup){
