@@ -13,7 +13,7 @@ float rand_f(float from, float to) {
 }
 float deltaAngle(float a, float b) {
 	float diff = fmod(b - a, 360.f);
-	return diff + 360.f * (diff < -180.f) - 360.f * (diff > 180.f);
+	return diff + 360.f * ((diff < -180.f) - (diff > 180.f));
 }
 float lerpRotation(float a, float b, float c) {
 	return a + c * deltaAngle(a, b);
