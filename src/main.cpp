@@ -98,7 +98,7 @@ int main(int argc, char** argv){
 			if(window->hasFocus()){
 				mousePos = sf::Mouse::getPosition(*window);
 			}else if(ownEntity != nullptr){
-				mousePos = sf::Vector2i((int)(ownEntity->x - ownEntity->velX * 200.0), (int)(ownEntity->y - ownEntity->velY * 200.0));
+				mousePos = sf::Vector2i((int)(viewSizeX + ownEntity->x - ownEntity->velX * 200.0), (int)(viewSizeY + ownEntity->y - ownEntity->velY * 200.0));
 			}
 			sf::Event event;
 			while(window->pollEvent(event)){
