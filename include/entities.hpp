@@ -7,15 +7,7 @@
 
 namespace obf{
 
-struct Player{
-	std::string name();
-
-	sf::TcpSocket tcpSocket;
-	std::vector<sf::Packet> tcpQueue;
-	std::string ip;
-	double lastAck, lastPingSent;
-	unsigned short port;
-};
+struct Player;
 
 struct Entity{
 	Entity();
@@ -43,12 +35,13 @@ struct Entity{
 		velY += dy;
 	}
 
+	Player* player = nullptr;
 	double x, y, velX = 0, velY = 0;
+	long long id;
 };
 
 struct Triangle: public Entity{
 	Triangle();
-	Triangle(double x, double y, double radius);
 
 	void update() override;
 	void draw() override;
@@ -62,6 +55,20 @@ struct Triangle: public Entity{
 
 	sf::CircleShape shape;
 	float rotation = 0;
+};
+
+struct Player{
+	~Player();
+
+	std::string name();
+
+	Entity* entity = nullptr;
+
+	sf::TcpSocket tcpSocket;
+	std::vector<sf::Packet> tcpQueue;
+	std::string username = "", ip;
+	double lastAck, lastPingSent, lastSynced, mouseX, mouseY;
+	unsigned short port;
 };
 
 }

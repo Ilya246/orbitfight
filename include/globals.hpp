@@ -12,6 +12,7 @@ namespace obf{
 inline sf::TcpSocket* serverSocket = nullptr;
 inline sf::TcpListener* connectListener = nullptr;
 inline sf::RenderWindow* window = nullptr;
+inline obf::Entity* ownEntity = nullptr;
 inline obf::Player* sparePlayer = new obf::Player;
 inline std::vector<Entity*> updateGroup;
 inline std::vector<Player*> playerGroup;
@@ -22,7 +23,11 @@ inline std::string name = "";
 inline unsigned short port = 0;
 inline double delta = 1.0 / 60.0,
 	globalTime = 0.0,
-	maxAckTime = 15.0;
+	maxAckTime = 15.0,
+	syncSpacing = 0.02;
+inline float viewSizeX = 500, viewSizeY = 500;
 inline bool headless = false;
+
+inline const std::string configFile = "config.txt";
 
 }

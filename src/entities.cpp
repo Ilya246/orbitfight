@@ -9,7 +9,12 @@
 
 namespace obf{
 
+Player::~Player(){
+	delete this->entity;
+}
+
 std::string Player::name(){
+	if(username != "")return username;
 	std::string ret;
 	ret.append(ip);
 	if(port != 0){
@@ -43,28 +48,28 @@ void Entity::update(){
 	y += velY * delta;
 }
 
-Triangle::Triangle() : Entity(){}
-Triangle::Triangle(double x, double y, double radius)
-		: Entity(x, y) {
-	shape = sf::CircleShape(radius, 3);
-	shape.setOrigin(radius, radius);
+Triangle::Triangle() : Entity(){
+	shape = sf::CircleShape(25, 3);
+	shape.setOrigin(25, 25);
 }
 void Triangle::loadCreatePacket(sf::Packet& packet){
-	packet << x << y << velX << velY << rotation;
+	packet << type << (long long)this << x << y << velX << velY << rotation;
 }
 void Triangle::unloadCreatePacket(sf::Packet& packet){
-	packet >> x >> y >> velX >> velY >> rotation;
+	packet >> id >> x >> y >> velX >> velY >> rotation;
 }
 void Triangle::loadSyncPacket(sf::Packet& packet){
-	packet << type << x << y << velX << velY << rotation;
+	packet << (long long)this << x << y << velX << velY << rotation;
 }
 void Triangle::unloadSyncPacket(sf::Packet& packet){
 	packet >> x >> y >> velX >> velY >> rotation;
 }
 
 void Triangle::update(){
-	addVelocity((mousePos.x - x) * delta * 0.0001, (mousePos.y - y) * delta * 0.0001);
-	rotation = lerpRotation(rotation, std::atan2(mousePos.y - y, mousePos.x - x) * radToDeg, delta * 0.1f);
+	if(player != nullptr){
+		addVelocity(std::max(-100, (int)std::min((player->mouseX - x), 100.0)) * delta * 0.00008, std::max(-100, (int)std::min((player->mouseY - y), 100.0)) * delta * 0.00008);
+		rotation = lerpRotation(rotation, (float)std::atan2(player->mouseY - y, player->mouseX - x) * radToDeg, delta * 0.1f);
+	}
 	Entity::update();
 	shape.setPosition(x, y);
 	shape.setRotation(rotation + 90.f);

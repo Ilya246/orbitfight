@@ -5,6 +5,7 @@
 #include <SFML/Graphics.hpp>
 #include <SFML/Network.hpp>
 
+#include <cmath>
 #include <cstring>
 #include <fstream>
 #include <iostream>
@@ -22,7 +23,9 @@ void connectToServer(){
 			printf("Could not connect to %s:%u.\n", serverAddress.c_str(), port);
 		}else{
 			printf("Connected to %s:%u.\n", serverAddress.c_str(), port);
-			serverSocket->setBlocking(false);
+			sf::Packet nicknamePacket;
+			nicknamePacket << (uint16_t)3 << name;
+			serverSocket->send(nicknamePacket);
 			break;
 		}
 	}
@@ -32,13 +35,15 @@ int main(int argc, char** argv){
 	for(int i = 1; i < argc; i++){
     	headless |= !std::strcmp(argv[i], "--headless");
 	}
-	if(parseTomlFile("config.txt") != 0){
-		printf("No config file detected, creating config.txt.\n");
-		std::ofstream out;
-		out.open("config.txt");
+	int configExists = parseTomlFile(configFile);
+	if(configExists != 0){
+		printf("No config file detected, creating %s.\n", configFile.c_str());
 	}
-	std::fstream out;
-	out.open("config.txt");
+	std::ofstream out;
+	out.open(configFile, std::ios::app);
+	if(configExists != 0){
+		out << "syncSpacing = " << syncSpacing << std::endl;
+	}
 	if(headless){
 		if(port == 0){
 			printf("Specify the port you will host on.\n");
@@ -52,6 +57,7 @@ int main(int argc, char** argv){
 			out << "name = " << name << std::endl;
 		}
 	}
+	out.close();
 	if(headless){
 		connectListener = new sf::TcpListener;
 		connectListener->setBlocking(false);
@@ -73,31 +79,47 @@ int main(int argc, char** argv){
 				printf("%s has connected.\n", sparePlayer->name().c_str());
 				sparePlayer->lastAck = globalTime;
 				playerGroup.push_back(sparePlayer);
+				sparePlayer->entity = new Triangle();
+				sparePlayer->entity->player = sparePlayer;
 				for(Entity* e : updateGroup){
 					sf::Packet packet;
 					packet << (uint16_t)1;
 					e->loadCreatePacket(packet);
 					sparePlayer->tcpSocket.send(packet);
 				}
+				sf::Packet entityAssign;
+				entityAssign << (uint16_t)5 << (long long)sparePlayer->entity;
+				sparePlayer->tcpSocket.send(entityAssign);
 				sparePlayer = new Player;
 			}else if(status != sf::Socket::NotReady){
 				printf("An incoming connection has failed.\n");
 			}
 		}else{
-			mousePos = sf::Mouse::getPosition(*window);
+			if(window->hasFocus()){
+				mousePos = sf::Mouse::getPosition(*window);
+			}else if(ownEntity != nullptr){
+				mousePos = sf::Vector2i((int)(ownEntity->x - ownEntity->velX * 200.0), (int)(ownEntity->y - ownEntity->velY * 200.0));
+			}
 			sf::Event event;
-			while(window->pollEvent(event)) {
-				switch (event.type) {
+			while(window->pollEvent(event)){
+				switch(event.type){
 				case sf::Event::Closed:
 					window->close();
 					break;
 				case sf::Event::Resized:
-					window->setView(sf::View(sf::FloatRect(0, 0, event.size.width, event.size.height)));
+					viewSizeX = event.size.width;
+					viewSizeY = event.size.height;
 				default:
 					break;
 				}
 			}
-			window->clear(sf::Color(25, 5, 40));
+			if(ownEntity != nullptr){
+				sf::View view;
+				view.setCenter((float)ownEntity->x, (float)ownEntity->y);
+				view.setSize(viewSizeX, viewSizeY);
+				window->setView(view);
+				window->clear(sf::Color(25, 5, std::min(255, (int)(0.1 * std::sqrt(ownEntity->x * ownEntity->x + ownEntity->y * ownEntity->y)))));
+			}
 			for(auto* entity : updateGroup){
 				entity->draw();
 			}
@@ -105,11 +127,12 @@ int main(int argc, char** argv){
 			sf::Socket::Status status = sf::Socket::Done;
 			while(status != sf::Socket::NotReady){
 				sf::Packet packet;
+				serverSocket->setBlocking(false);
 				status = serverSocket->receive(packet);
+				serverSocket->setBlocking(true);
 				if(status == sf::Socket::Done){
 					uint16_t type;
 					packet >> type;
-					serverSocket->setBlocking(true);
 					switch(type){
 						case 0:{
 							sf::Packet ackPacket;
@@ -122,28 +145,53 @@ int main(int argc, char** argv){
 							packet >> entityType;
 							switch(entityType){
 								case 0:{
-									Triangle e;
-									e.unloadCreatePacket(packet);
+									Triangle* e = new Triangle;
+									e->unloadCreatePacket(packet);
 								}
 								break;
 							}
 						}
 						break;
+						case 2:{
+							long long entityID;
+							packet >> entityID;
+							for(Entity* e : updateGroup){
+								if(e->id == entityID){
+									e->unloadSyncPacket(packet);
+									break;
+								}
+							}
+						}
+						break;
+						case 5:{
+							packet >> reinterpret_cast<long long&>(ownEntity);
+							for(Entity* e : updateGroup){
+								if(e->id == reinterpret_cast<long long&>(ownEntity)){
+									ownEntity = e;
+									break;
+								}
+							}
+						}
+						break;
 					}
-					serverSocket->setBlocking(false);
 				}else if(status == sf::Socket::Disconnected){
 					printf("Connection to server closed.\n");
 					connectToServer();
 				}
 			}
+			if(ownEntity != nullptr){
+				sf::Packet mouseSyncPacket;
+				mouseSyncPacket << (uint16_t)4 << (double)mousePos.x + ownEntity->x - viewSizeX * 0.5 << (double)mousePos.y + ownEntity->y - viewSizeY * 0.5;
+				serverSocket->send(mouseSyncPacket);
+			}
 		}
 		for(auto* entity : updateGroup){
 			entity->update();
 		}
-		int to = playerGroup.size();
-		for(int i = 0; i < to; i++){
-			Player* player = playerGroup.at(i);
-			if(headless){
+		if(headless){
+			int to = playerGroup.size();
+			for(int i = 0; i < to; i++){
+				Player* player = playerGroup.at(i);
 				if(globalTime - player->lastAck > 1.0 && globalTime - player->lastPingSent > 1.0){
 					if(globalTime - player->lastAck > maxAckTime){
 						playerGroup.erase(playerGroup.begin() + i);
@@ -179,9 +227,13 @@ int main(int argc, char** argv){
 					player->tcpSocket.setBlocking(true);
 					if(status == sf::Socket::Done) [[likely]]{
 						player->lastAck = globalTime;
-						unsigned char type;
+						uint16_t type;
 						packet >> type;
 						switch(type){
+							case 3:
+								packet >> player->username;
+							case 4:
+								packet >> player->mouseX >> player->mouseY;
 						}
 					}else if(status == sf::Socket::Disconnected){
 						playerGroup.erase(playerGroup.begin() + i);
@@ -191,6 +243,15 @@ int main(int argc, char** argv){
 						delete player;
 						continue;
 					}
+				}
+				if(globalTime - player->lastSynced > syncSpacing){
+					for(Entity* e : updateGroup){
+						sf::Packet packet;
+						packet << (uint16_t)2;
+						e->loadSyncPacket(packet);
+						player->tcpSocket.send(packet);
+					}
+					player->lastSynced = globalTime;
 				}
 			}
 		}

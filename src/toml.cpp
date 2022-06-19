@@ -8,7 +8,7 @@ using namespace std;
 
 namespace obf{
 
-int parseToml(string line){
+int parseToml(string& line){
     string key = "";
     string value = "";
     bool parsingKey = true;
@@ -33,6 +33,11 @@ int parseToml(string line){
             return 3;
         }
         obf::port = stoi(value);
+    }else if(key == "syncSpacing"){
+        if(!regex_match(value, regex("[0-9]*\\.[0-9]*"))){
+            return 3;
+        }
+        obf::syncSpacing = stod(value);
     }else{
         return 4;
     }
