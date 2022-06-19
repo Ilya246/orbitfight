@@ -1,10 +1,12 @@
 #include "entities.hpp"
 #include "globals.hpp"
+#include "toml.hpp"
 
 #include <SFML/Graphics.hpp>
 #include <SFML/Network.hpp>
 
 #include <cstring>
+#include <fstream>
 #include <iostream>
 
 using namespace obf;
@@ -12,9 +14,9 @@ using namespace obf;
 void connectToServer(){
 	serverSocket = new sf::TcpSocket;
 	while(true){
-		printf("Specify server port: ");
+		printf("Specify server port\n");
 		std::cin >> port;
-		printf("Specify server address: ");
+		printf("Specify server address\n");
 		std::cin >> serverAddress;
 		if(serverSocket->connect(serverAddress, port) != sf::Socket::Done){
 			printf("Could not connect to %s:%u.\n", serverAddress.c_str(), port);
@@ -30,19 +32,34 @@ int main(int argc, char** argv){
 	for(int i = 1; i < argc; i++){
     	headless |= !std::strcmp(argv[i], "--headless");
 	}
+	if(parseTomlFile("config.txt") != 0){
+		printf("No config file detected, creating config.txt.\n");
+		std::ofstream out;
+		out.open("config.txt");
+	}
+	std::fstream out;
+	out.open("config.txt");
+	if(headless){
+		if(port == 0){
+			printf("Specify the port you will host on.\n");
+			std::cin >> port;
+			out << "port = " << port << std::endl;
+		}
+	}else{
+		if(name == ""){
+			printf("Specify a username.\n");
+			std::cin >> name;
+			out << "name = " << name << std::endl;
+		}
+	}
 	if(headless){
 		connectListener = new sf::TcpListener;
 		connectListener->setBlocking(false);
-		while(true){
-			printf("Specify port to host on: ");
-			std::cin >> port;
-			if(connectListener->listen(port) != sf::Socket::Done){
-				printf("Could not host server on port %u.\n", port);
-			}else{
-				printf("Hosted server on port %u.\n", port);
-				break;
-			}
+		if(connectListener->listen(port) != sf::Socket::Done){
+			printf("Could not host server on port %u.\n", port);
+			return 0;
 		}
+		printf("Hosted server on port %u.\n", port);
 	}else{
 		window = new sf::RenderWindow(sf::VideoMode(500, 500), "Test");
 		connectToServer();

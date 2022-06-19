@@ -7,7 +7,7 @@
 #include <SFML/Graphics.hpp>
 #include <SFML/Network.hpp>
 
-namespace obf {
+namespace obf{
 
 std::string Player::name(){
 	std::string ret;
@@ -20,14 +20,10 @@ std::string Player::name(){
 
 Entity::Entity(){
 	updateGroup.push_back(this);
-	id = lastEntityID;
-	lastEntityID++;
 }
 Entity::Entity(double x, double y)
 		: x(x), y(y) {
 	updateGroup.push_back(this);
-	id = lastEntityID;
-	lastEntityID++;
 }
 
 Entity::~Entity() noexcept{
@@ -54,13 +50,13 @@ Triangle::Triangle(double x, double y, double radius)
 	shape.setOrigin(radius, radius);
 }
 void Triangle::loadCreatePacket(sf::Packet& packet){
-	packet << id << x << y << velX << velY << rotation;
+	packet << x << y << velX << velY << rotation;
 }
 void Triangle::unloadCreatePacket(sf::Packet& packet){
-	packet >> id >> x >> y >> velX >> velY >> rotation;
+	packet >> x >> y >> velX >> velY >> rotation;
 }
 void Triangle::loadSyncPacket(sf::Packet& packet){
-	packet << type << id << x << y << velX << velY << rotation;
+	packet << type << x << y << velX << velY << rotation;
 }
 void Triangle::unloadSyncPacket(sf::Packet& packet){
 	packet >> x >> y >> velX >> velY >> rotation;
