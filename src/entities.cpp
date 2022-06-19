@@ -41,6 +41,14 @@ Entity::~Entity() noexcept{
 			break;
 		}
 	}
+	if(headless){
+		for(Player* p : playerGroup){
+			if(p->entity == nullptr)continue;
+			sf::Packet despawnPacket;
+			despawnPacket << (uint16_t)6 << reinterpret_cast<long long>(p->entity);
+			p->tcpSocket.send(despawnPacket);
+		}
+	}
 }
 
 void Entity::update(){
@@ -67,12 +75,12 @@ void Triangle::unloadSyncPacket(sf::Packet& packet){
 
 void Triangle::update(){
 	if(player != nullptr){
-		addVelocity(std::max(-100, (int)std::min((player->mouseX - x), 100.0)) * delta * 0.00008, std::max(-100, (int)std::min((player->mouseY - y), 100.0)) * delta * 0.00008);
+		addVelocity(std::max(-500, (int)std::min((player->mouseX - x), 500.0)) * delta * 0.00001, std::max(-500, (int)std::min((player->mouseY - y), 500.0)) * delta * 0.00001);
 		rotation = lerpRotation(rotation, (float)std::atan2(player->mouseY - y, player->mouseX - x) * radToDeg, delta * 0.1f);
 	}
 	Entity::update();
 	shape.setPosition(x, y);
-	shape.setRotation(rotation - 90.f);
+	shape.setRotation(90.f - rotation);
 }
 void Triangle::draw(){
 	window->draw(shape);

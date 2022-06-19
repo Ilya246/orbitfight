@@ -174,6 +174,17 @@ int main(int argc, char** argv){
 							}
 						}
 						break;
+						case 6:{
+							long long deleteID;
+							packet >> deleteID;
+							for(Entity* e : updateGroup){
+								if(e->id == deleteID){
+									delete e;
+									break;
+								}
+							}
+						}
+						break;
 					}
 				}else if(status == sf::Socket::Disconnected){
 					printf("Connection to server closed.\n");
@@ -184,7 +195,7 @@ int main(int argc, char** argv){
 				sf::Packet mouseSyncPacket;
 				mouseSyncPacket << (uint16_t)4 << (double)mousePos.x + ownEntity->x - viewSizeX * 0.5 << viewSizeY * 0.5 - (double)mousePos.y - ownEntity->y;
 				serverSocket->send(mouseSyncPacket);
-				if(rand_f(0.0f, 1.0f) * delta < 0.02f){
+				if(rand_f(0.0f, 1.0f) < 0.02f * delta){
 					printf("Coordinates: %f, %f\n", ownEntity->x, ownEntity->y);
 				}
 			}
@@ -260,7 +271,7 @@ int main(int argc, char** argv){
 			}
 		}
 		delta = deltaClock.restart().asSeconds() * 60;
-		sf::sleep(sf::seconds(std::max(1.0 / 60.0 - delta, 0.0)));
+		sf::sleep(sf::seconds(std::max((1.0 - delta) / 60.0, 0.0)));
 		globalTime = globalClock.getElapsedTime().asSeconds();
 	}
 	return 0;
