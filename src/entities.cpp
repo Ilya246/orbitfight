@@ -61,13 +61,13 @@ Triangle::Triangle() : Entity(){
 	shape.setOrigin(25, 25);
 }
 void Triangle::loadCreatePacket(sf::Packet& packet){
-	packet << type << (long long)this << x << y << velX << velY << rotation;
+	packet << type << reinterpret_cast<long long>(this) << x << y << velX << velY << rotation;
 }
 void Triangle::unloadCreatePacket(sf::Packet& packet){
 	packet >> id >> x >> y >> velX >> velY >> rotation;
 }
 void Triangle::loadSyncPacket(sf::Packet& packet){
-	packet << (long long)this << x << y << velX << velY << rotation;
+	packet << reinterpret_cast<long long>(this) << x << y << velX << velY << rotation;
 }
 void Triangle::unloadSyncPacket(sf::Packet& packet){
 	packet >> x >> y >> velX >> velY >> rotation;

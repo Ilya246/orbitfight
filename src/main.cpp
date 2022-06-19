@@ -79,14 +79,16 @@ int main(int argc, char** argv){
 				sparePlayer->port = sparePlayer->tcpSocket.getRemotePort();
 				printf("%s has connected.\n", sparePlayer->name().c_str());
 				sparePlayer->lastAck = globalTime;
-				playerGroup.push_back(sparePlayer);
 				sparePlayer->entity = new Triangle();
 				sparePlayer->entity->player = sparePlayer;
-				for(Entity* e : updateGroup){
-					sf::Packet packet;
-					packet << (uint16_t)1;
-					e->loadCreatePacket(packet);
-					sparePlayer->tcpSocket.send(packet);
+				playerGroup.push_back(sparePlayer);
+				for(Player* p : playerGroup){
+					for(Entity* e : updateGroup){
+						sf::Packet packet;
+						packet << (uint16_t)1;
+						e->loadCreatePacket(packet);
+						p->tcpSocket.send(packet);
+					}
 				}
 				sf::Packet entityAssign;
 				entityAssign << (uint16_t)5 << (long long)sparePlayer->entity;
@@ -195,9 +197,7 @@ int main(int argc, char** argv){
 				sf::Packet mouseSyncPacket;
 				mouseSyncPacket << (uint16_t)4 << (double)mousePos.x + ownEntity->x - viewSizeX * 0.5 << viewSizeY * 0.5 - (double)mousePos.y - ownEntity->y;
 				serverSocket->send(mouseSyncPacket);
-				if(rand_f(0.0f, 1.0f) < 0.02f * delta){
-					printf("Coordinates: %f, %f\n", ownEntity->x, ownEntity->y);
-				}
+				sf::Text coords;
 			}
 		}
 		for(auto* entity : updateGroup){
