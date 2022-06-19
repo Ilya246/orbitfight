@@ -48,7 +48,7 @@ Entity::~Entity() noexcept {
 		for (Player* p : playerGroup) {
 			if (!p->entity) continue;
 			sf::Packet despawnPacket;
-			despawnPacket << (uint16_t)6 << reinterpret_cast<long long>(p->entity);
+			despawnPacket << (uint16_t)6 << reinterpret_cast<long long>(this);
 			p->tcpSocket.send(despawnPacket);
 		}
 	}
