@@ -2,7 +2,7 @@
 
 namespace obf {
 
-int parseToml(std::string);
-int parseTomlFile(std::string);
+int parseToml(const std::string&);
+int parseTomlFile(const std::string&);
 
 }

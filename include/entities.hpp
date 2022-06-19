@@ -5,11 +5,11 @@
 #include <SFML/Graphics/CircleShape.hpp>
 #include <SFML/Network.hpp>
 
-namespace obf{
+namespace obf {
 
 struct Player;
 
-struct Entity{
+struct Entity {
 	Entity();
 	Entity(double x, double y);
 	virtual ~Entity() noexcept;
@@ -40,7 +40,7 @@ struct Entity{
 	long long id;
 };
 
-struct Triangle: public Entity{
+struct Triangle: public Entity {
 	Triangle();
 
 	void update() override;
@@ -57,7 +57,7 @@ struct Triangle: public Entity{
 	float rotation = 0;
 };
 
-struct Player{
+struct Player {
 	~Player();
 
 	std::string name();

@@ -4,8 +4,8 @@
 
 namespace obf {
 
-inline const double PI = std::atan(1) * 4;
-inline const double radToDeg = 180.d / PI;
+constexpr double PI = atan(1) * 4;
+constexpr double radToDeg = 180.0 / PI;
 
 float rand_f(float, float);
 float deltaAngle(float, float);
