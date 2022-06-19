@@ -7,23 +7,25 @@
 #include <SFML/Graphics.hpp>
 #include <SFML/Network.hpp>
 
-namespace obf{
+namespace obf {
 
-Player::~Player(){
+Player::~Player() {
 	delete this->entity;
 }
 
-std::string Player::name(){
-	if(username != "")return username;
+std::string Player::name() {
+	if (username.size()) return username;
+
 	std::string ret;
 	ret.append(ip);
-	if(port != 0){
+	if (port != 0) {
 		ret.append(":").append(std::to_string(port));
 	}
+
 	return ret;
 }
 
-Entity::Entity(){
+Entity::Entity() {
 	updateGroup.push_back(this);
 }
 Entity::Entity(double x, double y)
@@ -31,19 +33,20 @@ Entity::Entity(double x, double y)
 	updateGroup.push_back(this);
 }
 
-Entity::~Entity() noexcept{
+Entity::~Entity() noexcept {
 	// swap remove this from updateGroup
 	// O(n) complexity since iterates whole thing at worst
-	for(size_t i = 0; i < updateGroup.size(); i++){
-		if(updateGroup[i] == this) [[unlikely]]{
+	for (size_t i = 0; i < updateGroup.size(); i++) {
+		if (updateGroup[i] == this) [[unlikely]]{
 			updateGroup[i] = updateGroup[updateGroup.size() - 1];
 			updateGroup.pop_back();
 			break;
 		}
 	}
-	if(headless){
-		for(Player* p : playerGroup){
-			if(p->entity == nullptr)continue;
+
+	if (headless) {
+		for (Player* p : playerGroup) {
+			if (!p->entity) continue;
 			sf::Packet despawnPacket;
 			despawnPacket << (uint16_t)6 << reinterpret_cast<long long>(p->entity);
 			p->tcpSocket.send(despawnPacket);
@@ -51,38 +54,39 @@ Entity::~Entity() noexcept{
 	}
 }
 
-void Entity::update(){
+void Entity::update() {
 	x += velX * delta;
 	y += velY * delta;
 }
 
-Triangle::Triangle() : Entity(){
+Triangle::Triangle() : Entity() {
 	shape = sf::CircleShape(25, 3);
 	shape.setOrigin(25, 25);
 }
-void Triangle::loadCreatePacket(sf::Packet& packet){
+void Triangle::loadCreatePacket(sf::Packet& packet) {
 	packet << type << reinterpret_cast<long long>(this) << x << y << velX << velY << rotation;
 }
-void Triangle::unloadCreatePacket(sf::Packet& packet){
+void Triangle::unloadCreatePacket(sf::Packet& packet) {
 	packet >> id >> x >> y >> velX >> velY >> rotation;
 }
-void Triangle::loadSyncPacket(sf::Packet& packet){
+void Triangle::loadSyncPacket(sf::Packet& packet) {
 	packet << reinterpret_cast<long long>(this) << x << y << velX << velY << rotation;
 }
-void Triangle::unloadSyncPacket(sf::Packet& packet){
+void Triangle::unloadSyncPacket(sf::Packet& packet) {
 	packet >> x >> y >> velX >> velY >> rotation;
 }
 
-void Triangle::update(){
-	if(player != nullptr){
+void Triangle::update() {
+	if (player) {
 		addVelocity(std::max(-500, (int)std::min((player->mouseX - x), 500.0)) * delta * 0.00001, std::max(-500, (int)std::min((player->mouseY - y), 500.0)) * delta * 0.00001);
-		rotation = lerpRotation(rotation, (float)std::atan2(player->mouseY - y, player->mouseX - x) * radToDeg, delta * 0.1f);
+		rotation = lerpRotation(rotation, (float)atan2(player->mouseY - y, player->mouseX - x) * radToDeg, delta * 0.1f);
 	}
+
 	Entity::update();
 	shape.setPosition(x, y);
 	shape.setRotation(90.f - rotation);
 }
-void Triangle::draw(){
+void Triangle::draw() {
 	window->draw(shape);
 }
 
