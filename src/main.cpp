@@ -81,7 +81,7 @@ int main(int argc, char** argv) {
 		star->setPosition(3500.0, 0.0);
 		Attractor* planet = new Attractor(100.f, 10.0);
 		planet->setPosition(1000.0, 0.0);
-		planet->addVelocity(0.0, 1.0);
+		planet->addVelocity(0.0, sqrt(G * (planet->mass + star->mass) / (3500.0 - 1000.0)));
 		star->syncCreation();
 		planet->syncCreation();
 	} else {
