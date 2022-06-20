@@ -28,7 +28,7 @@ inline double delta = 1.0 / 60.0,
 	syncSpacing = 0.02,
 	G = 50;
 inline int nextID = 0;
-inline bool headless = false, autoConnect = false;
+inline bool headless = false, autoConnect = false, debug = false;
 
 inline const std::string configFile = "config.txt", configDocFile = "confighelp.txt";
 

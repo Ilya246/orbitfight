@@ -50,6 +50,7 @@ int main(int argc, char** argv) {
 		out << "serverAddress: Used with autoConnect as the address to connect to (string)" << std::endl;
 		out << "port: Used both as the port to host on and to specify port for autoConnect (short)" << std::endl;
 		out << "name: Your ingame name as a client (string)" << std::endl;
+		out << "DEBUG: whether to enable debug mode, prints extra info to console (bool)" << std::endl;
 	}
 
 	std::ofstream out;
@@ -202,7 +203,9 @@ int main(int argc, char** argv) {
 				if (status == sf::Socket::Done) {
 					uint16_t type;
 					packet >> type;
-					printf("GOt packet %d\n", type);
+					if(debug){
+						printf("Got packet %d\n", type);
+					}
 					switch (type) {
 					case Packets::Ping: {
 						sf::Packet ackPacket;
@@ -227,7 +230,7 @@ int main(int argc, char** argv) {
 							break;
 						}
 						default:
-							printf("Unknown entity type %d\n", entityType);
+							printf("Received entity of unknown entity type %d\n", entityType);
 							break;
 						}
 						break;
@@ -268,18 +271,16 @@ int main(int argc, char** argv) {
 					case Packets::ColorEntity: {
 						uint32_t id;
 						packet >> id;
-						printf("color %d\n", id);
 						for (Entity* e : updateGroup) {
 							if (e->id == id) [[unlikely]] {
 								packet >> e->color[0] >> e->color[1] >> e->color[2];
-								printf("%d %d %d\n", e->color[0], e->color[1], e->color[2]);
 								break;
 							}
 						}
 						break;
 					}
 					default:
-						printf("Unknown packet %d\n", type);
+						printf("Unknown packet %d received\n", type);
 						break;
 					}
 				} else if (status == sf::Socket::Disconnected) {
@@ -362,15 +363,11 @@ int main(int argc, char** argv) {
 								(unsigned char) (hash >> 16)
 							};
 
-							printf("Among gaming %d: %d %d %d\n", player->entity->id, color[0], color[1], color[2]);
 							for (Player* p : playerGroup) {
-								printf("Sending to %d\n", p->entity->id);
 								sf::Packet colorPacket;
 								packet << Packets::ColorEntity << player->entity->id;
 								packet << color[0] << color[1] << color[2];
-								printf("mrajc\n");
-								printf("status %d\n", p->tcpSocket.send(colorPacket));
-								printf("zrajc\n");
+								p->tcpSocket.send(colorPacket);
 							}
 
 							break;

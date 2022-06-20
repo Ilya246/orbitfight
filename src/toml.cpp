@@ -62,6 +62,11 @@ stopParsing:
 		if (!obf::autoConnect && !regex_match(value, boolf_regex)) {
 			return 4;
 		}
+	} else if (key == "DEBUG") {
+		obf::debug = regex_match(value, boolt_regex);
+		if (!obf::debug && !regex_match(value, boolf_regex)) {
+			return 4;
+		}
 	} else {
 		return 1;
 	}
