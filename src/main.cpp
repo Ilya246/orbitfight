@@ -289,6 +289,8 @@ int main(int argc, char** argv) {
 						uint16_t type;
 						packet >> type;
 						switch(type) {
+						case 0:
+							break;
 						case 3:
 							packet >> player->username;
 							break;
