@@ -57,6 +57,15 @@ Entity::~Entity() noexcept {
 	}
 }
 
+void Entity::syncCreation(){
+	for (Player* p : playerGroup) {
+		sf::Packet packet;
+		packet << (uint16_t)1;
+		this->loadCreatePacket(packet);
+		p->tcpSocket.send(packet);
+	}
+}
+
 void Entity::control(movement& cont) {}
 void Entity::update() {
 	x += velX * delta;
@@ -69,23 +78,17 @@ Triangle::Triangle() : Entity() {
 		shape->setOrigin(25, 25);
 		forwards = new sf::CircleShape(8, 3);
 		forwards->setOrigin(8, 8);
-	} else {
-		for (Player* p : playerGroup) {
-			sf::Packet packet;
-			packet << (uint16_t)1;
-			this->loadCreatePacket(packet);
-			p->tcpSocket.send(packet);
-		}
 	}
 }
 Triangle::~Triangle() {
 	delete shape;
 }
+
 void Triangle::loadCreatePacket(sf::Packet& packet) {
-	packet << type << id << x << y << velX << velY << rotation << *(unsigned int*) &color;
+	packet << type << id << x << y << velX << velY << rotation;
 }
 void Triangle::unloadCreatePacket(sf::Packet& packet) {
-	packet >> id >> x >> y >> velX >> velY >> rotation >> *(unsigned int*) &color;
+	packet >> id >> x >> y >> velX >> velY >> rotation;
 }
 void Triangle::loadSyncPacket(sf::Packet& packet) {
 	packet << id << x << y << velX << velY << rotation;
@@ -119,29 +122,27 @@ void Triangle::draw() {
 	window->draw(*forwards);
 }
 
-Attractor::Attractor() : Entity() {
+Attractor::Attractor(float radius) : Entity(){
+	this->radius = radius;
 	if (!headless) {
-		shape = std::make_unique<sf::CircleShape>(300, 50);
-		shape->setOrigin(300, 300);
-		text = std::make_unique<sf::Text>();
-		text->setFont(*font);
-		text->setFillColor(sf::Color::White);
-		text->setCharacterSize(42);
-	} else {
-		for (Player* p : playerGroup) {
-			sf::Packet packet;
-			packet << (uint16_t)1;
-			this->loadCreatePacket(packet);
-			p->tcpSocket.send(packet);
-		}
+		shape = std::make_unique<sf::CircleShape>(radius, 50);
+		shape->setOrigin(radius, radius);
+	}
+}
+Attractor::Attractor(float radius, double mass) : Entity() {
+	this->radius = radius;
+	this->mass = mass;
+	if (!headless) {
+		shape = std::make_unique<sf::CircleShape>(radius, 50);
+		shape->setOrigin(radius, radius);
 	}
 }
 
 void Attractor::loadCreatePacket(sf::Packet& packet) {
-	packet << type << id << x << y << velX << velY;
+	packet << type << id << radius << x << y << velX << velY << mass;
 }
 void Attractor::unloadCreatePacket(sf::Packet& packet) {
-	packet >> id >> x >> y >> velX >> velY;
+	packet >> id >> x >> y >> velX >> velY >> mass;
 }
 void Attractor::loadSyncPacket(sf::Packet& packet) {
 	packet << id << x << y << velX << velY;
@@ -157,25 +158,7 @@ void Attractor::update() {
 		}
 
 		double xdiff = e->x - x, ydiff = y - e->y;
-		if (!headless) {
-			double dist = sqrt(xdiff * xdiff + ydiff * ydiff);
-			if (dist > apoapsis) {
-				apoapsis = dist;
-				std::ostringstream ss;
-				ss << "APOAPSIS " << apoapsis << "\n";
-				ss << "PERIAPSIS " << periapsis;
-				text->setString(ss.str());
-			}
-			if (dist < periapsis) {
-				periapsis = dist;
-				std::ostringstream ss;
-				ss << "APOAPSIS " << apoapsis << "\n";
-				ss << "PERIAPSIS " << periapsis;
-				text->setString(ss.str());
-			}
-		}
-
-		double factor = G / pow(xdiff * xdiff + ydiff * ydiff, 1.5);
+		double factor = delta * G / pow(xdiff * xdiff + ydiff * ydiff, 1.5);
 		double factorthis = factor * e->mass, factore = -factor * mass;
 		addVelocity(xdiff * factorthis, ydiff * factorthis);
 		e->addVelocity(xdiff * factore, ydiff * factore);
@@ -183,9 +166,7 @@ void Attractor::update() {
 }
 void Attractor::draw() {
 	shape->setPosition(x, y);
-	text->setPosition(x, y + 400);
 	window->draw(*shape);
-	window->draw(*text);
 }
 
 }

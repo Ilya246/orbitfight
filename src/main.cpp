@@ -10,6 +10,7 @@
 #include <cmath>
 #include <cstring>
 #include <fstream>
+#include <functional>
 #include <iostream>
 
 using namespace obf;
@@ -75,8 +76,13 @@ int main(int argc, char** argv) {
 
 		printf("Hosted server on port %u.\n", port);
 
-		Attractor* a = new Attractor;
-		a->setPosition(1000.0, 1000.0);
+		Attractor* star = new Attractor(500.f, 100.0);
+		star->setPosition(3000.0, 0.0);
+		Attractor* planet = new Attractor(50.f, 100.0);
+		planet->setPosition(2000.0, 0.0);
+		planet->addVelocity(0.0, 1.0);
+		star->syncCreation();
+		planet->syncCreation();
 	} else {
 		window = new sf::RenderWindow(sf::VideoMode(500, 500), "Test");
 		font = new sf::Font;
@@ -119,8 +125,9 @@ int main(int argc, char** argv) {
 				}
 				sparePlayer->entity = new Triangle();
 				sparePlayer->entity->setPosition(0.0, 0.0);
-				sparePlayer->entity->addVelocity(0.8, 0.8);
+				sparePlayer->entity->addVelocity(0, 1.0);
 				sparePlayer->entity->player = sparePlayer;
+				sparePlayer->entity->syncCreation();
 				sf::Packet entityAssign;
 				entityAssign << (uint16_t)5 << sparePlayer->entity->id;
 				sparePlayer->tcpSocket.send(entityAssign);
@@ -207,7 +214,9 @@ int main(int argc, char** argv) {
 							break;
 						}
 						case 1: {
-							Attractor* e = new Attractor;
+							float radius;
+							packet >> radius;
+							Attractor* e = new Attractor(radius);
 							e->unloadCreatePacket(packet);
 							break;
 						}
@@ -245,6 +254,21 @@ int main(int argc, char** argv) {
 						for (Entity* e : updateGroup) {
 							if (e->id == deleteID) [[unlikely]] {
 								delete e;
+								break;
+							}
+						}
+						break;
+					}
+					case 7: {
+						int id;
+						packet >> id;
+						for (Entity* e : updateGroup) {
+							if (e->id == id) [[unlikely]] {
+								unsigned char r, g, b;
+								packet >> r >> g >> b;
+								e->color[0] = r;
+								e->color[1] = g;
+								e->color[2] = b;
 								break;
 							}
 						}
@@ -319,9 +343,27 @@ int main(int argc, char** argv) {
 						switch(type) {
 						case 0:
 							break;
-						case 3:
+						case 3: {
 							packet >> player->username;
+							std::string temp;
+							if(player->username.empty()){
+								temp = "impostor";
+							}
+							std::hash<std::string> hasher;
+							size_t hash = hasher(temp);
+							for (Player* p : playerGroup) {
+								sf::Packet colorPacket;
+								packet << (uint16_t)7 << p->entity->id;
+								unsigned char color[3] = {
+    								hash,
+    								hash >> 8,
+    								hash >> 16
+								};
+								packet << color[0] << color[1] << color[2];
+								p->tcpSocket.send(colorPacket);
+							}
 							break;
+						}
 						case 4:
 							packet >> *(unsigned char*) &(player->controls);
 							break;
