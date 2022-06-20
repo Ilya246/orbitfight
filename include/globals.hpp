@@ -13,6 +13,7 @@ inline sf::TcpSocket* serverSocket = nullptr;
 inline sf::TcpListener* connectListener = nullptr;
 inline sf::RenderWindow* window = nullptr;
 inline obf::Entity* ownEntity = nullptr;
+inline sf::Font* font = nullptr;
 inline obf::Player* sparePlayer = new obf::Player;
 inline std::vector<Entity*> updateGroup;
 inline std::vector<Player*> playerGroup;

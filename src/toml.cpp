@@ -15,15 +15,11 @@ static const regex int_regex = regex("[0-9]*"),
 int parseToml(const string &line) {
 	string key = "";
 	string value = "";
-	bool parsingKey = true, stopParsing = false;
+	bool parsingKey = true;
 	for (char c : line) {
-		if(stopParsing){
-			break;
-		}
 		switch (c) {
 		case '#':
-			stopParsing = true;
-			break;
+			goto stopParsing;
 		case '=':
 			parsingKey = false;
 			break;
@@ -37,12 +33,16 @@ int parseToml(const string &line) {
 			} else {
 				value += c;
 			}
+			break;
 		}
 	}
+
+stopParsing:
 
 	if (key.empty()) {
 		return (int)!value.empty(); // supposed to tolerate empty lines while still checking for empty keys
 	}
+
 	if (key == "name") {
 		obf::name = value;
 	} else if (key == "port") {
@@ -50,14 +50,14 @@ int parseToml(const string &line) {
 			return 2;
 		}
 		obf::port = stoi(value);
-	} else if(key == "syncSpacing") {
+	} else if (key == "syncSpacing") {
 		if (!regex_match(value, double_regex)) {
 			return 3;
 		}
 		obf::syncSpacing = stod(value);
-	} else if(key == "serverAddress") {
+	} else if (key == "serverAddress") {
 		obf::serverAddress = value;
-	} else if(key == "autoConnect") {
+	} else if (key == "autoConnect") {
 		obf::autoConnect = regex_match(value, boolt_regex);
 		if (!obf::autoConnect && !regex_match(value, boolf_regex)) {
 			return 4;
@@ -65,6 +65,7 @@ int parseToml(const string &line) {
 	} else {
 		return 1;
 	}
+
 	return 0;
 }
 
