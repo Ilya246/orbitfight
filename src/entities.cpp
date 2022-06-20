@@ -95,6 +95,7 @@ void Triangle::control(movement& cont){
 	float rotationRad = rotation * degToRad;
 	if(cont.forward){
 		addVelocity(accel * std::cos(rotationRad) * delta, accel * std::sin(rotationRad) * delta);
+		printf("debug %f\n", accel * std::cos(rotationRad) * delta);
 	}else if(cont.backward){
 		addVelocity(-accel * std::cos(rotationRad) * delta, -accel * std::sin(rotationRad) * delta);
 	}
