@@ -146,7 +146,7 @@ void Attractor::update() {
 		if(e == this) [[unlikely]]{
 			continue;
 		}
-		double xdiff = e->x - x, ydiff = e->y - y;
+		double xdiff = e->x - x, ydiff = y - e->y;
 		double factor = G / pow(xdiff * xdiff + ydiff * ydiff, 1.5);
 		double factorthis = factor * e->mass, factore = -factor * mass;
 		addVelocity(xdiff * factorthis, ydiff * factorthis);
