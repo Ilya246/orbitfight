@@ -3,6 +3,7 @@
 #include "font.hpp"
 #include "globals.hpp"
 #include "math.hpp"
+#include "packets.hpp"
 #include "toml.hpp"
 
 #include <SFML/Graphics.hpp>
@@ -28,7 +29,7 @@ void connectToServer() {
 		} else {
 			printf("Connected to %s:%u.\n", serverAddress.c_str(), port);
 			sf::Packet nicknamePacket;
-			nicknamePacket << (uint16_t)3 << name;
+			nicknamePacket << Packets::Nickname << name;
 			serverSocket->send(nicknamePacket);
 			break;
 		}
@@ -105,7 +106,7 @@ int main(int argc, char** argv) {
 			} else {
 				printf("Connected to %s:%u.\n", serverAddress.c_str(), port);
 				sf::Packet nicknamePacket;
-				nicknamePacket << (uint16_t)3 << name;
+				nicknamePacket << Packets::Nickname << name;
 				serverSocket->send(nicknamePacket);
 			}
 		} else {
@@ -124,7 +125,7 @@ int main(int argc, char** argv) {
 				playerGroup.push_back(sparePlayer);
 				for (Entity* e : updateGroup) {
 					sf::Packet packet;
-					packet << (uint16_t)1;
+					packet << Packets::CreateEntity;
 					e->loadCreatePacket(packet);
 					sparePlayer->tcpSocket.send(packet);
 				}
@@ -135,7 +136,7 @@ int main(int argc, char** argv) {
 				sparePlayer->entity->player = sparePlayer;
 				sparePlayer->entity->syncCreation();
 				sf::Packet entityAssign;
-				entityAssign << (uint16_t)5 << sparePlayer->entity->id;
+				entityAssign << Packets::AssignEntity << sparePlayer->entity->id;
 				sparePlayer->tcpSocket.send(entityAssign);
 				sparePlayer = new Player;
 			} else if (status != sf::Socket::NotReady) {
@@ -201,15 +202,16 @@ int main(int argc, char** argv) {
 				if (status == sf::Socket::Done) {
 					uint16_t type;
 					packet >> type;
+					printf("GOt packet %d\n", type);
 					switch (type) {
-					case 0:{
+					case Packets::Ping: {
 						sf::Packet ackPacket;
-						ackPacket << (uint16_t)0;
+						ackPacket << Packets::Ping;
 						serverSocket->send(ackPacket);
 						break;
 					}
-					case 1: {
-						unsigned char entityType;
+					case Packets::CreateEntity: {
+						uint8_t entityType;
 						packet >> entityType;
 						switch (entityType) {
 						case 0: {
@@ -230,8 +232,8 @@ int main(int argc, char** argv) {
 						}
 						break;
 					}
-					case 2: {
-						int entityID;
+					case Packets::SyncEntity: {
+						uint32_t entityID;
 						packet >> entityID;
 						for (Entity* e : updateGroup) {
 							if (e->id == entityID) [[unlikely]] {
@@ -241,8 +243,8 @@ int main(int argc, char** argv) {
 						}
 						break;
 					}
-					case 5: {
-						int entityID;
+					case Packets::AssignEntity: {
+						uint32_t entityID;
 						packet >> entityID;
 						for (Entity* e : updateGroup) {
 							if (e->id == entityID) [[unlikely]] {
@@ -252,8 +254,8 @@ int main(int argc, char** argv) {
 						}
 						break;
 					}
-					case 6: {
-						int deleteID;
+					case Packets::DeleteEntity: {
+						uint32_t deleteID;
 						packet >> deleteID;
 						for (Entity* e : updateGroup) {
 							if (e->id == deleteID) [[unlikely]] {
@@ -263,16 +265,14 @@ int main(int argc, char** argv) {
 						}
 						break;
 					}
-					case 7: {
-						int id;
+					case Packets::ColorEntity: {
+						uint32_t id;
 						packet >> id;
+						printf("color %d\n", id);
 						for (Entity* e : updateGroup) {
 							if (e->id == id) [[unlikely]] {
-								unsigned char r, g, b;
-								packet >> r >> g >> b;
-								e->color[0] = r;
-								e->color[1] = g;
-								e->color[2] = b;
+								packet >> e->color[0] >> e->color[1] >> e->color[2];
+								printf("%d %d %d\n", e->color[0], e->color[1], e->color[2]);
 								break;
 							}
 						}
@@ -289,7 +289,7 @@ int main(int argc, char** argv) {
 			}
 			if (ownEntity && lastControls != controls) {
 				sf::Packet controlsPacket;
-				controlsPacket << (uint16_t)4 << *(unsigned char*) &controls;
+				controlsPacket << Packets::Controls << *(unsigned char*) &controls;
 				serverSocket->send(controlsPacket);
 			}
 			*(unsigned char*) &lastControls = *(unsigned char*) &controls;
@@ -314,7 +314,7 @@ int main(int argc, char** argv) {
 					}
 
 					sf::Packet pingPacket;
-					pingPacket << (uint16_t)0;
+					pingPacket << Packets::Ping;
 					sf::Socket::Status status = player->tcpSocket.send(pingPacket);
 					if (status != sf::Socket::Done) {
 						if (status == sf::Socket::Disconnected) {
@@ -345,30 +345,37 @@ int main(int argc, char** argv) {
 						uint16_t type;
 						packet >> type;
 						switch(type) {
-						case 0:
+						case Packets::Ping:
 							break;
-						case 3: {
+						case Packets::Nickname: {
 							packet >> player->username;
 							std::string temp;
 							if (player->username.empty()) {
 								temp = "impostor";
 							}
+
 							std::hash<std::string> hasher;
 							size_t hash = hasher(temp);
+							unsigned char color[3] = {
+								(unsigned char) hash,
+								(unsigned char) (hash >> 8),
+								(unsigned char) (hash >> 16)
+							};
+
+							printf("Among gaming %d: %d %d %d\n", player->entity->id, color[0], color[1], color[2]);
 							for (Player* p : playerGroup) {
+								printf("Sending to %d\n", p->entity->id);
 								sf::Packet colorPacket;
-								packet << (uint16_t)7 << p->entity->id;
-								unsigned char color[3] = {
-									(unsigned char) hash,
-									(unsigned char) (hash >> 8),
-									(unsigned char) (hash >> 16)
-								};
+								packet << Packets::ColorEntity << player->entity->id;
 								packet << color[0] << color[1] << color[2];
-								p->tcpSocket.send(colorPacket);
+								printf("mrajc\n");
+								printf("status %d\n", p->tcpSocket.send(colorPacket));
+								printf("zrajc\n");
 							}
+
 							break;
 						}
-						case 4:
+						case Packets::Controls:
 							packet >> *(unsigned char*) &(player->controls);
 							break;
 						default:
@@ -389,7 +396,7 @@ int main(int argc, char** argv) {
 				if (globalTime - player->lastSynced > syncSpacing) {
 					for (Entity* e : updateGroup) {
 						sf::Packet packet;
-						packet << (uint16_t)2;
+						packet << Packets::SyncEntity;
 						e->loadSyncPacket(packet);
 						player->tcpSocket.send(packet);
 					}
