@@ -123,7 +123,8 @@ int main(int argc, char** argv) {
 					e->loadCreatePacket(packet);
 					sparePlayer->tcpSocket.send(packet);
 				}
-				sparePlayer->entity = new Triangle();
+
+				sparePlayer->entity = std::make_unique<Triangle>();
 				sparePlayer->entity->setPosition(0.0, 0.0);
 				sparePlayer->entity->addVelocity(0, 1.0);
 				sparePlayer->entity->player = sparePlayer;
@@ -346,7 +347,7 @@ int main(int argc, char** argv) {
 						case 3: {
 							packet >> player->username;
 							std::string temp;
-							if(player->username.empty()){
+							if (player->username.empty()) {
 								temp = "impostor";
 							}
 							std::hash<std::string> hasher;
@@ -355,9 +356,9 @@ int main(int argc, char** argv) {
 								sf::Packet colorPacket;
 								packet << (uint16_t)7 << p->entity->id;
 								unsigned char color[3] = {
-    								hash,
-    								hash >> 8,
-    								hash >> 16
+									(unsigned char) hash,
+									(unsigned char) (hash >> 8),
+									(unsigned char) (hash >> 16)
 								};
 								packet << color[0] << color[1] << color[2];
 								p->tcpSocket.send(colorPacket);
