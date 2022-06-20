@@ -67,7 +67,7 @@ struct Triangle: public Entity {
 	void unloadSyncPacket(sf::Packet& packet) override;
 
 	static const unsigned char type = 0;
-	const double accel = 0.0001;
+	const double accel = 0.001;
 	const double rotateSpeed = 2;
 
 	sf::CircleShape* shape = nullptr;
