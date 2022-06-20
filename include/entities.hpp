@@ -3,6 +3,7 @@
 #include <vector>
 
 #include <SFML/Graphics/CircleShape.hpp>
+#include <SFML/Graphics/Text.hpp>
 #include <SFML/Network.hpp>
 
 namespace obf {
@@ -75,7 +76,6 @@ struct Triangle: public Entity {
 
 struct Attractor: public Entity {
 	Attractor();
-	~Attractor();
 
 	void update() override;
 	void draw() override;
@@ -88,7 +88,9 @@ struct Attractor: public Entity {
 	static const unsigned char type = 1;
 	double mass = 100.0;
 
-	sf::CircleShape* shape = nullptr;
+	double apoapsis = 0.0, periapsis = 100000000000.0;
+	std::unique_ptr<sf::CircleShape> shape;
+	std::unique_ptr<sf::Text> text;
 };
 
 struct Player {

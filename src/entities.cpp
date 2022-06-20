@@ -3,6 +3,7 @@
 #include "math.hpp"
 
 #include <cmath>
+#include <sstream>
 
 #include <SFML/Graphics.hpp>
 #include <SFML/Network.hpp>
@@ -112,15 +113,19 @@ void Triangle::draw() {
 	shape->setRotation(90.f - rotation);
 	window->draw(*shape);
 	float rotationRad = rotation * degToRad;
-	forwards->setPosition(x + 30.0 * sin(rotationRad), y + 30.0 * cos(rotationRad));
+	forwards->setPosition(x + 30.0 * cos(rotationRad), y - 30.0 * sin(rotationRad));
 	forwards->setRotation(90.f - rotation);
 	window->draw(*forwards);
 }
 
 Attractor::Attractor() : Entity() {
 	if (!headless) {
-		shape = new sf::CircleShape(300, 50);
+		shape = std::make_unique<sf::CircleShape>(300, 50);
 		shape->setOrigin(300, 300);
+		text = std::make_unique<sf::Text>();
+		text->setFont(*font);
+		text->setFillColor(sf::Color::White);
+		text->setCharacterSize(42);
 	} else {
 		for (Player* p : playerGroup) {
 			sf::Packet packet;
@@ -129,9 +134,6 @@ Attractor::Attractor() : Entity() {
 			p->tcpSocket.send(packet);
 		}
 	}
-}
-Attractor::~Attractor() {
-	delete shape;
 }
 
 void Attractor::loadCreatePacket(sf::Packet& packet) {
@@ -152,7 +154,26 @@ void Attractor::update() {
 		if (e == this) [[unlikely]] {
 			continue;
 		}
+
 		double xdiff = e->x - x, ydiff = y - e->y;
+		if (!headless) {
+			double dist = sqrt(xdiff * xdiff + ydiff * ydiff);
+			if (dist > apoapsis) {
+				apoapsis = dist;
+				std::ostringstream ss;
+				ss << "APOAPSIS " << apoapsis << "\n";
+				ss << "PERIAPSIS " << periapsis;
+				text->setString(ss.str());
+			}
+			if (dist < periapsis) {
+				periapsis = dist;
+				std::ostringstream ss;
+				ss << "APOAPSIS " << apoapsis << "\n";
+				ss << "PERIAPSIS " << periapsis;
+				text->setString(ss.str());
+			}
+		}
+
 		double factor = G / pow(xdiff * xdiff + ydiff * ydiff, 1.5);
 		double factorthis = factor * e->mass, factore = -factor * mass;
 		addVelocity(xdiff * factorthis, ydiff * factorthis);
@@ -161,7 +182,9 @@ void Attractor::update() {
 }
 void Attractor::draw() {
 	shape->setPosition(x, y);
+	text->setPosition(x, y + 400);
 	window->draw(*shape);
+	window->draw(*text);
 }
 
 }
