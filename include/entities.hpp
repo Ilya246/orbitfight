@@ -59,7 +59,6 @@ struct Entity {
 
 struct Triangle: public Entity {
 	Triangle();
-	~Triangle();
 
 	void control(movement& cont) override;
 	void draw() override;
@@ -72,8 +71,7 @@ struct Triangle: public Entity {
 	static const unsigned char type = 0;
 	double accel = 0.01, rotateSpeed = 2, mass = 1.0;
 
-	sf::CircleShape* shape = nullptr;
-	sf::CircleShape* forwards = nullptr;
+	std::unique_ptr<sf::CircleShape> shape, forwards;
 	float rotation = 0;
 };
 
@@ -96,11 +94,9 @@ struct Attractor: public Entity {
 };
 
 struct Player {
-	~Player();
-
 	std::string name();
 
-	Entity* entity = nullptr;
+	std::unique_ptr<Entity> entity;
 
 	sf::TcpSocket tcpSocket;
 	std::vector<sf::Packet> tcpQueue;

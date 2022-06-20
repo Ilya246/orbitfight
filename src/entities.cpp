@@ -14,10 +14,6 @@ bool operator ==(movement& mov1, movement& mov2) {
 	return *(unsigned char*) &mov1 == *(unsigned char*) &mov2;
 }
 
-Player::~Player() {
-	delete this->entity;
-}
-
 std::string Player::name() {
 	if (username.size()) return username;
 
@@ -50,6 +46,7 @@ Entity::~Entity() noexcept {
 	if (headless) {
 		for (Player* p : playerGroup) {
 			if (!p->entity) continue;
+
 			sf::Packet despawnPacket;
 			despawnPacket << (uint16_t)6 << this->id;
 			p->tcpSocket.send(despawnPacket);
@@ -57,7 +54,7 @@ Entity::~Entity() noexcept {
 	}
 }
 
-void Entity::syncCreation(){
+void Entity::syncCreation() {
 	for (Player* p : playerGroup) {
 		sf::Packet packet;
 		packet << (uint16_t)1;
@@ -74,14 +71,11 @@ void Entity::update() {
 
 Triangle::Triangle() : Entity() {
 	if (!headless) {
-		shape = new sf::CircleShape(25, 3);
+		shape = std::make_unique<sf::CircleShape>(25, 3);
 		shape->setOrigin(25, 25);
-		forwards = new sf::CircleShape(8, 3);
+		forwards = std::make_unique<sf::CircleShape>(8, 3);
 		forwards->setOrigin(8, 8);
 	}
-}
-Triangle::~Triangle() {
-	delete shape;
 }
 
 void Triangle::loadCreatePacket(sf::Packet& packet) {
@@ -122,7 +116,7 @@ void Triangle::draw() {
 	window->draw(*forwards);
 }
 
-Attractor::Attractor(float radius) : Entity(){
+Attractor::Attractor(float radius) : Entity() {
 	this->radius = radius;
 	if (!headless) {
 		shape = std::make_unique<sf::CircleShape>(radius, 50);
