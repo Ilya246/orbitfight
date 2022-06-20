@@ -26,10 +26,8 @@ std::string Player::name() {
 }
 
 Entity::Entity() {
-	updateGroup.push_back(this);
-}
-Entity::Entity(double x, double y)
-		: x(x), y(y) {
+	id = nextID;
+	nextID++;
 	updateGroup.push_back(this);
 }
 
@@ -48,7 +46,7 @@ Entity::~Entity() noexcept {
 		for (Player* p : playerGroup) {
 			if (!p->entity) continue;
 			sf::Packet despawnPacket;
-			despawnPacket << (uint16_t)6 << reinterpret_cast<long long>(this);
+			despawnPacket << (uint16_t)6 << this->id;
 			p->tcpSocket.send(despawnPacket);
 		}
 	}
@@ -64,13 +62,13 @@ Triangle::Triangle() : Entity() {
 	shape.setOrigin(25, 25);
 }
 void Triangle::loadCreatePacket(sf::Packet& packet) {
-	packet << type << reinterpret_cast<long long>(this) << x << y << velX << velY << rotation;
+	packet << type << id << x << y << velX << velY << rotation;
 }
 void Triangle::unloadCreatePacket(sf::Packet& packet) {
 	packet >> id >> x >> y >> velX >> velY >> rotation;
 }
 void Triangle::loadSyncPacket(sf::Packet& packet) {
-	packet << reinterpret_cast<long long>(this) << x << y << velX << velY << rotation;
+	packet << id << x << y << velX << velY << rotation;
 }
 void Triangle::unloadSyncPacket(sf::Packet& packet) {
 	packet >> x >> y >> velX >> velY >> rotation;

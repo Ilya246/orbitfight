@@ -36,16 +36,20 @@ int main(int argc, char** argv) {
 	for (int i = 1; i < argc; i++) {
 		headless |= !strcmp(argv[i], "--headless");
 	}
-	int configExists = parseTomlFile(configFile);
-	if (configExists) {
-		printf("No config file detected, creating %s.\n", configFile.c_str());
+	bool configNotPresent = parseTomlFile(configFile) != 0;
+	if (configNotPresent) {
+		printf("No config file detected, creating config %s and documentation file %s.\n", configFile.c_str(), configDocFile.c_str());
+		std::ofstream out;
+		out.open(configDocFile);
+		out << "syncSpacing: As a server, how often should clients be synced (double)" << std::endl;
+		out << "autoConnect: As a client, whether to automatically connect to a server (bool)" << std::endl;
+		out << "serverAddress: Used with autoConnect as the address to connect to (string)" << std::endl;
+		out << "port: Used both as the port to host on and to specify port for autoConnect (short)" << std::endl;
+		out << "name: Your ingame name as a client (string)" << std::endl;
 	}
 
 	std::ofstream out;
 	out.open(configFile, std::ios::app);
-	if (configExists) {
-		out << "syncSpacing = " << syncSpacing << std::endl;
-	}
 	if (headless) {
 		if (port == 0) {
 			printf("Specify the port you will host on.\n");
@@ -71,7 +75,21 @@ int main(int argc, char** argv) {
 		printf("Hosted server on port %u.\n", port);
 	} else {
 		window = new sf::RenderWindow(sf::VideoMode(500, 500), "Test");
-		connectToServer();
+		if (autoConnect && !serverAddress.empty() && port != 0) {
+			printf("Connecting automatically to %s:%u.\n", serverAddress.c_str(), port);
+			serverSocket = new sf::TcpSocket;
+			if (serverSocket->connect(serverAddress, port) != sf::Socket::Done) {
+				printf("Could not connect to %s:%u.\n", serverAddress.c_str(), port);
+				connectToServer();
+			} else {
+				printf("Connected to %s:%u.\n", serverAddress.c_str(), port);
+				sf::Packet nicknamePacket;
+				nicknamePacket << (uint16_t)3 << name;
+				serverSocket->send(nicknamePacket);
+			}
+		} else {
+			connectToServer();
+		}
 	}
 
 	while (headless || window->isOpen()) {
@@ -83,6 +101,7 @@ int main(int argc, char** argv) {
 				printf("%s has connected.\n", sparePlayer->name().c_str());
 				sparePlayer->lastAck = globalTime;
 				sparePlayer->entity = new Triangle();
+				sparePlayer->entity->setPosition(0.0, 0.0);
 				sparePlayer->entity->player = sparePlayer;
 				playerGroup.push_back(sparePlayer);
 				for (Player* p : playerGroup) {
@@ -95,7 +114,7 @@ int main(int argc, char** argv) {
 				}
 
 				sf::Packet entityAssign;
-				entityAssign << (uint16_t)5 << (long long)sparePlayer->entity;
+				entityAssign << (uint16_t)5 << sparePlayer->entity->id;
 				sparePlayer->tcpSocket.send(entityAssign);
 				sparePlayer = new Player;
 			} else if (status != sf::Socket::NotReady) {
@@ -104,8 +123,6 @@ int main(int argc, char** argv) {
 		} else {
 			if (window->hasFocus()) {
 				mousePos = sf::Mouse::getPosition(*window);
-			} else if (ownEntity != nullptr) {
-				mousePos = sf::Vector2i((int)(viewSizeX * 0.5 - ownEntity->velX * 200.0), (int)(viewSizeY * 0.5 + ownEntity->velY * 200.0));
 			}
 
 			sf::Event event;
@@ -168,7 +185,7 @@ int main(int argc, char** argv) {
 						break;
 					}
 					case 2: {
-						long long entityID;
+						int entityID;
 						packet >> entityID;
 						for (Entity* e : updateGroup) {
 							if (e->id == entityID) [[unlikely]] {
@@ -179,9 +196,10 @@ int main(int argc, char** argv) {
 						break;
 					}
 					case 5: {
-						packet >> reinterpret_cast<long long&>(ownEntity);
+						int entityID;
+						packet >> entityID;
 						for (Entity* e : updateGroup) {
-							if (e->id == reinterpret_cast<long long&>(ownEntity)) {
+							if (e->id == entityID) {
 								ownEntity = e;
 								break;
 							}
@@ -189,7 +207,7 @@ int main(int argc, char** argv) {
 						break;
 					}
 					case 6: {
-						long long deleteID;
+						int deleteID;
 						packet >> deleteID;
 						for (Entity* e : updateGroup) {
 							if (e->id == deleteID) [[unlikely]] {
@@ -208,12 +226,12 @@ int main(int argc, char** argv) {
 					connectToServer();
 				}
 			}
-			if (ownEntity) {
-				sf::Packet mouseSyncPacket;
-				mouseSyncPacket << (uint16_t)4 << (double)mousePos.x + ownEntity->x - viewSizeX * 0.5 << viewSizeY * 0.5 - (double)mousePos.y - ownEntity->y;
-				serverSocket->send(mouseSyncPacket);
-				sf::Text coords;
+			if (ownEntity && lastControls != controls) {
+				sf::Packet controlsPacket;
+				controlsPacket << (uint16_t)4 <<(unsigned char)controls;
+				serverSocket->send(controlsPacket);
 			}
+			lastControls = controls;
 		}
 
 		for (auto* entity : updateGroup) {
@@ -270,7 +288,7 @@ int main(int argc, char** argv) {
 							packet >> player->username;
 							break;
 						case 4:
-							packet >> player->mouseX >> player->mouseY;
+							packet >> reinterpret_cast<unsigned char>(player->controls);
 							break;
 						default:
 							printf("Illegal packet %d\n", type);

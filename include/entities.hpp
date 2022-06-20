@@ -11,7 +11,6 @@ struct Player;
 
 struct Entity {
 	Entity();
-	Entity(double x, double y);
 	virtual ~Entity() noexcept;
 
 	virtual void update() = 0;
@@ -37,7 +36,7 @@ struct Entity {
 
 	Player* player = nullptr;
 	double x, y, velX = 0, velY = 0;
-	long long id;
+	int id;
 };
 
 struct Triangle: public Entity {
@@ -57,6 +56,17 @@ struct Triangle: public Entity {
 	float rotation = 0;
 };
 
+struct movement {
+  int forward: 1 = 0;
+  int backward: 1 = 0;
+  int turnright: 1 = 0;
+  int turnleft: 1 = 0;
+  int straferight: 1 = 0;
+  int strafeleft: 1 = 0;
+  int primaryfire: 1 = 0;
+  int secondaryfire: 1 = 0;
+};
+
 struct Player {
 	~Player();
 
@@ -67,7 +77,8 @@ struct Player {
 	sf::TcpSocket tcpSocket;
 	std::vector<sf::Packet> tcpQueue;
 	std::string username = "", ip;
-	double lastAck, lastPingSent, lastSynced, mouseX, mouseY;
+	double lastAck, lastPingSent, lastSynced;
+	movement controls;
 	unsigned short port;
 };
 
