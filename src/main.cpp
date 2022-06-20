@@ -133,8 +133,16 @@ int main(int argc, char** argv) {
 					window->close();
 					break;
 				case sf::Event::Resized:
-					viewSizeX = event.size.width;
-					viewSizeY = event.size.height;
+					viewSizeX = event.size.width * zoom;
+					viewSizeY = event.size.height * zoom;
+					break;
+				case sf::Event::MouseWheelScrolled: {
+					double factor = 1.0 + 0.1 * ((event.mouseWheelScroll.delta < 0) * 2 - 1);
+					zoom *= factor;
+					viewSizeX *= factor;
+					viewSizeY *= factor;
+					break;
+				}
 				default:
 					break;
 				}

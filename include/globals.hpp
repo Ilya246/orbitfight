@@ -24,7 +24,8 @@ inline movement lastControls, controls;
 inline double delta = 1.0 / 60.0,
 	globalTime = 0.0,
 	maxAckTime = 15.0,
-	syncSpacing = 0.02;
+	syncSpacing = 0.02,
+	zoom = 1.0;
 inline float viewSizeX = 500, viewSizeY = 500;
 inline int nextID = 0;
 inline bool headless = false, autoConnect = false;
