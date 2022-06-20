@@ -90,11 +90,11 @@ void Triangle::unloadSyncPacket(sf::Packet& packet) {
 	packet >> x >> y >> velX >> velY >> rotation;
 }
 
-void Triangle::update(){};
 void Triangle::control(movement& cont){
 	float rotationRad = rotation * degToRad;
 	if(cont.forward){
 		addVelocity(accel * std::cos(rotationRad) * delta, accel * std::sin(rotationRad) * delta);
+		printf("debug %f, %f\n", x, y);
 	}else if(cont.backward){
 		addVelocity(-accel * std::cos(rotationRad) * delta, -accel * std::sin(rotationRad) * delta);
 	}

@@ -27,7 +27,7 @@ struct Entity {
 	virtual ~Entity() noexcept;
 
 	virtual void control(movement& cont) = 0;
-	virtual void update() = 0;
+	virtual void update();
 	virtual void draw() = 0;
 
 	virtual void loadCreatePacket(sf::Packet& packet) = 0;
@@ -58,7 +58,6 @@ struct Triangle: public Entity {
 	~Triangle();
 
 	void control(movement& cont) override;
-	void update() override;
 	void draw() override;
 
 	void loadCreatePacket(sf::Packet& packet) override;
