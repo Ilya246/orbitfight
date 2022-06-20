@@ -10,14 +10,14 @@ namespace obf {
 struct Player;
 
 struct movement {
-  int forward: 1 = 0;
-  int backward: 1 = 0;
-  int turnright: 1 = 0;
-  int turnleft: 1 = 0;
-  int straferight: 1 = 0;
-  int strafeleft: 1 = 0;
-  int primaryfire: 1 = 0;
-  int secondaryfire: 1 = 0;
+	int forward: 1 = 0;
+	int backward: 1 = 0;
+	int turnright: 1 = 0;
+	int turnleft: 1 = 0;
+	int straferight: 1 = 0;
+	int strafeleft: 1 = 0;
+	int primaryfire: 1 = 0;
+	int secondaryfire: 1 = 0;
 };
 
 bool operator ==(movement& mov1, movement& mov2);

@@ -63,7 +63,7 @@ void Entity::update() {
 }
 
 Triangle::Triangle() : Entity() {
-	if(!headless){
+	if (!headless) {
 		shape = new sf::CircleShape(25, 3);
 		shape->setOrigin(25, 25);
 		forwards = new sf::CircleShape(8, 3);
@@ -93,7 +93,7 @@ void Triangle::unloadSyncPacket(sf::Packet& packet) {
 	packet >> x >> y >> velX >> velY >> rotation;
 }
 
-void Triangle::control(movement& cont){
+void Triangle::control(movement& cont) {
 	float rotationRad = rotation * degToRad;
 	if (cont.forward) {
 		addVelocity(accel * std::cos(rotationRad) * delta, accel * std::sin(rotationRad) * delta);
@@ -148,8 +148,8 @@ void Attractor::unloadSyncPacket(sf::Packet& packet) {
 }
 
 void Attractor::update() {
-	for(Entity* e : updateGroup){
-		if(e == this) [[unlikely]]{
+	for (Entity* e : updateGroup) {
+		if (e == this) [[unlikely]] {
 			continue;
 		}
 		double xdiff = e->x - x, ydiff = y - e->y;

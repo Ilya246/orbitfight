@@ -1,4 +1,5 @@
 #include "entities.hpp"
+#include "font.hpp"
 #include "globals.hpp"
 #include "math.hpp"
 #include "toml.hpp"
@@ -78,10 +79,16 @@ int main(int argc, char** argv) {
 		a->setPosition(1000.0, 1000.0);
 	} else {
 		window = new sf::RenderWindow(sf::VideoMode(500, 500), "Test");
+		font = new sf::Font;
+		if (!font->loadFromMemory(font_ttf, font_ttf_len)) [[unlikely]] {
+			puts("Failed to load font");
+			return 1;
+		}
+
 		if (autoConnect && !serverAddress.empty() && port != 0) {
 			printf("Connecting automatically to %s:%u.\n", serverAddress.c_str(), port);
 			serverSocket = new sf::TcpSocket;
-			if (serverSocket->connect(serverAddress, port) != sf::Socket::Done) {
+			if (serverSocket->connect(serverAddress, port) != sf::Socket::Done) [[unlikely]] {
 				printf("Could not connect to %s:%u.\n", serverAddress.c_str(), port);
 				connectToServer();
 			} else {
@@ -104,7 +111,7 @@ int main(int argc, char** argv) {
 				printf("%s has connected.\n", sparePlayer->name().c_str());
 				sparePlayer->lastAck = globalTime;
 				playerGroup.push_back(sparePlayer);
-				for(Entity* e : updateGroup){
+				for (Entity* e : updateGroup) {
 					sf::Packet packet;
 					packet << (uint16_t)1;
 					e->loadCreatePacket(packet);
@@ -337,7 +344,7 @@ int main(int argc, char** argv) {
 					player->lastSynced = globalTime;
 				}
 
-				if(player->entity){
+				if (player->entity) {
 					player->entity->control(player->controls);
 				}
 

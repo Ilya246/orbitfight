@@ -6,11 +6,14 @@ CXXFLAGS ?= -O3 -Wall -Wextra -pedantic -g
 override CXXFLAGS += -std=$(STANDARD) -c -Iinclude
 LDFLAGS := $(shell pkg-config --libs sfml-window sfml-graphics sfml-system sfml-network)
 
-sources := $(shell find src -type f -name "*.cpp")
+sources := $(shell find src -type f -name "*.cpp") src/font.cpp
 objects := $(sources:src/%.cpp=build/%.o)
 depends := $(sources:src/%.cpp=build/%.d)
 
 all: orbitfight
+
+src/font.cpp: font.ttf
+	xxd -i $^ $@
 
 build/%.o: src/%.cpp
 	@printf "CC\t%s\n" $@
