@@ -26,7 +26,7 @@ struct Entity {
 	Entity();
 	virtual ~Entity() noexcept;
 
-	virtual void control(movement& cont);
+	virtual void control(movement& cont) = 0;
 	virtual void update() = 0;
 	virtual void draw() = 0;
 
