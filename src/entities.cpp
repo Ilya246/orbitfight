@@ -146,6 +146,7 @@ void Attractor::unloadSyncPacket(sf::Packet& packet) {
 }
 
 void Attractor::update() {
+	Entity::update();
 	for (Entity* e : updateGroup) {
 		if (e == this) [[unlikely]] {
 			continue;
