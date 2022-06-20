@@ -139,7 +139,7 @@ Attractor::Attractor(float radius, double mass) : Entity() {
 }
 
 void Attractor::loadCreatePacket(sf::Packet& packet) {
-	packet << type << id << radius << x << y << velX << velY << mass;
+	packet << type << radius << id << x << y << velX << velY << mass;
 }
 void Attractor::unloadCreatePacket(sf::Packet& packet) {
 	packet >> id >> x >> y >> velX >> velY >> mass;
