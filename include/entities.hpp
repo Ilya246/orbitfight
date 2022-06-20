@@ -70,6 +70,7 @@ struct Triangle: public Entity {
 
 	sf::CircleShape* shape = nullptr;
 	sf::CircleShape* forwards = nullptr;
+	unsigned char color[3]{255, 255, 255};
 	float rotation = 0;
 };
 

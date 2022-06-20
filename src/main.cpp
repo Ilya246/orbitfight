@@ -119,7 +119,7 @@ int main(int argc, char** argv) {
 				}
 				sparePlayer->entity = new Triangle();
 				sparePlayer->entity->setPosition(0.0, 0.0);
-				sparePlayer->entity->addVelocity(0.1, 0.1);
+				sparePlayer->entity->addVelocity(0.8, 0.8);
 				sparePlayer->entity->player = sparePlayer;
 				sf::Packet entityAssign;
 				entityAssign << (uint16_t)5 << sparePlayer->entity->id;
@@ -166,6 +166,13 @@ int main(int argc, char** argv) {
 				window->setView(view);
 				window->clear(sf::Color(25, 5, std::min(255, (int)(0.1 * sqrt(ownEntity->x * ownEntity->x + ownEntity->y * ownEntity->y)))));
 				ownEntity->control(controls);
+				sf::Text coords;
+				coords.setFont(*font);
+				coords.setString(std::to_string((int)ownEntity->x).append(" ").append(std::to_string((int)ownEntity->y)));
+				coords.setCharacterSize((int)(26.0 * zoom));
+				coords.setPosition(ownEntity->x - viewSizeX / 2, (float)ownEntity->y - viewSizeY / 2);
+				coords.setFillColor(sf::Color::Red);
+				window->draw(coords);
 			}
 			for (auto* entity : updateGroup) {
 				entity->draw();

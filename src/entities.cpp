@@ -81,10 +81,10 @@ Triangle::~Triangle() {
 	delete shape;
 }
 void Triangle::loadCreatePacket(sf::Packet& packet) {
-	packet << type << id << x << y << velX << velY << rotation;
+	packet << type << id << x << y << velX << velY << rotation << *(unsigned int*) &color;
 }
 void Triangle::unloadCreatePacket(sf::Packet& packet) {
-	packet >> id >> x >> y >> velX >> velY >> rotation;
+	packet >> id >> x >> y >> velX >> velY >> rotation >> *(unsigned int*) &color;
 }
 void Triangle::loadSyncPacket(sf::Packet& packet) {
 	packet << id << x << y << velX << velY << rotation;
@@ -110,6 +110,7 @@ void Triangle::control(movement& cont) {
 void Triangle::draw() {
 	shape->setPosition(x, y);
 	shape->setRotation(90.f - rotation);
+	shape->setFillColor(sf::Color(color[0], color[1], color[2]));
 	window->draw(*shape);
 	float rotationRad = rotation * degToRad;
 	forwards->setPosition(x + 30.0 * sin(rotationRad), y + 30.0 * cos(rotationRad));
