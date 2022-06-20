@@ -356,9 +356,9 @@ int main(int argc, char** argv) {
 								sf::Packet colorPacket;
 								packet << (uint16_t)7 << p->entity->id;
 								unsigned char color[3] = {
-    								(unsigned char) hash,
-    								(unsigned char) (hash >> 8),
-    								(unsigned char) (hash >> 16)
+									(unsigned char) hash,
+									(unsigned char) (hash >> 8),
+									(unsigned char) (hash >> 16)
 								};
 								packet << color[0] << color[1] << color[2];
 								p->tcpSocket.send(colorPacket);
