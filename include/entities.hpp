@@ -9,10 +9,24 @@ namespace obf {
 
 struct Player;
 
+struct movement {
+  int forward: 1 = 0;
+  int backward: 1 = 0;
+  int turnright: 1 = 0;
+  int turnleft: 1 = 0;
+  int straferight: 1 = 0;
+  int strafeleft: 1 = 0;
+  int primaryfire: 1 = 0;
+  int secondaryfire: 1 = 0;
+};
+
+bool operator ==(movement& mov1, movement& mov2);
+
 struct Entity {
 	Entity();
 	virtual ~Entity() noexcept;
 
+	virtual void control(movement& cont);
 	virtual void update() = 0;
 	virtual void draw() = 0;
 
@@ -41,7 +55,9 @@ struct Entity {
 
 struct Triangle: public Entity {
 	Triangle();
+	~Triangle();
 
+	void control(movement& cont) override;
 	void update() override;
 	void draw() override;
 
@@ -51,20 +67,11 @@ struct Triangle: public Entity {
 	void unloadSyncPacket(sf::Packet& packet) override;
 
 	static const unsigned char type = 0;
+	const double accel = 0.0001;
+	const double rotateSpeed = 0.6;
 
-	sf::CircleShape shape;
+	sf::CircleShape* shape = nullptr;
 	float rotation = 0;
-};
-
-struct movement {
-  int forward: 1 = 0;
-  int backward: 1 = 0;
-  int turnright: 1 = 0;
-  int turnleft: 1 = 0;
-  int straferight: 1 = 0;
-  int strafeleft: 1 = 0;
-  int primaryfire: 1 = 0;
-  int secondaryfire: 1 = 0;
 };
 
 struct Player {

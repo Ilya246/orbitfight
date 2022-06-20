@@ -145,6 +145,7 @@ int main(int argc, char** argv) {
 				view.setSize(viewSizeX, viewSizeY);
 				window->setView(view);
 				window->clear(sf::Color(25, 5, std::min(255, (int)(0.1 * sqrt(ownEntity->x * ownEntity->x + ownEntity->y * ownEntity->y)))));
+				ownEntity->control(controls);
 			}
 			for (auto* entity : updateGroup) {
 				entity->draw();
@@ -228,10 +229,10 @@ int main(int argc, char** argv) {
 			}
 			if (ownEntity && lastControls != controls) {
 				sf::Packet controlsPacket;
-				controlsPacket << (uint16_t)4 <<(unsigned char)controls;
+				controlsPacket << (uint16_t)4 << *(unsigned char*) &controls;
 				serverSocket->send(controlsPacket);
 			}
-			lastControls = controls;
+			*(unsigned char*) &lastControls = *(unsigned char*) &controls;
 		}
 
 		for (auto* entity : updateGroup) {
@@ -288,7 +289,7 @@ int main(int argc, char** argv) {
 							packet >> player->username;
 							break;
 						case 4:
-							packet >> reinterpret_cast<unsigned char>(player->controls);
+							packet >> *(unsigned char*) &(player->controls);
 							break;
 						default:
 							printf("Illegal packet %d\n", type);
@@ -314,6 +315,10 @@ int main(int argc, char** argv) {
 					}
 
 					player->lastSynced = globalTime;
+				}
+
+				if(player->entity){
+					player->entity->control(player->controls);
 				}
 
 			egg:

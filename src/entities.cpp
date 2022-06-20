@@ -9,6 +9,10 @@
 
 namespace obf {
 
+bool operator ==(movement& mov1, movement& mov2) {
+	return *(unsigned char*) &mov1 == *(unsigned char*) &mov2;
+}
+
 Player::~Player() {
 	delete this->entity;
 }
@@ -58,8 +62,13 @@ void Entity::update() {
 }
 
 Triangle::Triangle() : Entity() {
-	shape = sf::CircleShape(25, 3);
-	shape.setOrigin(25, 25);
+	if(!headless){
+		shape = new sf::CircleShape(25, 3);
+		shape->setOrigin(25, 25);
+	}
+}
+Triangle::~Triangle() {
+	delete shape;
 }
 void Triangle::loadCreatePacket(sf::Packet& packet) {
 	packet << type << id << x << y << velX << velY << rotation;
@@ -74,18 +83,25 @@ void Triangle::unloadSyncPacket(sf::Packet& packet) {
 	packet >> x >> y >> velX >> velY >> rotation;
 }
 
-void Triangle::update() {
-	if (player) {
-		addVelocity(std::max(-500, (int)std::min((player->mouseX - x), 500.0)) * delta * 0.00001, std::max(-500, (int)std::min((player->mouseY - y), 500.0)) * delta * 0.00001);
-		rotation = lerpRotation(rotation, (float)atan2(player->mouseY - y, player->mouseX - x) * radToDeg, delta * 0.1f);
+void Triangle::update(){};
+void Triangle::control(movement& cont){
+	float rotationRad = rotation * degToRad;
+	if(cont.forward){
+		addVelocity(accel * std::cos(rotationRad) * delta, accel * std::sin(rotationRad) * delta);
+	}else if(cont.backward){
+		addVelocity(-accel * std::cos(rotationRad) * delta, -accel * std::sin(rotationRad) * delta);
 	}
-
-	Entity::update();
-	shape.setPosition(x, y);
-	shape.setRotation(90.f - rotation);
+	if(cont.turnleft){
+		rotation -= rotateSpeed * delta;
+	}else if(cont.turnright){
+		rotation += rotateSpeed * delta;
+	}
 }
+
 void Triangle::draw() {
-	window->draw(shape);
+	shape->setPosition(x, y);
+	shape->setRotation(90.f - rotation);
+	window->draw(*shape);
 }
 
 }
