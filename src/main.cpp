@@ -76,10 +76,10 @@ int main(int argc, char** argv) {
 
 		printf("Hosted server on port %u.\n", port);
 
-		Attractor* star = new Attractor(500.f, 100.0);
-		star->setPosition(3000.0, 0.0);
-		Attractor* planet = new Attractor(50.f, 100.0);
-		planet->setPosition(2000.0, 0.0);
+		Attractor* star = new Attractor(700.f, 100.0);
+		star->setPosition(3500.0, 0.0);
+		Attractor* planet = new Attractor(100.f, 10.0);
+		planet->setPosition(1000.0, 0.0);
 		planet->addVelocity(0.0, 1.0);
 		star->syncCreation();
 		planet->syncCreation();
