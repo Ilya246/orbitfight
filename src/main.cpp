@@ -1,3 +1,4 @@
+#include "camera.hpp"
 #include "entities.hpp"
 #include "font.hpp"
 #include "globals.hpp"
@@ -85,6 +86,10 @@ int main(int argc, char** argv) {
 		planet->syncCreation();
 	} else {
 		window = new sf::RenderWindow(sf::VideoMode(500, 500), "Test");
+
+		g_camera.scale = 1;
+		g_camera.resize();
+
 		font = new sf::Font;
 		if (!font->loadFromMemory(font_ttf, font_ttf_len)) [[unlikely]] {
 			puts("Failed to load font");
@@ -152,14 +157,11 @@ int main(int argc, char** argv) {
 					window->close();
 					break;
 				case sf::Event::Resized:
-					viewSizeX = event.size.width * zoom;
-					viewSizeY = event.size.height * zoom;
+					g_camera.resize();
 					break;
 				case sf::Event::MouseWheelScrolled: {
 					double factor = 1.0 + 0.1 * ((event.mouseWheelScroll.delta < 0) * 2 - 1);
-					zoom *= factor;
-					viewSizeX *= factor;
-					viewSizeY *= factor;
+					g_camera.zoom(factor);
 					break;
 				}
 				default:
@@ -168,20 +170,21 @@ int main(int argc, char** argv) {
 			}
 
 			if (ownEntity) {
-				sf::View view;
-				view.setCenter((float)ownEntity->x, (float)ownEntity->y);
-				view.setSize(viewSizeX, viewSizeY);
-				window->setView(view);
+				g_camera.pos.x = ownEntity->x;
+				g_camera.pos.y = ownEntity->y;
+
+				g_camera.bindUI();
 				window->clear(sf::Color(25, 5, std::min(255, (int)(0.1 * sqrt(ownEntity->x * ownEntity->x + ownEntity->y * ownEntity->y)))));
 				ownEntity->control(controls);
 				sf::Text coords;
 				coords.setFont(*font);
 				coords.setString(std::to_string((int)ownEntity->x).append(" ").append(std::to_string((int)ownEntity->y)));
-				coords.setCharacterSize((int)(26.0 * zoom));
-				coords.setPosition(ownEntity->x - viewSizeX / 2, (float)ownEntity->y - viewSizeY / 2);
+				coords.setCharacterSize(26.0);
 				coords.setFillColor(sf::Color::Red);
 				window->draw(coords);
 			}
+
+			g_camera.bindWorld();
 			for (auto* entity : updateGroup) {
 				entity->draw();
 			}
