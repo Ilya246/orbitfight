@@ -101,6 +101,12 @@ int main(int argc, char** argv) {
 				printf("%s has connected.\n", sparePlayer->name().c_str());
 				sparePlayer->lastAck = globalTime;
 				playerGroup.push_back(sparePlayer);
+				for(Entity* e : updateGroup){
+					sf::Packet packet;
+					packet << (uint16_t)1;
+					e->loadCreatePacket(packet);
+					sparePlayer->tcpSocket.send(packet);
+				}
 				sparePlayer->entity = new Triangle();
 				sparePlayer->entity->setPosition(0.0, 0.0);
 				sparePlayer->entity->player = sparePlayer;

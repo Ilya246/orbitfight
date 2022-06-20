@@ -41,11 +41,11 @@ struct Entity {
 	}
 	inline void setVelocity(double x, double y) {
 		velX = x;
-		velY = y;
+		velY = -y;
 	}
 	inline void addVelocity(double dx, double dy) {
 		velX += dx;
-		velY += dy;
+		velY -= dy;
 	}
 
 	Player* player = nullptr;
@@ -66,7 +66,7 @@ struct Triangle: public Entity {
 	void unloadSyncPacket(sf::Packet& packet) override;
 
 	static const unsigned char type = 0;
-	const double accel = 0.001;
+	const double accel = 0.005;
 	const double rotateSpeed = 2;
 
 	sf::CircleShape* shape = nullptr;
