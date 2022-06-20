@@ -54,7 +54,7 @@ struct Entity {
 	Player* player = nullptr;
 	double x = 0, y = 0, mass = 0, velX = 0, velY = 0;
 	unsigned char color[3]{255, 255, 255};
-	int id;
+	uint32_t id;
 };
 
 struct Triangle: public Entity {

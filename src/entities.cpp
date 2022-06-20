@@ -1,6 +1,7 @@
 #include "entities.hpp"
 #include "globals.hpp"
 #include "math.hpp"
+#include "packets.hpp"
 
 #include <cmath>
 #include <sstream>
@@ -48,7 +49,7 @@ Entity::~Entity() noexcept {
 			if (!p->entity) continue;
 
 			sf::Packet despawnPacket;
-			despawnPacket << (uint16_t)6 << this->id;
+			despawnPacket << Packets::DeleteEntity << this->id;
 			p->tcpSocket.send(despawnPacket);
 		}
 	}
@@ -56,7 +57,7 @@ Entity::~Entity() noexcept {
 
 void Entity::syncCreation() {
 	sf::Packet packet;
-	packet << (uint16_t)1;
+	packet << Packets::CreateEntity;
 	this->loadCreatePacket(packet);
 
 	for (Player* p : playerGroup) {
@@ -109,6 +110,7 @@ void Triangle::control(movement& cont) {
 void Triangle::draw() {
 	shape->setPosition(x, y);
 	shape->setRotation(90.f - rotation);
+	printf("Colour %d %d %d\n", color[0], color[1], color[2]);
 	shape->setFillColor(sf::Color(color[0], color[1], color[2]));
 	window->draw(*shape);
 	float rotationRad = rotation * degToRad;
@@ -135,10 +137,11 @@ Attractor::Attractor(float radius, double mass) : Entity() {
 
 void Attractor::loadCreatePacket(sf::Packet& packet) {
 	packet << type << radius << id << x << y << velX << velY << mass;
-	printf("Loaded %g %g %g %g\n", x, y, velX, velY);
+	printf("Loaded %d: %g %g %g %g\n", id, x, y, velX, velY);
 }
 void Attractor::unloadCreatePacket(sf::Packet& packet) {
 	packet >> id >> x >> y >> velX >> velY >> mass;
+	printf("Unloaded %d, %g %g %g %g\n", id, x, y, velX, velY);
 }
 void Attractor::loadSyncPacket(sf::Packet& packet) {
 	packet << id << x << y << velX << velY;
