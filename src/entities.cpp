@@ -55,10 +55,11 @@ Entity::~Entity() noexcept {
 }
 
 void Entity::syncCreation() {
+	sf::Packet packet;
+	packet << (uint16_t)1;
+	this->loadCreatePacket(packet);
+
 	for (Player* p : playerGroup) {
-		sf::Packet packet;
-		packet << (uint16_t)1;
-		this->loadCreatePacket(packet);
 		p->tcpSocket.send(packet);
 	}
 }
@@ -134,6 +135,7 @@ Attractor::Attractor(float radius, double mass) : Entity() {
 
 void Attractor::loadCreatePacket(sf::Packet& packet) {
 	packet << type << radius << id << x << y << velX << velY << mass;
+	printf("Loaded %g %g %g %g\n", x, y, velX, velY);
 }
 void Attractor::unloadCreatePacket(sf::Packet& packet) {
 	packet >> id >> x >> y >> velX >> velY >> mass;
