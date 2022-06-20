@@ -242,7 +242,7 @@ int main(int argc, char** argv) {
 						int entityID;
 						packet >> entityID;
 						for (Entity* e : updateGroup) {
-							if (e->id == entityID) {
+							if (e->id == entityID) [[unlikely]] {
 								ownEntity = e;
 								break;
 							}
