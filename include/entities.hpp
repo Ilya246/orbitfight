@@ -52,7 +52,7 @@ struct Entity {
 	}
 
 	Player* player = nullptr;
-	double x, y, mass, velX = 0, velY = 0;
+	double x = 0, y = 0, mass = 0, velX = 0, velY = 0;
 	unsigned char color[3]{255, 255, 255};
 	int id;
 };
@@ -101,7 +101,7 @@ struct Player {
 	sf::TcpSocket tcpSocket;
 	std::vector<sf::Packet> tcpQueue;
 	std::string username = "", ip;
-	double lastAck, lastPingSent, lastSynced;
+	double lastAck = 0, lastPingSent = 0, lastSynced = 0;
 	movement controls;
 	unsigned short port;
 };
