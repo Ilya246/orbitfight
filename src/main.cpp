@@ -75,7 +75,7 @@ int main(int argc, char** argv) {
 		printf("Hosted server on port %u.\n", port);
 
 		Attractor* a = new Attractor;
-		a->setPosition(500.0, 500.0);
+		a->setPosition(1000.0, 1000.0);
 	} else {
 		window = new sf::RenderWindow(sf::VideoMode(500, 500), "Test");
 		if (autoConnect && !serverAddress.empty() && port != 0) {

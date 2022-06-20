@@ -66,6 +66,8 @@ Triangle::Triangle() : Entity() {
 	if(!headless){
 		shape = new sf::CircleShape(25, 3);
 		shape->setOrigin(25, 25);
+		forwards = new sf::CircleShape(8, 3);
+		forwards->setOrigin(8, 8);
 	} else {
 		for (Player* p : playerGroup) {
 			sf::Packet packet;
@@ -109,12 +111,16 @@ void Triangle::draw() {
 	shape->setPosition(x, y);
 	shape->setRotation(90.f - rotation);
 	window->draw(*shape);
+	float rotationRad = rotation * degToRad;
+	forwards->setPosition(x + 30.0 * cos(rotationRad), y + 30.0 * sin(rotationRad));
+	forwards->setRotation(90.f - rotation);
+	window->draw(*forwards);
 }
 
 Attractor::Attractor() : Entity() {
 	if (!headless) {
-		shape = new sf::CircleShape(200, 50);
-		shape->setOrigin(200, 200);
+		shape = new sf::CircleShape(300, 50);
+		shape->setOrigin(300, 300);
 	} else {
 		for (Player* p : playerGroup) {
 			sf::Packet packet;

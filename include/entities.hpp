@@ -41,7 +41,7 @@ struct Entity {
 	}
 	inline void setVelocity(double x, double y) {
 		velX = x;
-		velY = -y;
+		velY = y;
 	}
 	inline void addVelocity(double dx, double dy) {
 		velX += dx;
@@ -66,9 +66,10 @@ struct Triangle: public Entity {
 	void unloadSyncPacket(sf::Packet& packet) override;
 
 	static const unsigned char type = 0;
-	double accel = 0.005, rotateSpeed = 2, mass = 1.0;
+	double accel = 0.01, rotateSpeed = 2, mass = 1.0;
 
 	sf::CircleShape* shape = nullptr;
+	sf::CircleShape* forwards = nullptr;
 	float rotation = 0;
 };
 
@@ -85,7 +86,7 @@ struct Attractor: public Entity {
 	void unloadSyncPacket(sf::Packet& packet) override;
 
 	static const unsigned char type = 1;
-	double mass = 50.0;
+	double mass = 100.0;
 
 	sf::CircleShape* shape = nullptr;
 };
