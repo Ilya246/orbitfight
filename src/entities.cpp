@@ -112,7 +112,7 @@ void Triangle::draw() {
 	shape->setRotation(90.f - rotation);
 	window->draw(*shape);
 	float rotationRad = rotation * degToRad;
-	forwards->setPosition(x + 30.0 * cos(rotationRad), y + 30.0 * sin(rotationRad));
+	forwards->setPosition(x + 30.0 * sin(rotationRad), y + 30.0 * cos(rotationRad));
 	forwards->setRotation(90.f - rotation);
 	window->draw(*forwards);
 }
