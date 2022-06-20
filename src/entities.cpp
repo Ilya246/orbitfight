@@ -65,6 +65,13 @@ Triangle::Triangle() : Entity() {
 	if(!headless){
 		shape = new sf::CircleShape(25, 3);
 		shape->setOrigin(25, 25);
+	} else {
+		for (Player* p : playerGroup) {
+			sf::Packet packet;
+			packet << (uint16_t)1;
+			this->loadCreatePacket(packet);
+			p->tcpSocket.send(packet);
+		}
 	}
 }
 Triangle::~Triangle() {

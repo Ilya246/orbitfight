@@ -100,19 +100,10 @@ int main(int argc, char** argv) {
 				sparePlayer->port = sparePlayer->tcpSocket.getRemotePort();
 				printf("%s has connected.\n", sparePlayer->name().c_str());
 				sparePlayer->lastAck = globalTime;
+				playerGroup.push_back(sparePlayer);
 				sparePlayer->entity = new Triangle();
 				sparePlayer->entity->setPosition(0.0, 0.0);
 				sparePlayer->entity->player = sparePlayer;
-				playerGroup.push_back(sparePlayer);
-				for (Player* p : playerGroup) {
-					for (Entity* e : updateGroup) {
-						sf::Packet packet;
-						packet << (uint16_t)1;
-						e->loadCreatePacket(packet);
-						p->tcpSocket.send(packet);
-					}
-				}
-
 				sf::Packet entityAssign;
 				entityAssign << (uint16_t)5 << sparePlayer->entity->id;
 				sparePlayer->tcpSocket.send(entityAssign);
@@ -123,6 +114,10 @@ int main(int argc, char** argv) {
 		} else {
 			if (window->hasFocus()) {
 				mousePos = sf::Mouse::getPosition(*window);
+				controls.forward = sf::Keyboard::isKeyPressed(sf::Keyboard::W);
+				controls.backward = sf::Keyboard::isKeyPressed(sf::Keyboard::S);
+				controls.turnleft = sf::Keyboard::isKeyPressed(sf::Keyboard::A);
+				controls.turnright = sf::Keyboard::isKeyPressed(sf::Keyboard::D);
 			}
 
 			sf::Event event;
@@ -138,10 +133,6 @@ int main(int argc, char** argv) {
 					break;
 				}
 			}
-			controls.forward = sf::Keyboard::isKeyPressed(sf::Keyboard::W);
-			controls.backward = sf::Keyboard::isKeyPressed(sf::Keyboard::S);
-			controls.turnleft = sf::Keyboard::isKeyPressed(sf::Keyboard::A);
-			controls.turnright = sf::Keyboard::isKeyPressed(sf::Keyboard::D);
 
 			if (ownEntity) {
 				sf::View view;
