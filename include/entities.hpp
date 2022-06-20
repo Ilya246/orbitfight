@@ -68,7 +68,7 @@ struct Triangle: public Entity {
 
 	static const unsigned char type = 0;
 	const double accel = 0.0001;
-	const double rotateSpeed = 0.6;
+	const double rotateSpeed = 2;
 
 	sf::CircleShape* shape = nullptr;
 	float rotation = 0;

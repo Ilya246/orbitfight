@@ -138,6 +138,10 @@ int main(int argc, char** argv) {
 					break;
 				}
 			}
+			controls.forward = sf::Keyboard::isKeyPressed(sf::Keyboard::W);
+			controls.backward = sf::Keyboard::isKeyPressed(sf::Keyboard::S);
+			controls.turnleft = sf::Keyboard::isKeyPressed(sf::Keyboard::A);
+			controls.turnright = sf::Keyboard::isKeyPressed(sf::Keyboard::D);
 
 			if (ownEntity) {
 				sf::View view;

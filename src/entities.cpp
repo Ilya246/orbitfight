@@ -92,9 +92,9 @@ void Triangle::control(movement& cont){
 		addVelocity(-accel * std::cos(rotationRad) * delta, -accel * std::sin(rotationRad) * delta);
 	}
 	if(cont.turnleft){
-		rotation -= rotateSpeed * delta;
-	}else if(cont.turnright){
 		rotation += rotateSpeed * delta;
+	}else if(cont.turnright){
+		rotation -= rotateSpeed * delta;
 	}
 }
 
