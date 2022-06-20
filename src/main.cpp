@@ -112,7 +112,7 @@ int main(int argc, char** argv) {
 				}
 				sparePlayer->entity = new Triangle();
 				sparePlayer->entity->setPosition(0.0, 0.0);
-				sparePlayer->entity->addVelocity(0.1, -0.1);
+				sparePlayer->entity->addVelocity(0.1, 0.1);
 				sparePlayer->entity->player = sparePlayer;
 				sf::Packet entityAssign;
 				entityAssign << (uint16_t)5 << sparePlayer->entity->id;
