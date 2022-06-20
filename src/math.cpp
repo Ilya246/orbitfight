@@ -8,6 +8,12 @@ namespace obf{
 static std::random_device rand_d;
 static std::mt19937 rand_g(rand_d());
 
+double dst2(double x, double y){
+	return x * x + y * y;
+}
+double dst(double x, double y){
+	return sqrt(dst2(x, y));
+}
 float rand_f(float from, float to) {
 	return std::uniform_real_distribution(from, to)(rand_g);
 }

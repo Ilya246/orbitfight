@@ -73,6 +73,9 @@ int main(int argc, char** argv) {
 		}
 
 		printf("Hosted server on port %u.\n", port);
+
+		Attractor* a = new Attractor;
+		a->setPosition(500.0, 500.0);
 	} else {
 		window = new sf::RenderWindow(sf::VideoMode(500, 500), "Test");
 		if (autoConnect && !serverAddress.empty() && port != 0) {
@@ -109,6 +112,7 @@ int main(int argc, char** argv) {
 				}
 				sparePlayer->entity = new Triangle();
 				sparePlayer->entity->setPosition(0.0, 0.0);
+				sparePlayer->entity->addVelocity(0.1, -0.1);
 				sparePlayer->entity->player = sparePlayer;
 				sf::Packet entityAssign;
 				entityAssign << (uint16_t)5 << sparePlayer->entity->id;
@@ -185,6 +189,11 @@ int main(int argc, char** argv) {
 						switch (entityType) {
 						case 0: {
 							Triangle* e = new Triangle;
+							e->unloadCreatePacket(packet);
+							break;
+						}
+						case 1: {
+							Attractor* e = new Attractor;
 							e->unloadCreatePacket(packet);
 							break;
 						}

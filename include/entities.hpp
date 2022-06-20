@@ -26,7 +26,7 @@ struct Entity {
 	Entity();
 	virtual ~Entity() noexcept;
 
-	virtual void control(movement& cont) = 0;
+	virtual void control(movement& cont);
 	virtual void update();
 	virtual void draw() = 0;
 
@@ -49,7 +49,7 @@ struct Entity {
 	}
 
 	Player* player = nullptr;
-	double x, y, velX = 0, velY = 0;
+	double x, y, mass, velX = 0, velY = 0;
 	int id;
 };
 
@@ -66,11 +66,28 @@ struct Triangle: public Entity {
 	void unloadSyncPacket(sf::Packet& packet) override;
 
 	static const unsigned char type = 0;
-	const double accel = 0.005;
-	const double rotateSpeed = 2;
+	double accel = 0.005, rotateSpeed = 2, mass = 1.0;
 
 	sf::CircleShape* shape = nullptr;
 	float rotation = 0;
+};
+
+struct Attractor: public Entity {
+	Attractor();
+	~Attractor();
+
+	void update() override;
+	void draw() override;
+
+	void loadCreatePacket(sf::Packet& packet) override;
+	void unloadCreatePacket(sf::Packet& packet) override;
+	void loadSyncPacket(sf::Packet& packet) override;
+	void unloadSyncPacket(sf::Packet& packet) override;
+
+	static const unsigned char type = 1;
+	double mass = 50.0;
+
+	sf::CircleShape* shape = nullptr;
 };
 
 struct Player {
