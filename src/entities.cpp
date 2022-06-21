@@ -110,7 +110,6 @@ void Triangle::control(movement& cont) {
 void Triangle::draw() {
 	shape->setPosition(x, y);
 	shape->setRotation(90.f - rotation);
-	printf("Colour %d %d %d\n", color[0], color[1], color[2]);
 	shape->setFillColor(sf::Color(color[0], color[1], color[2]));
 	window->draw(*shape);
 	float rotationRad = rotation * degToRad;
