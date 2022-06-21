@@ -26,6 +26,9 @@ std::string Player::name() {
 
 	return ret;
 }
+Player::~Player() {
+	delete this->entity;
+}
 
 Entity::Entity() {
 	id = nextID;
@@ -46,8 +49,6 @@ Entity::~Entity() noexcept {
 
 	if (headless) {
 		for (Player* p : playerGroup) {
-			if (!p->entity) continue;
-
 			sf::Packet despawnPacket;
 			despawnPacket << Packets::DeleteEntity << this->id;
 			p->tcpSocket.send(despawnPacket);
@@ -113,7 +114,7 @@ void Triangle::draw() {
 	shape->setFillColor(sf::Color(color[0], color[1], color[2]));
 	window->draw(*shape);
 	float rotationRad = rotation * degToRad;
-	forwards->setPosition(x + 30.0 * cos(rotationRad), y - 30.0 * sin(rotationRad));
+	forwards->setPosition(x + 14.0 * cos(rotationRad), y - 14.0 * sin(rotationRad));
 	forwards->setRotation(90.f - rotation);
 	window->draw(*forwards);
 }

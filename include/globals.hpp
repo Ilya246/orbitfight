@@ -25,10 +25,15 @@ inline movement lastControls, controls;
 inline double delta = 1.0 / 60.0,
 	globalTime = 0.0,
 	maxAckTime = 15.0,
-	syncSpacing = 0.02,
+	syncSpacing = 0.05,
 	G = 50;
 inline int nextID = 0;
 inline bool headless = false, autoConnect = false, debug = false;
+
+// prespawned entities - temporary
+
+inline Attractor* star = nullptr;
+inline Attractor* planet = nullptr;
 
 inline const std::string configFile = "config.txt", configDocFile = "confighelp.txt";
 

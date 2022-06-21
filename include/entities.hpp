@@ -95,9 +95,11 @@ struct Attractor: public Entity {
 };
 
 struct Player {
+	~Player();
+
 	std::string name();
 
-	std::unique_ptr<Entity> entity;
+	Entity* entity = nullptr;
 
 	sf::TcpSocket tcpSocket;
 	std::vector<sf::Packet> tcpQueue;

@@ -59,13 +59,13 @@ int main(int argc, char** argv) {
 		if (port == 0) {
 			printf("Specify the port you will host on.\n");
 			std::cin >> port;
-			out << "port = " << port << std::endl;
+			out << "\nport = " << port << std::endl;
 		}
 	} else {
 		if (name.empty()) {
 			printf("Specify a username.\n");
 			std::cin >> name;
-			out << "name = " << name << std::endl;
+			out << "\nname = " << name << std::endl;
 		}
 	}
 	out.close();
@@ -79,9 +79,9 @@ int main(int argc, char** argv) {
 
 		printf("Hosted server on port %u.\n", port);
 
-		Attractor* star = new Attractor(900.f, 200.0);
+		star = new Attractor(900.f, 200.0);
 		star->setPosition(5000.0, 0.0);
-		Attractor* planet = new Attractor(100.f, 20.0);
+		planet = new Attractor(100.f, 20.0);
 		planet->setPosition(1000.0, 0.0);
 		planet->addVelocity(0.0, sqrt(G * (planet->mass + star->mass) / (5000.0 - 1000.0)));
 	} else {
@@ -129,9 +129,9 @@ int main(int argc, char** argv) {
 					sparePlayer->tcpSocket.send(packet);
 				}
 
-				sparePlayer->entity = std::make_unique<Triangle>();
-				sparePlayer->entity->setPosition(0.0, 0.0);
-				sparePlayer->entity->addVelocity(0, 1.0);
+				sparePlayer->entity = new Triangle();
+				sparePlayer->entity->setPosition(planet->x - 200.0, planet->y);
+				sparePlayer->entity->addVelocity(planet->velX, sqrt(G * planet->mass / 200.0) - planet->velY);
 				sparePlayer->entity->player = sparePlayer;
 				sparePlayer->entity->syncCreation();
 				sf::Packet entityAssign;
@@ -169,25 +169,27 @@ int main(int argc, char** argv) {
 				}
 			}
 
-			if (ownEntity) {
-				g_camera.pos.x = ownEntity->x;
-				g_camera.pos.y = ownEntity->y;
-
-				g_camera.bindUI();
-				window->clear(sf::Color(25, 5, std::min(255, (int)(0.1 * sqrt(ownEntity->x * ownEntity->x + ownEntity->y * ownEntity->y)))));
-				ownEntity->control(controls);
-				sf::Text coords;
-				coords.setFont(*font);
-				coords.setString(std::to_string((int)ownEntity->x).append(" ").append(std::to_string((int)ownEntity->y)));
-				coords.setCharacterSize(26.0);
-				coords.setFillColor(sf::Color::Red);
-				window->draw(coords);
-			}
 
 			g_camera.bindWorld();
 			for (auto* entity : updateGroup) {
 				entity->draw();
 			}
+			if (ownEntity) {
+				g_camera.pos.x = ownEntity->x;
+				g_camera.pos.y = ownEntity->y;
+
+				window->clear(sf::Color(25, 5, std::min(255, (int)(0.1 * sqrt(ownEntity->x * ownEntity->x + ownEntity->y * ownEntity->y)))));
+				ownEntity->control(controls);
+
+				g_camera.bindUI();
+				sf::Text coords;
+				coords.setFont(*font);
+				coords.setString(std::to_string((int)ownEntity->x).append(" ").append(std::to_string((int)ownEntity->y)).append("\nFPS: ").append(std::to_string(60.0/delta)));
+				coords.setCharacterSize(26.0);
+				coords.setFillColor(sf::Color::Red);
+				window->draw(coords);
+			}
+			g_camera.bindWorld();
 
 			window->display();
 
@@ -369,8 +371,7 @@ int main(int argc, char** argv) {
 
 							for (Player* p : playerGroup) {
 								sf::Packet colorPacket;
-								packet << Packets::ColorEntity << player->entity->id;
-								packet << color[0] << color[1] << color[2];
+								packet << Packets::ColorEntity << player->entity->id << color[0] << color[1] << color[2];
 								p->tcpSocket.send(colorPacket);
 							}
 
@@ -415,7 +416,7 @@ int main(int argc, char** argv) {
 		}
 
 		delta = deltaClock.restart().asSeconds() * 60;
-		sf::sleep(sf::seconds(std::max((1.0 - delta) / 60.0, 0.0)));
+		sf::sleep(sf::seconds(std::max((1.0 - delta) / 80.0, 0.0)));
 		globalTime = globalClock.getElapsedTime().asSeconds();
 	}
 
