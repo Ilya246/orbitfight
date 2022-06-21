@@ -170,6 +170,7 @@ int main(int argc, char** argv) {
 			}
 
 
+			window->clear(sf::Color(25, 5, std::min(255, (int)(0.1 * sqrt(ownEntity->x * ownEntity->x + ownEntity->y * ownEntity->y)))));
 			g_camera.bindWorld();
 			for (auto* entity : updateGroup) {
 				entity->draw();
@@ -178,7 +179,6 @@ int main(int argc, char** argv) {
 				g_camera.pos.x = ownEntity->x;
 				g_camera.pos.y = ownEntity->y;
 
-				window->clear(sf::Color(25, 5, std::min(255, (int)(0.1 * sqrt(ownEntity->x * ownEntity->x + ownEntity->y * ownEntity->y)))));
 				ownEntity->control(controls);
 
 				g_camera.bindUI();
@@ -190,7 +190,6 @@ int main(int argc, char** argv) {
 				window->draw(coords);
 			}
 			g_camera.bindWorld();
-
 			window->display();
 
 			sf::Socket::Status status = sf::Socket::Done;
