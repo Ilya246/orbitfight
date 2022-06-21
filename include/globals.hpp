@@ -1,8 +1,10 @@
 #pragma once
 
 #include "entities.hpp"
+#include "types.hpp"
 
 #include <future>
+#include <map>
 #include <vector>
 
 #include <SFML/Graphics.hpp>
@@ -39,6 +41,20 @@ nextID = 0;
 inline bool headless = false, autoConnect = false, debug = false,
 inputWaiting = false,
 chatting = false;
+
+struct Var {
+	uint8_t type;
+	void* value;
+};
+
+using namespace obf::Types;
+
+inline std::map<std::string, Var> vars {{"name", {String, &name}},
+	{"port", {Int, &port}},
+	{"syncSpacing", {Double, &syncSpacing}},
+	{"serverAddress", {String, &serverAddress}},
+	{"autoConnect", {Bool, &autoConnect}},
+	{"DEBUG", {Bool, &debug}}};
 
 inline sf::String displayMessages[displayMessageCount];
 

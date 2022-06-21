@@ -2,7 +2,7 @@
 #include "entities.hpp"
 #include "globals.hpp"
 #include "math.hpp"
-#include "packets.hpp"
+#include "types.hpp"
 
 #include <cmath>
 #include <sstream>

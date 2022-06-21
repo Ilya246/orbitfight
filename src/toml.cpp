@@ -1,4 +1,5 @@
 #include "globals.hpp"
+#include "types.hpp"
 
 #include <fstream>
 #include <regex>
@@ -12,7 +13,7 @@ static const regex int_regex = regex("[0-9]*"),
 	double_regex = regex("[0-9]*\\.[0-9]*"),
 	boolt_regex = regex("([tT][rR][uU][eE])|1"), boolf_regex = regex("([fF][aA][lL][sS][eE])|0");
 
-int parseToml(const string &line) {
+int parseToml(const string& line) {
 	string key = "";
 	string value = "";
 	bool parsingKey = true;
@@ -43,38 +44,52 @@ stopParsing:
 		return (int)!value.empty(); // supposed to tolerate empty lines while still checking for empty keys
 	}
 
-	if (key == "name") {
-		obf::name = value;
-	} else if (key == "port") {
-		if (!regex_match(value, int_regex)) {
-			return 2;
+	const auto &it = obf::vars.find(key);
+	if (it != obf::vars.end()) {
+		Var variable = it->second;
+		switch (variable.type) {
+			case obf::Types::Short_u: {
+				if (!regex_match(value, int_regex)) {
+					return 2;
+				}
+				*(uint16_t*)variable.value = (uint16_t)stoi(value);
+				break;
+			}
+			case obf::Types::Int: {
+				if (!regex_match(value, int_regex)) {
+					return 2;
+				}
+				*(int*)variable.value = stoi(value);
+				break;
+			}
+			case obf::Types::Double: {
+				if (!regex_match(value, double_regex)) {
+					return 3;
+				}
+				*(double*)variable.value = stod(value);
+				break;
+			}
+			case obf::Types::Bool: {
+				bool temp = regex_match(value, boolt_regex);
+				if (!temp && !regex_match(value, boolf_regex)) {
+					return 4;
+				}
+				*(bool*)variable.value = temp;
+				break;
+			}
+			case obf::Types::String: {
+				*(std::string*)variable.value = value;
+				break;
+			}
+			default: {
+				return 5;
+			}
 		}
-		obf::port = stoi(value);
-	} else if (key == "syncSpacing") {
-		if (!regex_match(value, double_regex)) {
-			return 3;
-		}
-		obf::syncSpacing = stod(value);
-	} else if (key == "serverAddress") {
-		obf::serverAddress = value;
-	} else if (key == "autoConnect") {
-		obf::autoConnect = regex_match(value, boolt_regex);
-		if (!obf::autoConnect && !regex_match(value, boolf_regex)) {
-			return 4;
-		}
-	} else if (key == "DEBUG") {
-		obf::debug = regex_match(value, boolt_regex);
-		if (!obf::debug && !regex_match(value, boolf_regex)) {
-			return 4;
-		}
-	} else {
-		return 1;
 	}
-
 	return 0;
 }
 
-int parseTomlFile(const string &filename) {
+int parseTomlFile(const string& filename) {
 	std::ifstream in;
 	in.open(filename);
 	if (!in) {
@@ -98,6 +113,9 @@ int parseTomlFile(const string &filename) {
 		case 4:
 			printf("Invalid value at %s:%u. Must be true|false.\n", filename.c_str(), lineN);
 			break;
+		case 5:
+			printf("Invalid type specified for variable at %s:%u.\n", filename.c_str(), lineN);
+			break;
 		default:
 			break;
 		}
@@ -107,7 +125,7 @@ int parseTomlFile(const string &filename) {
 }
 
 string parseCommand (const string& command) {
-	
+
 }
 
 }

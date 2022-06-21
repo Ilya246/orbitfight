@@ -1,3 +1,5 @@
+#pragma once
+
 // use like an enum e.g. Packets::CreateEntity
 namespace obf::Packets {
 
@@ -10,5 +12,15 @@ constexpr uint16_t Ping = 0,
 	DeleteEntity = 6,
 	ColorEntity = 7,
 	Chat = 8;
+
+}
+
+namespace obf::Types {
+
+constexpr uint8_t String = 0,
+	Short_u = 1,
+	Int = 2,
+	Double = 3,
+	Bool = 4;
 
 }

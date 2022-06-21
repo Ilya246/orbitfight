@@ -3,7 +3,7 @@
 #include "font.hpp"
 #include "globals.hpp"
 #include "math.hpp"
-#include "packets.hpp"
+#include "types.hpp"
 #include "toml.hpp"
 
 #include <SFML/Graphics.hpp>
