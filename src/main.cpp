@@ -204,9 +204,9 @@ int main(int argc, char** argv) {
 				if (status == sf::Socket::Done) {
 					uint16_t type;
 					packet >> type;
-					/* if(debug){
-						printf("Got packet %d\n", type);
-					} */
+					if(debug && type != Packets::SyncEntity){
+						printf("Got packet %d, size %llu\n", type, packet.getDataSize());
+					}
 					switch (type) {
 					case Packets::Ping: {
 						sf::Packet ackPacket;
