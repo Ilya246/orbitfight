@@ -51,6 +51,12 @@ struct Entity {
 		velY -= dy;
 	}
 
+	inline void setColor(uint8_t r, uint8_t g, uint8_t b) {
+		color[0] = r;
+		color[1] = g;
+		color[2] = b;
+	}
+
 	Player* player = nullptr;
 	double x = 0, y = 0, mass = 0, velX = 0, velY = 0;
 	unsigned char color[3]{255, 255, 255};

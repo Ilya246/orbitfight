@@ -144,13 +144,13 @@ Attractor::Attractor(float radius, double mass) : Entity() {
 }
 
 void Attractor::loadCreatePacket(sf::Packet& packet) {
-	packet << type << radius << id << x << y << velX << velY << mass;
+	packet << type << radius << id << x << y << velX << velY << mass << color[0] << color[1] << color[2];
 	if(debug){
 		printf("Sent id %d: %g %g %g %g\n", id, x, y, velX, velY);
 	}
 }
 void Attractor::unloadCreatePacket(sf::Packet& packet) {
-	packet >> id >> x >> y >> velX >> velY >> mass;
+	packet >> id >> x >> y >> velX >> velY >> mass >> color[0] >> color[1] >> color[2];
 	if(debug){
 		printf(", id %d: %g %g %g %g\n", id, x, y, velX, velY);
 	}
@@ -176,6 +176,7 @@ void Attractor::update() {
 }
 void Attractor::draw() {
 	shape->setPosition(x, y);
+	shape->setFillColor(sf::Color(color[0], color[1], color[2]));
 	window->draw(*shape);
 }
 

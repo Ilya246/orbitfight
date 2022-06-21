@@ -81,9 +81,11 @@ int main(int argc, char** argv) {
 
 		star = new Attractor(900.f, 200.0);
 		star->setPosition(5000.0, 0.0);
+		star->setColor(255, 229, 97);
 		planet = new Attractor(100.f, 20.0);
 		planet->setPosition(1000.0, 0.0);
 		planet->addVelocity(0.0, sqrt(G * (planet->mass + star->mass) / (5000.0 - 1000.0)));
+		planet->setColor(165, 165, 165);
 	} else {
 		window = new sf::RenderWindow(sf::VideoMode(500, 500), "Test");
 
@@ -114,20 +116,20 @@ int main(int argc, char** argv) {
 	}
 
 	while (headless || window->isOpen()) {
-	 	/* char append = getchar();
-		if(append != 0){
-			std::cout << append;
-			if(append == '\n'){
-				printf("%u", parseToml(inputBuffer));
-				inputBuffer.clear();
-			}else{
-				inputBuffer.append(&append);
-			}
-		}
-		printf("a");
-		ok i have no idea how to do this, this is supposed to be non-blocking console input */
 
 		if (headless) {
+			/* char append = getchar();
+			if(append != 0){
+				std::cout << append;
+				if(append == '\n'){
+					printf("%u", parseToml(inputBuffer));
+					inputBuffer.clear();
+				}else{
+					inputBuffer.append(&append);
+				}
+			}
+			printf("a");
+			ok i have no idea how to do this, this is supposed to be non-blocking console input */
 			sf::Socket::Status status = connectListener->accept(sparePlayer->tcpSocket);
 			if (status == sf::Socket::Done) {
 				sparePlayer->ip = sparePlayer->tcpSocket.getRemoteAddress().toString();
@@ -155,7 +157,7 @@ int main(int argc, char** argv) {
 				printf("An incoming connection has failed.\n");
 			}
 		} else {
-			if (window->hasFocus()) {
+			if (window->hasFocus() && !chatting) {
 				mousePos = sf::Mouse::getPosition(*window);
 				controls.forward = sf::Keyboard::isKeyPressed(sf::Keyboard::W);
 				controls.backward = sf::Keyboard::isKeyPressed(sf::Keyboard::S);
@@ -177,14 +179,37 @@ int main(int argc, char** argv) {
 					g_camera.zoom(factor);
 					break;
 				}
+				case sf::Event::KeyPressed: {
+					if (event.key.code == sf::Keyboard::Return) {
+						if(chatting && (int)chatBuffer.getSize() > 1){
+							sf::Packet chatPacket;
+							chatPacket << Packets::Chat << chatBuffer.toAnsiString();
+							serverSocket->send(chatPacket);
+							chatBuffer.clear();
+						}
+						chatting = !chatting;
+					} else if (event.key.code == sf::Keyboard::BackSpace) {
+						if(chatting && (int)chatBuffer.getSize() > 1){
+							chatBuffer.erase(chatBuffer.getSize() - 1);
+						}
+					}
+					break;
+				}
+				case sf::Event::TextEntered: {
+					if(chatting && (int)chatBuffer.getSize() <= messageLimit && event.text.unicode != 8){
+						chatBuffer += event.text.unicode;
+					}
+					if(debug){
+						printf("chat size: %u\n", (int)chatBuffer.getSize());
+					}
+					break;
+				}
 				default:
 					break;
 				}
 			}
 
-			if (ownEntity) {
-				window->clear(sf::Color(25, 5, std::min(255, (int)(0.1 * sqrt(ownEntity->x * ownEntity->x + ownEntity->y * ownEntity->y)))));
-			}
+			window->clear(sf::Color(20, 16, 50));
 			g_camera.bindWorld();
 			for (auto* entity : updateGroup) {
 				entity->draw();
@@ -200,7 +225,7 @@ int main(int argc, char** argv) {
 				coords.setFont(*font);
 				coords.setString(std::to_string((int)ownEntity->x).append(" ").append(std::to_string((int)ownEntity->y)).append("\nFPS: ").append(std::to_string(60.0/delta)));
 				coords.setCharacterSize(textCharacterSize);
-				coords.setFillColor(sf::Color::Red);
+				coords.setFillColor(sf::Color::White);
 				window->draw(coords);
 				sf::Text chat;
 				chat.setFont(*font);
@@ -208,9 +233,13 @@ int main(int argc, char** argv) {
 				for (std::string message : displayMessages) {
 					chatString.append(message).append("\n");
 				}
+				chatString.append(chatBuffer);
 				chat.setString(chatString);
 				chat.setCharacterSize(textCharacterSize);
-				chat.setFillColor(sf::Color::Red);
+				chat.setFillColor(sf::Color::White);
+				sf::FloatRect pos = chat.getLocalBounds();
+				chat.move(-pos.left, g_camera.h - pos.top - pos.height - 10);
+				window->draw(chat);
 			}
 			g_camera.bindWorld();
 			window->display();
@@ -314,7 +343,8 @@ int main(int argc, char** argv) {
 						for (short i = 0; i < to; i++) {
 							displayMessages[i] = displayMessages[i + 1];
 						}
-						displayMessages[to] = message;
+						displayMessages[to] = sf::String(message);
+						break;
 					}
 					default:
 						printf("Unknown packet %d received\n", type);
@@ -382,6 +412,9 @@ int main(int argc, char** argv) {
 						player->lastAck = globalTime;
 						uint16_t type;
 						packet >> type;
+						if(debug){
+							printf("Got packet %d from %s, size %llu\n", type, player->name().c_str(), packet.getDataSize());
+						}
 						switch(type) {
 						case Packets::Ping:
 							break;

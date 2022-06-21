@@ -21,21 +21,23 @@ inline sf::Vector2i mousePos;
 inline sf::Clock deltaClock, globalClock;
 inline std::string serverAddress = "", name = "",
 inputBuffer = "";
+inline sf::String chatBuffer = "";
 inline unsigned short port = 0;
 inline movement lastControls, controls;
 inline double delta = 1.0 / 60.0,
 	globalTime = 0.0,
 	maxAckTime = 15.0,
-	syncSpacing = 0.05,
+	syncSpacing = 0.1,
 	G = 50;
 inline const int displayMessageCount = 5;
-inline int usernameLimit = 24,
-messageLimit = 80,
+inline int usernameLimit = 24 * 8,
+messageLimit = 80 * 8,
 textCharacterSize = 18,
 nextID = 0;
-inline bool headless = false, autoConnect = false, debug = false;
+inline bool headless = false, autoConnect = false, debug = false,
+chatting = false;
 
-inline std::string displayMessages[displayMessageCount];
+inline sf::String displayMessages[displayMessageCount];
 
 // prespawned entities - temporary
 
