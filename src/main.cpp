@@ -170,7 +170,9 @@ int main(int argc, char** argv) {
 			}
 
 
-			window->clear(sf::Color(25, 5, std::min(255, (int)(0.1 * sqrt(ownEntity->x * ownEntity->x + ownEntity->y * ownEntity->y)))));
+			if (ownEntity) {
+				window->clear(sf::Color(25, 5, std::min(255, (int)(0.1 * sqrt(ownEntity->x * ownEntity->x + ownEntity->y * ownEntity->y)))));
+			}
 			g_camera.bindWorld();
 			for (auto* entity : updateGroup) {
 				entity->draw();
