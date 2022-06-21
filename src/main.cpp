@@ -114,6 +114,19 @@ int main(int argc, char** argv) {
 	}
 
 	while (headless || window->isOpen()) {
+	 	/* char append = getchar();
+		if(append != 0){
+			std::cout << append;
+			if(append == '\n'){
+				printf("%u", parseToml(inputBuffer));
+				inputBuffer.clear();
+			}else{
+				inputBuffer.append(&append);
+			}
+		}
+		printf("a");
+		ok i have no idea how to do this, this is supposed to be non-blocking console input */
+
 		if (headless) {
 			sf::Socket::Status status = connectListener->accept(sparePlayer->tcpSocket);
 			if (status == sf::Socket::Done) {
@@ -169,7 +182,6 @@ int main(int argc, char** argv) {
 				}
 			}
 
-
 			if (ownEntity) {
 				window->clear(sf::Color(25, 5, std::min(255, (int)(0.1 * sqrt(ownEntity->x * ownEntity->x + ownEntity->y * ownEntity->y)))));
 			}
@@ -187,9 +199,18 @@ int main(int argc, char** argv) {
 				sf::Text coords;
 				coords.setFont(*font);
 				coords.setString(std::to_string((int)ownEntity->x).append(" ").append(std::to_string((int)ownEntity->y)).append("\nFPS: ").append(std::to_string(60.0/delta)));
-				coords.setCharacterSize(26.0);
+				coords.setCharacterSize(textCharacterSize);
 				coords.setFillColor(sf::Color::Red);
 				window->draw(coords);
+				sf::Text chat;
+				chat.setFont(*font);
+				std::string chatString;
+				for (std::string message : displayMessages) {
+					chatString.append(message).append("\n");
+				}
+				chat.setString(chatString);
+				chat.setCharacterSize(textCharacterSize);
+				chat.setFillColor(sf::Color::Red);
 			}
 			g_camera.bindWorld();
 			window->display();
@@ -286,6 +307,15 @@ int main(int argc, char** argv) {
 						}
 						break;
 					}
+					case Packets::Chat: {
+						std::string message;
+						packet >> message;
+						short to = displayMessageCount - 1;
+						for (short i = 0; i < to; i++) {
+							displayMessages[i] = displayMessages[i + 1];
+						}
+						displayMessages[to] = message;
+					}
 					default:
 						printf("Unknown packet %d received\n", type);
 						break;
@@ -357,22 +387,21 @@ int main(int argc, char** argv) {
 							break;
 						case Packets::Nickname: {
 							packet >> player->username;
-							std::string temp;
-							if (player->username.empty()) {
-								temp = "impostor";
+							if (player->username.empty() || (int)sizeof(player->username) > usernameLimit) {
+								player->username = "impostor";
 							}
 
 							std::hash<std::string> hasher;
-							size_t hash = hasher(temp);
+							size_t hash = hasher(player->username);
 							unsigned char color[3] = {
 								(unsigned char) hash,
 								(unsigned char) (hash >> 8),
 								(unsigned char) (hash >> 16)
 							};
 
+							sf::Packet colorPacket;
+							colorPacket << Packets::ColorEntity << player->entity->id << color[0] << color[1] << color[2];
 							for (Player* p : playerGroup) {
-								sf::Packet colorPacket;
-								colorPacket << Packets::ColorEntity << player->entity->id << color[0] << color[1] << color[2];
 								p->tcpSocket.send(colorPacket);
 							}
 
@@ -381,6 +410,20 @@ int main(int argc, char** argv) {
 						case Packets::Controls:
 							packet >> *(unsigned char*) &(player->controls);
 							break;
+						case Packets::Chat: {
+							std::string message;
+							packet >> message;
+							if ((int)sizeof(message) <= messageLimit) {
+								sf::Packet chatPacket;
+								std::string sendMessage;
+								sendMessage.append("[").append(player->name()).append("]: ").append(message);
+								chatPacket << Packets::Chat << sendMessage;
+								for (Player* p : playerGroup) {
+									p->tcpSocket.send(chatPacket);
+								}
+							}
+							break;
+						}
 						default:
 							printf("Illegal packet %d\n", type);
 							break;
