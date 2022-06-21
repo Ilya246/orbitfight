@@ -204,9 +204,9 @@ int main(int argc, char** argv) {
 				if (status == sf::Socket::Done) {
 					uint16_t type;
 					packet >> type;
-					if(debug){
+					/* if(debug){
 						printf("Got packet %d\n", type);
-					}
+					} */
 					switch (type) {
 					case Packets::Ping: {
 						sf::Packet ackPacket;
@@ -218,7 +218,7 @@ int main(int argc, char** argv) {
 						uint8_t entityType;
 						packet >> entityType;
 						if(debug){
-							printf("Received entity of type %u", entityType);
+							printf("Received entity of type %u\n", entityType);
 						}
 						switch (entityType) {
 						case 0: {

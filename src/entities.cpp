@@ -39,8 +39,11 @@ Entity::Entity() {
 Entity::~Entity() noexcept {
 	// swap remove this from updateGroup
 	// O(n) complexity since iterates whole thing at worst
+	if (debug) {
+		printf("Deleting entity id %u\n", this->id);
+	}
 	for (size_t i = 0; i < updateGroup.size(); i++) {
-		if (updateGroup[i] == this) [[unlikely]]{
+		if (updateGroup[i] == this) [[unlikely]] {
 			updateGroup[i] = updateGroup[updateGroup.size() - 1];
 			updateGroup.pop_back();
 			break;
@@ -57,11 +60,10 @@ Entity::~Entity() noexcept {
 }
 
 void Entity::syncCreation() {
-	sf::Packet packet;
-	packet << Packets::CreateEntity;
-	this->loadCreatePacket(packet);
-
 	for (Player* p : playerGroup) {
+		sf::Packet packet;
+		packet << Packets::CreateEntity;
+		this->loadCreatePacket(packet);
 		p->tcpSocket.send(packet);
 	}
 }
@@ -83,9 +85,15 @@ Triangle::Triangle() : Entity() {
 
 void Triangle::loadCreatePacket(sf::Packet& packet) {
 	packet << type << id << x << y << velX << velY << rotation;
+	if(debug){
+		printf("Sent id %d: %g %g %g %g\n", id, x, y, velX, velY);
+	}
 }
 void Triangle::unloadCreatePacket(sf::Packet& packet) {
 	packet >> id >> x >> y >> velX >> velY >> rotation;
+	if(debug){
+		printf("Received id %d: %g %g %g %g\n", id, x, y, velX, velY);
+	}
 }
 void Triangle::loadSyncPacket(sf::Packet& packet) {
 	packet << id << x << y << velX << velY << rotation;
