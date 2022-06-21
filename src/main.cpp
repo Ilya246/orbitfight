@@ -214,7 +214,9 @@ int main(int argc, char** argv) {
 					case Packets::CreateEntity: {
 						uint8_t entityType;
 						packet >> entityType;
-						printf("Received entity of type %u", entityType);
+						if(debug){
+							printf("Received entity of type %u", entityType);
+						}
 						switch (entityType) {
 						case 0: {
 							Triangle* e = new Triangle;
@@ -224,7 +226,9 @@ int main(int argc, char** argv) {
 						case 1: {
 							float radius;
 							packet >> radius;
-							printf(", radius %g", radius);
+							if(debug){
+								printf(", radius %g", radius);
+							}
 							Attractor* e = new Attractor(radius);
 							e->unloadCreatePacket(packet);
 							break;
