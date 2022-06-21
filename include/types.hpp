@@ -11,7 +11,8 @@ constexpr uint16_t Ping = 0,
 	AssignEntity = 5,
 	DeleteEntity = 6,
 	ColorEntity = 7,
-	Chat = 8;
+	Chat = 8,
+	PingInfo = 9;
 
 }
 

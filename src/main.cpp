@@ -228,7 +228,9 @@ int main(int argc, char** argv) {
 				g_camera.bindUI();
 				sf::Text coords;
 				coords.setFont(*font);
-				coords.setString(std::to_string((int)ownEntity->x).append(" ").append(std::to_string((int)ownEntity->y)).append("\nFPS: ").append(std::to_string(60.0/delta)));
+				coords.setString(std::to_string((int)ownEntity->x).append(" ").append(std::to_string((int)ownEntity->y))
+				.append("\nFPS: ").append(std::to_string(60.0 / delta))
+				.append("\nPing: ").append(std::to_string((int)(lastPing * 1000.0))).append("ms"));
 				coords.setCharacterSize(textCharacterSize);
 				coords.setFillColor(sf::Color::White);
 				window->draw(coords);
@@ -351,6 +353,9 @@ int main(int argc, char** argv) {
 						displayMessages[to] = sf::String(message);
 						break;
 					}
+					case Packets::PingInfo:
+						packet >> lastPing;
+						break;
 					default:
 						printf("Unknown packet %d received\n", type);
 						break;
@@ -421,8 +426,13 @@ int main(int argc, char** argv) {
 							printf("Got packet %d from %s, size %llu\n", type, player->name().c_str(), packet.getDataSize());
 						}
 						switch(type) {
-						case Packets::Ping:
+						case Packets::Ping: {
+							player->ping = globalTime - player->lastPingSent;
+							sf::Packet pingInfoPacket;
+							pingInfoPacket << Packets::PingInfo << player->ping;
+							player->tcpSocket.send(pingInfoPacket);
 							break;
+						}
 						case Packets::Nickname: {
 							packet >> player->username;
 							if (player->username.empty() || (int)sizeof(player->username) > usernameLimit) {

@@ -110,7 +110,7 @@ struct Player {
 	sf::TcpSocket tcpSocket;
 	std::vector<sf::Packet> tcpQueue;
 	std::string username = "", ip;
-	double lastAck = 0, lastPingSent = 0, lastSynced = 0;
+	double lastAck = 0, lastPingSent = 0, lastSynced = 0, ping;
 	movement controls;
 	unsigned short port;
 };

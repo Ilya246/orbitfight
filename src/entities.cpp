@@ -122,10 +122,12 @@ void Triangle::draw() {
 	shape->setRotation(90.f - rotation);
 	shape->setFillColor(sf::Color(color[0], color[1], color[2]));
 	window->draw(*shape);
-	float rotationRad = rotation * degToRad;
-	forwards->setPosition(x + 14.0 * cos(rotationRad), y - 14.0 * sin(rotationRad));
-	forwards->setRotation(90.f - rotation);
 	g_camera.bindUI();
+	float rotationRad = rotation * degToRad;
+	if(ownEntity) [[likely]] {
+		forwards->setPosition(g_camera.w * 0.5 + (ownEntity->x - x) / g_camera.scale + 14.0 * cos(rotationRad), g_camera.h * 0.5 + (ownEntity->y - y) / g_camera.scale - 14.0 * sin(rotationRad));
+	}
+	forwards->setRotation(90.f - rotation);
 	window->draw(*forwards);
 	g_camera.bindWorld();
 }
