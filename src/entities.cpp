@@ -136,11 +136,15 @@ Attractor::Attractor(float radius, double mass) : Entity() {
 
 void Attractor::loadCreatePacket(sf::Packet& packet) {
 	packet << type << radius << id << x << y << velX << velY << mass;
-	printf("Loaded %d: %g %g %g %g\n", id, x, y, velX, velY);
+	if(debug){
+		printf("Sent id %d: %g %g %g %g\n", id, x, y, velX, velY);
+	}
 }
 void Attractor::unloadCreatePacket(sf::Packet& packet) {
 	packet >> id >> x >> y >> velX >> velY >> mass;
-	printf("Unloaded %d, %g %g %g %g\n", id, x, y, velX, velY);
+	if(debug){
+		printf(", id %d: %g %g %g %g\n", id, x, y, velX, velY);
+	}
 }
 void Attractor::loadSyncPacket(sf::Packet& packet) {
 	packet << id << x << y << velX << velY;
@@ -157,10 +161,8 @@ void Attractor::update() {
 		}
 
 		double xdiff = e->x - x, ydiff = y - e->y;
-		double factor = delta * G / pow(xdiff * xdiff + ydiff * ydiff, 1.5);
-		double factorthis = factor * e->mass, factore = -factor * mass;
-		addVelocity(xdiff * factorthis, ydiff * factorthis);
-		e->addVelocity(xdiff * factore, ydiff * factore);
+		double factor = -mass * delta * G / pow(xdiff * xdiff + ydiff * ydiff, 1.5);
+		e->addVelocity(xdiff * factor, ydiff * factor);
 	}
 }
 void Attractor::draw() {

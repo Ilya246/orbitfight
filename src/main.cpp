@@ -84,8 +84,6 @@ int main(int argc, char** argv) {
 		Attractor* planet = new Attractor(100.f, 10.0);
 		planet->setPosition(1000.0, 0.0);
 		planet->addVelocity(0.0, sqrt(G * (planet->mass + star->mass) / (3500.0 - 1000.0)));
-		star->syncCreation();
-		planet->syncCreation();
 	} else {
 		window = new sf::RenderWindow(sf::VideoMode(500, 500), "Test");
 
@@ -216,6 +214,7 @@ int main(int argc, char** argv) {
 					case Packets::CreateEntity: {
 						uint8_t entityType;
 						packet >> entityType;
+						printf("Received entity of type %u", entityType);
 						switch (entityType) {
 						case 0: {
 							Triangle* e = new Triangle;
@@ -225,6 +224,7 @@ int main(int argc, char** argv) {
 						case 1: {
 							float radius;
 							packet >> radius;
+							printf(", radius %g", radius);
 							Attractor* e = new Attractor(radius);
 							e->unloadCreatePacket(packet);
 							break;

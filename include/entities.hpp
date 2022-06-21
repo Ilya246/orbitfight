@@ -68,7 +68,7 @@ struct Triangle: public Entity {
 	void loadSyncPacket(sf::Packet& packet) override;
 	void unloadSyncPacket(sf::Packet& packet) override;
 
-	static const unsigned char type = 0;
+	static const uint8_t type = 0;
 	double accel = 0.01, rotateSpeed = 2, mass = 1.0;
 
 	std::unique_ptr<sf::CircleShape> shape, forwards;
@@ -87,8 +87,9 @@ struct Attractor: public Entity {
 	void loadSyncPacket(sf::Packet& packet) override;
 	void unloadSyncPacket(sf::Packet& packet) override;
 
-	static const unsigned char type = 1;
-	double mass = 100.0, radius;
+	static const uint8_t type = 1;
+	double mass = 100.0;
+	float radius;
 
 	std::unique_ptr<sf::CircleShape> shape;
 };
