@@ -2,6 +2,7 @@
 
 #include "entities.hpp"
 
+#include <future>
 #include <vector>
 
 #include <SFML/Graphics.hpp>
@@ -19,6 +20,7 @@ inline std::vector<Entity*> updateGroup;
 inline std::vector<Player*> playerGroup;
 inline sf::Vector2i mousePos;
 inline sf::Clock deltaClock, globalClock;
+inline std::future<void> inputReader;
 inline std::string serverAddress = "", name = "",
 inputBuffer = "";
 inline sf::String chatBuffer = "";
@@ -31,10 +33,11 @@ inline double delta = 1.0 / 60.0,
 	G = 50;
 inline const int displayMessageCount = 5;
 inline int usernameLimit = 24 * 8,
-messageLimit = 80 * 8,
+messageLimit = 50 * 8,
 textCharacterSize = 18,
 nextID = 0;
 inline bool headless = false, autoConnect = false, debug = false,
+inputWaiting = false,
 chatting = false;
 
 inline sf::String displayMessages[displayMessageCount];

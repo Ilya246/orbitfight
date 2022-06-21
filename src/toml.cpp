@@ -106,4 +106,8 @@ int parseTomlFile(const string &filename) {
 	return 0;
 }
 
+string parseCommand (const string& command) {
+	
+}
+
 }

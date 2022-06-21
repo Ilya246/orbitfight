@@ -1,3 +1,4 @@
+#include "camera.hpp"
 #include "entities.hpp"
 #include "globals.hpp"
 #include "math.hpp"
@@ -124,7 +125,9 @@ void Triangle::draw() {
 	float rotationRad = rotation * degToRad;
 	forwards->setPosition(x + 14.0 * cos(rotationRad), y - 14.0 * sin(rotationRad));
 	forwards->setRotation(90.f - rotation);
+	g_camera.bindUI();
 	window->draw(*forwards);
+	g_camera.bindWorld();
 }
 
 Attractor::Attractor(float radius) : Entity() {

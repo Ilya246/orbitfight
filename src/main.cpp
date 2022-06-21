@@ -13,6 +13,7 @@
 #include <cstring>
 #include <fstream>
 #include <functional>
+#include <future>
 #include <iostream>
 
 using namespace obf;
@@ -34,6 +35,15 @@ void connectToServer() {
 			break;
 		}
 	}
+}
+
+void inputListen() {
+	do {
+		std::string buffer;
+		getline(std::cin, buffer);
+		inputBuffer.append(buffer);
+	} while (std::cin.eof() || std::cin.fail());
+	inputWaiting = false;
 }
 
 int main(int argc, char** argv) {
@@ -116,20 +126,15 @@ int main(int argc, char** argv) {
 	}
 
 	while (headless || window->isOpen()) {
-
 		if (headless) {
-			/* char append = getchar();
-			if(append != 0){
-				std::cout << append;
-				if(append == '\n'){
-					printf("%u", parseToml(inputBuffer));
+			if(!inputWaiting){
+				if(!inputBuffer.empty()){
+					std::cout << parseToml(inputBuffer) << std::endl;
 					inputBuffer.clear();
-				}else{
-					inputBuffer.append(&append);
 				}
+				inputReader = std::async(std::launch::async, inputListen);
+				inputWaiting = true;
 			}
-			printf("a");
-			ok i have no idea how to do this, this is supposed to be non-blocking console input */
 			sf::Socket::Status status = connectListener->accept(sparePlayer->tcpSocket);
 			if (status == sf::Socket::Done) {
 				sparePlayer->ip = sparePlayer->tcpSocket.getRemoteAddress().toString();
@@ -196,7 +201,7 @@ int main(int argc, char** argv) {
 					break;
 				}
 				case sf::Event::TextEntered: {
-					if(chatting && (int)chatBuffer.getSize() <= messageLimit && event.text.unicode != 8){
+					if(chatting && (int)chatBuffer.getSize() * 8 <= messageLimit && event.text.unicode != 8){
 						chatBuffer += event.text.unicode;
 					}
 					if(debug){
@@ -238,7 +243,7 @@ int main(int argc, char** argv) {
 				chat.setCharacterSize(textCharacterSize);
 				chat.setFillColor(sf::Color::White);
 				sf::FloatRect pos = chat.getLocalBounds();
-				chat.move(-pos.left, g_camera.h - pos.top - pos.height - 10);
+				chat.move(2, g_camera.h - pos.top - pos.height - 10);
 				window->draw(chat);
 			}
 			g_camera.bindWorld();
