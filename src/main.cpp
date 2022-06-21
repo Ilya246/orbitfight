@@ -372,7 +372,7 @@ int main(int argc, char** argv) {
 
 							for (Player* p : playerGroup) {
 								sf::Packet colorPacket;
-								packet << Packets::ColorEntity << player->entity->id << color[0] << color[1] << color[2];
+								colorPacket << Packets::ColorEntity << player->entity->id << color[0] << color[1] << color[2];
 								p->tcpSocket.send(colorPacket);
 							}
 
