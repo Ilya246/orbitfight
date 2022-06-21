@@ -79,11 +79,11 @@ int main(int argc, char** argv) {
 
 		printf("Hosted server on port %u.\n", port);
 
-		Attractor* star = new Attractor(700.f, 100.0);
-		star->setPosition(3500.0, 0.0);
-		Attractor* planet = new Attractor(100.f, 10.0);
+		Attractor* star = new Attractor(900.f, 200.0);
+		star->setPosition(5000.0, 0.0);
+		Attractor* planet = new Attractor(100.f, 20.0);
 		planet->setPosition(1000.0, 0.0);
-		planet->addVelocity(0.0, sqrt(G * (planet->mass + star->mass) / (3500.0 - 1000.0)));
+		planet->addVelocity(0.0, sqrt(G * (planet->mass + star->mass) / (5000.0 - 1000.0)));
 	} else {
 		window = new sf::RenderWindow(sf::VideoMode(500, 500), "Test");
 

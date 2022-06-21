@@ -73,10 +73,10 @@ void Entity::update() {
 
 Triangle::Triangle() : Entity() {
 	if (!headless) {
-		shape = std::make_unique<sf::CircleShape>(25, 3);
-		shape->setOrigin(25, 25);
-		forwards = std::make_unique<sf::CircleShape>(8, 3);
-		forwards->setOrigin(8, 8);
+		shape = std::make_unique<sf::CircleShape>(12, 3);
+		shape->setOrigin(12, 12);
+		forwards = std::make_unique<sf::CircleShape>(4, 3);
+		forwards->setOrigin(4, 4);
 	}
 }
 
