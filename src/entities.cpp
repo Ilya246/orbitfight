@@ -103,15 +103,18 @@ void Entity::update() {
 	}
 	for (Entity* e : near) {
 		if (dst2(x - e->x, y - e->y) <= (radius + e->radius) * (radius + e->radius)) [[unlikely]] {
-			if (debug && dst2(e->velX - velX, e->velY - velY) > 0.1) [[unlikely]] {
-				printf("collision: %u-%u\n", id, e->id);
-			}
 			collide(e, true);
 		}
 	}
 }
 
 void Entity::collide(Entity* with, bool collideOther) {
+	if (debug && dst2(with->velX - velX, with->velY - velY) > 0.1) [[unlikely]] {
+		printf("collision: %u-%u\n", id, with->id);
+	}
+	if (with->type() == Entities::Projectile) {
+		return;
+	}
 	double dVx = velX - with->velX, dVy = with->velY - velY;
 	double inHeading = std::atan2(y - with->y, with->x - x);
 	double velHeading = std::atan2(dVy, dVx);
@@ -132,7 +135,7 @@ void Entity::collide(Entity* with, bool collideOther) {
 }
 
 Triangle::Triangle() : Entity() {
-	mass = 1.0;
+	mass = 0.1;
 	radius = 8.0;
 	if (!headless) {
 		shape = std::make_unique<sf::CircleShape>(radius, 3);
@@ -283,7 +286,7 @@ uint8_t Attractor::type() {
 
 Projectile::Projectile() : Entity() {
 	this->radius = 4;
-	this->mass = 0.2;
+	this->mass = 0.02;
 	this->color[0] = 180;
 	this->color[1] = 0;
 	this->color[2] = 0;
@@ -317,16 +320,28 @@ void Projectile::unloadSyncPacket(sf::Packet& packet) {
 }
 
 void Projectile::collide(Entity* with, bool collideOther) {
-	if (!headless || !collideOther) {
+	if (debug) {
+		printf("bullet collision: %u-%u ", id, with->id);
+	}
+	if (!headless) {
 		Entity::collide(with, collideOther);
 		return;
 	}
 	if (with->type() == Entities::Triangle) {
+		if (debug) {
+			printf("of type triangle\n");
+		}
 		delete with;
 		delete this;
 	} else if (with->type() == Entities::Attractor) {
+		if (debug) {
+			printf("of type attractor\n");
+		}
 		delete this;
 	} else {
+		if (debug) {
+			printf("of unaccounted type\n");
+		}
 		Entity::collide(with, collideOther);
 	}
 }

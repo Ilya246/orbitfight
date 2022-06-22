@@ -150,8 +150,11 @@ int main(int argc, char** argv) {
 				}
 
 				sparePlayer->entity = new Triangle();
-				sparePlayer->entity->setPosition(planet->x - 800.0, planet->y);
-				sparePlayer->entity->addVelocity(planet->velX, sqrt(G * planet->mass / 800.0) - planet->velY);
+				double spawnDst = 1200.0;
+				float spawnAngle = rand_f(-PI, PI);
+				sparePlayer->entity->setPosition(planet->x + spawnDst * std::cos(spawnAngle), planet->y + spawnDst * std::sin(spawnAngle));
+				double vel = sqrt(G * planet->mass / spawnDst);
+				sparePlayer->entity->addVelocity(planet->velX + vel * std::cos(spawnAngle + PI / 2.0), -planet->velY - vel * std::sin(spawnAngle + PI / 2.0));
 				sparePlayer->entity->player = sparePlayer;
 				sparePlayer->entity->syncCreation();
 				sf::Packet entityAssign;
