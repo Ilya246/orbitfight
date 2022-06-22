@@ -168,6 +168,7 @@ int main(int argc, char** argv) {
 				controls.backward = sf::Keyboard::isKeyPressed(sf::Keyboard::S);
 				controls.turnleft = sf::Keyboard::isKeyPressed(sf::Keyboard::A);
 				controls.turnright = sf::Keyboard::isKeyPressed(sf::Keyboard::D);
+				controls.boost = sf::Keyboard::isKeyPressed(sf::Keyboard::LShift);
 			}
 
 			sf::Event event;
