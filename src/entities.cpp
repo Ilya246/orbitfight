@@ -113,7 +113,6 @@ void Entity::collide(Entity* with, bool collideOther) {
 	double dVx = velX - with->velX, dVy = with->velY - velY;
 	double inHeading = std::atan2(y - with->y, with->x - x);
 	double velHeading = std::atan2(dVy, dVx);
-	printf("id %u; %f, %f\n", id, inHeading * radToDeg, velHeading * radToDeg);
 	double massFactor = std::min(with->mass / mass, 1.0);
 	double factor = massFactor * std::cos(std::abs(deltaAngleRad(inHeading, velHeading))) * collideRestitution;
 	if (factor < 0.0) {
@@ -123,7 +122,6 @@ void Entity::collide(Entity* with, bool collideOther) {
 		with->collide(this, false);
 	}
 	double vel = dst(dVx, dVy);
-	printf("%u, %f, %f, %f\n", id, inHeading * radToDeg, dVx, -dVy);
 	double inX = std::cos(inHeading), inY = std::sin(inHeading);
 	velX -= vel * inX * factor;
 	velY += vel * inY * factor;
