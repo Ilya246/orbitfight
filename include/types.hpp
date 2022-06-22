@@ -12,8 +12,15 @@ constexpr uint16_t Ping = 0,
 	DeleteEntity = 6,
 	ColorEntity = 7,
 	Chat = 8,
-	PingInfo = 9;
+	PingInfo = 9,
+	ResizeView = 10;
+}
 
+namespace obf::Entities {
+
+constexpr uint8_t Triangle = 1,
+ 	Attractor = 2,
+	Projectile = 3;
 }
 
 namespace obf::Types {
@@ -23,5 +30,4 @@ constexpr uint8_t String = 0,
 	Int = 2,
 	Double = 3,
 	Bool = 4;
-
 }

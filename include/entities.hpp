@@ -61,6 +61,8 @@ struct Entity {
 		color[2] = b;
 	}
 
+
+	virtual uint8_t type() = 0;
 	Player* player = nullptr;
 	double x = 0.0, y = 0.0, velX = 0.0, velY = 0.0, radius = 0.0,
 	mass = 0.0,
@@ -80,9 +82,9 @@ struct Triangle: public Entity {
 	void loadSyncPacket(sf::Packet& packet) override;
 	void unloadSyncPacket(sf::Packet& packet) override;
 
-	static const uint8_t type = 0;
-	double accel = 0.01, rotateSpeed = 2.0, boostCooldown = 10.0, boostStrength = 1.0,
-	lastBoosted = 0.0;
+	uint8_t type() override;
+	double accel = 0.01, rotateSpeed = 2.0, boostCooldown = 15.0, boostStrength = 1.0, reload = 6.0, shootPower = 1.1,
+	lastBoosted = -boostCooldown, lastShot = -reload;
 
 	std::unique_ptr<sf::CircleShape> shape, forwards;
 	float rotation = 0;
@@ -100,9 +102,26 @@ struct Attractor: public Entity {
 	void loadSyncPacket(sf::Packet& packet) override;
 	void unloadSyncPacket(sf::Packet& packet) override;
 
-	static const uint8_t type = 1;
+	uint8_t type() override;
 
 	std::unique_ptr<sf::CircleShape> shape;
+};
+
+struct Projectile: public Entity {
+	Projectile();
+
+	void draw() override;
+
+	void collide(Entity* with, bool collideOther) override;
+
+	void loadCreatePacket(sf::Packet& packet) override;
+	void unloadCreatePacket(sf::Packet& packet) override;
+	void loadSyncPacket(sf::Packet& packet) override;
+	void unloadSyncPacket(sf::Packet& packet) override;
+
+	uint8_t type() override;
+
+	std::unique_ptr<sf::CircleShape> shape, icon;
 };
 
 struct Player {
@@ -115,7 +134,8 @@ struct Player {
 	sf::TcpSocket tcpSocket;
 	std::vector<sf::Packet> tcpQueue;
 	std::string username = "", ip;
-	double lastAck = 0, lastPingSent = 0, lastSynced = 0, ping;
+	double lastAck = 0.0, lastPingSent = 0.0, lastSynced = 0.0, ping = 0.0,
+	viewW = 500.0, viewH = 500.0;
 	movement controls;
 	unsigned short port;
 };

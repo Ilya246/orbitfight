@@ -44,18 +44,17 @@ Entity::~Entity() noexcept {
 		printf("Deleting entity id %u\n", this->id);
 	}
 	for (size_t i = 0; i < updateGroup.size(); i++) {
-		if (updateGroup[i] == this) [[unlikely]] {
+		Entity* e = updateGroup[i];
+		if (e == this) [[unlikely]] {
 			updateGroup[i] = updateGroup[updateGroup.size() - 1];
 			updateGroup.pop_back();
-			break;
-		}
-	}
-	for (Entity* en : near) {
-		for (size_t i = 0; i < en->near.size(); i++){
-			if (en->near[i] == this) [[unlikely]] {
-				en->near[i] = en->near[en->near.size() - 1];
-				en->near.pop_back();
-				break;
+		} else {
+			for (size_t i = 0; i < e->near.size(); i++){
+				if (e->near[i] == this) [[unlikely]] {
+					e->near[i] = e->near[e->near.size() - 1];
+					e->near.pop_back();
+					break;
+				}
 			}
 		}
 	}
@@ -141,7 +140,7 @@ Triangle::Triangle() : Entity() {
 }
 
 void Triangle::loadCreatePacket(sf::Packet& packet) {
-	packet << type << id << x << y << velX << velY << rotation;
+	packet << type() << id << x << y << velX << velY << rotation;
 	if(debug){
 		printf("Sent id %d: %g %g %g %g\n", id, x, y, velX, velY);
 	}
@@ -161,10 +160,17 @@ void Triangle::unloadSyncPacket(sf::Packet& packet) {
 
 void Triangle::control(movement& cont) {
 	float rotationRad = rotation * degToRad;
+	double xMul = 0.0, yMul = 0.0;
+	if (*(unsigned char*) &cont != 0){
+		xMul = std::cos(rotationRad);
+		yMul = std::sin(rotationRad);
+	} else {
+		return;
+	}
 	if (cont.forward) {
-		addVelocity(accel * std::cos(rotationRad) * delta, accel * std::sin(rotationRad) * delta);
+		addVelocity(accel * xMul * delta, accel * yMul * delta);
 	} else if (cont.backward) {
-		addVelocity(-accel * std::cos(rotationRad) * delta, -accel * std::sin(rotationRad) * delta);
+		addVelocity(-accel * xMul * delta, -accel * yMul * delta);
 	}
 	if (cont.turnleft) {
 		rotation += rotateSpeed * delta;
@@ -172,8 +178,16 @@ void Triangle::control(movement& cont) {
 		rotation -= rotateSpeed * delta;
 	}
 	if (cont.boost && lastBoosted + boostCooldown < globalTime) {
-		addVelocity(boostStrength * std::cos(rotationRad) * delta, boostStrength * std::sin(rotationRad) * delta);
+		addVelocity(boostStrength * xMul, boostStrength * yMul);
 		lastBoosted = globalTime;
+	}
+	if (cont.primaryfire && lastShot + reload < globalTime && headless) {
+		Projectile* proj = new Projectile();
+		proj->setPosition(x + (radius + proj->radius * 2.0) * xMul, y - (radius + proj->radius * 2.0) * yMul);
+		proj->setVelocity(velX + shootPower * xMul, velY - shootPower * yMul);
+		addVelocity(-shootPower * xMul * proj->mass / mass, -shootPower * yMul * proj->mass / mass);
+		proj->syncCreation();
+		lastShot = globalTime;
 	}
 }
 
@@ -185,11 +199,15 @@ void Triangle::draw() {
 	g_camera.bindUI();
 	float rotationRad = rotation * degToRad;
 	if(ownEntity) [[likely]] {
-		forwards->setPosition(g_camera.w * 0.5 + (ownEntity->x - x) / g_camera.scale + 14.0 * cos(rotationRad), g_camera.h * 0.5 + (ownEntity->y - y) / g_camera.scale - 14.0 * sin(rotationRad));
+		forwards->setPosition(g_camera.w * 0.5 + (x - ownEntity->x) / g_camera.scale + 14.0 * cos(rotationRad), g_camera.h * 0.5 + (y - ownEntity->y) / g_camera.scale - 14.0 * sin(rotationRad));
 	}
 	forwards->setRotation(90.f - rotation);
 	window->draw(*forwards);
 	g_camera.bindWorld();
+}
+
+uint8_t Triangle::type() {
+	return Entities::Triangle;
 }
 
 Attractor::Attractor(double radius) : Entity() {
@@ -210,7 +228,7 @@ Attractor::Attractor(double radius, double mass) : Entity() {
 }
 
 void Attractor::loadCreatePacket(sf::Packet& packet) {
-	packet << type << radius << id << x << y << velX << velY << mass << color[0] << color[1] << color[2];
+	packet << type() << radius << id << x << y << velX << velY << mass << color[0] << color[1] << color[2];
 	if(debug){
 		printf("Sent id %d: %g %g %g %g\n", id, x, y, velX, velY);
 	}
@@ -244,6 +262,77 @@ void Attractor::draw() {
 	shape->setPosition(x, y);
 	shape->setFillColor(sf::Color(color[0], color[1], color[2]));
 	window->draw(*shape);
+}
+
+uint8_t Attractor::type() {
+	return Entities::Attractor;
+}
+
+Projectile::Projectile() : Entity() {
+	this->radius = 4;
+	this->mass = 0.2;
+	this->color[0] = 180;
+	this->color[1] = 0;
+	this->color[2] = 0;
+	if (!headless) {
+		shape = std::make_unique<sf::CircleShape>(radius, 10);
+		shape->setOrigin(radius, radius);
+		icon = std::make_unique<sf::CircleShape>(2.f, 4);
+		icon->setOrigin(2.f, 2.f);
+		icon->setFillColor(sf::Color(255, 0, 0));
+		icon->setRotation(45.f);
+	}
+}
+
+void Projectile::loadCreatePacket(sf::Packet& packet) {
+	packet << type() << id << x << y << velX << velY;
+	if(debug){
+		printf("Sent id %d: %g %g %g %g\n", id, x, y, velX, velY);
+	}
+}
+void Projectile::unloadCreatePacket(sf::Packet& packet) {
+	packet >> id >> x >> y >> velX >> velY;
+	if(debug){
+		printf(", id %d: %g %g %g %g\n", id, x, y, velX, velY);
+	}
+}
+void Projectile::loadSyncPacket(sf::Packet& packet) {
+	packet << id << x << y << velX << velY;
+}
+void Projectile::unloadSyncPacket(sf::Packet& packet) {
+	packet >> x >> y >> velX >> velY;
+}
+
+void Projectile::collide(Entity* with, bool collideOther) {
+	if (!headless) {
+		Entity::collide(with, collideOther);
+		return;
+	}
+	if (with->type() == Entities::Triangle) {
+		delete this;
+		delete with;
+	} else if (with->type() == Entities::Attractor) {
+		delete this;
+		return;
+	} else {
+		Entity::collide(with, collideOther);
+	}
+}
+
+void Projectile::draw() {
+	shape->setPosition(x, y);
+	shape->setFillColor(sf::Color(color[0], color[1], color[2]));
+	window->draw(*shape);
+	g_camera.bindUI();
+	if(ownEntity && g_camera.scale >= iconDrawThreshold) [[likely]] {
+		icon->setPosition(g_camera.w * 0.5 + (x - ownEntity->x) / g_camera.scale, g_camera.h * 0.5 + (y - ownEntity->y) / g_camera.scale);
+	}
+	window->draw(*icon);
+	g_camera.bindWorld();
+}
+
+uint8_t Projectile::type() {
+	return Entities::Projectile;
 }
 
 }

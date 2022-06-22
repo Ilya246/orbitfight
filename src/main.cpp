@@ -89,12 +89,12 @@ int main(int argc, char** argv) {
 
 		printf("Hosted server on port %u.\n", port);
 
-		star = new Attractor(900.f, 200.0);
-		star->setPosition(5000.0, 0.0);
+		star = new Attractor(1500.f, 500.0);
+		star->setPosition(10000.0, 0.0);
 		star->setColor(255, 229, 97);
-		planet = new Attractor(100.f, 20.0);
+		planet = new Attractor(400.f, 50.0);
 		planet->setPosition(1000.0, 0.0);
-		planet->addVelocity(0.0, sqrt(G * (planet->mass + star->mass) / (5000.0 - 1000.0)));
+		planet->addVelocity(0.0, sqrt(G * (planet->mass + star->mass) / (10000.0 - 1000.0)));
 		planet->setColor(165, 165, 165);
 	} else {
 		window = new sf::RenderWindow(sf::VideoMode(500, 500), "Test");
@@ -150,8 +150,8 @@ int main(int argc, char** argv) {
 				}
 
 				sparePlayer->entity = new Triangle();
-				sparePlayer->entity->setPosition(planet->x - 200.0, planet->y);
-				sparePlayer->entity->addVelocity(planet->velX, sqrt(G * planet->mass / 200.0) - planet->velY);
+				sparePlayer->entity->setPosition(planet->x - 800.0, planet->y);
+				sparePlayer->entity->addVelocity(planet->velX, sqrt(G * planet->mass / 800.0) - planet->velY);
 				sparePlayer->entity->player = sparePlayer;
 				sparePlayer->entity->syncCreation();
 				sf::Packet entityAssign;
@@ -169,6 +169,7 @@ int main(int argc, char** argv) {
 				controls.turnleft = sf::Keyboard::isKeyPressed(sf::Keyboard::A);
 				controls.turnright = sf::Keyboard::isKeyPressed(sf::Keyboard::D);
 				controls.boost = sf::Keyboard::isKeyPressed(sf::Keyboard::LShift);
+				controls.primaryfire = sf::Keyboard::isKeyPressed(sf::Keyboard::Space);
 			}
 
 			sf::Event event;
@@ -177,12 +178,19 @@ int main(int argc, char** argv) {
 				case sf::Event::Closed:
 					window->close();
 					break;
-				case sf::Event::Resized:
+				case sf::Event::Resized: {
 					g_camera.resize();
+					sf::Packet resize;
+					resize << Packets::ResizeView << (double)g_camera.w * g_camera.scale << (double)g_camera.h * g_camera.scale;
+					serverSocket->send(resize);
 					break;
+				}
 				case sf::Event::MouseWheelScrolled: {
 					double factor = 1.0 + 0.1 * ((event.mouseWheelScroll.delta < 0) * 2 - 1);
 					g_camera.zoom(factor);
+					sf::Packet resize;
+					resize << Packets::ResizeView << (double)g_camera.w * g_camera.scale << (double)g_camera.h * g_camera.scale;
+					serverSocket->send(resize);
 					break;
 				}
 				case sf::Event::KeyPressed: {
@@ -220,13 +228,13 @@ int main(int argc, char** argv) {
 			for (auto* entity : updateGroup) {
 				entity->draw();
 			}
+			g_camera.bindUI();
 			if (ownEntity) {
 				g_camera.pos.x = ownEntity->x;
 				g_camera.pos.y = ownEntity->y;
 
 				ownEntity->control(controls);
 
-				g_camera.bindUI();
 				sf::Text coords;
 				coords.setFont(*font);
 				coords.setString(std::to_string((int)ownEntity->x).append(" ").append(std::to_string((int)ownEntity->y))
@@ -235,20 +243,20 @@ int main(int argc, char** argv) {
 				coords.setCharacterSize(textCharacterSize);
 				coords.setFillColor(sf::Color::White);
 				window->draw(coords);
-				sf::Text chat;
-				chat.setFont(*font);
-				std::string chatString;
-				for (std::string message : displayMessages) {
-					chatString.append(message).append("\n");
-				}
-				chatString.append(chatBuffer);
-				chat.setString(chatString);
-				chat.setCharacterSize(textCharacterSize);
-				chat.setFillColor(sf::Color::White);
-				sf::FloatRect pos = chat.getLocalBounds();
-				chat.move(2, g_camera.h - pos.top - pos.height - 10);
-				window->draw(chat);
 			}
+			sf::Text chat;
+			chat.setFont(*font);
+			std::string chatString;
+			for (std::string message : displayMessages) {
+				chatString.append(message).append("\n");
+			}
+			chatString.append(chatBuffer);
+			chat.setString(chatString);
+			chat.setCharacterSize(textCharacterSize);
+			chat.setFillColor(sf::Color::White);
+			sf::FloatRect pos = chat.getLocalBounds();
+			chat.move(2, g_camera.h - pos.top - pos.height - 10);
+			window->draw(chat);
 			g_camera.bindWorld();
 			window->display();
 
@@ -279,18 +287,23 @@ int main(int argc, char** argv) {
 							printf("Received entity of type %u\n", entityType);
 						}
 						switch (entityType) {
-						case 0: {
+						case Entities::Triangle: {
 							Triangle* e = new Triangle;
 							e->unloadCreatePacket(packet);
 							break;
 						}
-						case 1: {
+						case Entities::Attractor: {
 							double radius;
 							packet >> radius;
 							if(debug){
 								printf(", radius %g", radius);
 							}
 							Attractor* e = new Attractor(radius);
+							e->unloadCreatePacket(packet);
+							break;
+						}
+						case Entities::Projectile: {
+							Projectile* e = new Projectile;
 							e->unloadCreatePacket(packet);
 							break;
 						}
@@ -473,6 +486,9 @@ int main(int argc, char** argv) {
 							}
 							break;
 						}
+						case Packets::ResizeView:
+							packet >> player->viewW >> player->viewH;
+							break;
 						default:
 							printf("Illegal packet %d\n", type);
 							break;
@@ -490,6 +506,9 @@ int main(int argc, char** argv) {
 
 				if (globalTime - player->lastSynced > syncSpacing) {
 					for (Entity* e : updateGroup) {
+						if (player->entity && (abs(e->y - player->entity->y) > player->viewH * syncCullThreshold || abs(e->x - player->entity->x) > player->viewW * syncCullThreshold)) {
+							continue;
+						}
 						sf::Packet packet;
 						packet << Packets::SyncEntity;
 						e->loadSyncPacket(packet);
