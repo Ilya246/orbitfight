@@ -197,6 +197,10 @@ void Triangle::control(movement& cont) {
 	if (cont.boost && lastBoosted + boostCooldown < globalTime) {
 		addVelocity(boostStrength * xMul, boostStrength * yMul);
 		lastBoosted = globalTime;
+		if (!headless) {
+			forwards->setFillColor(sf::Color(64, 255, 64));
+			forwards->setRotation(90.f - rotation);
+		}
 	}
 	if (cont.primaryfire && lastShot + reload < globalTime && headless) {
 		Projectile* proj = new Projectile();
