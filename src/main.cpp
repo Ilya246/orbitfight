@@ -185,7 +185,7 @@ int main(int argc, char** argv) {
 				sparePlayer->tcpSocket.send(entityAssign);
 				for (Player* p: playerGroup) {
 					sf::Packet namePacket;
-					namePacket << Packets::Name << player->entity->id << player->username;
+					namePacket << Packets::Name << p->entity->id << p->username;
 					sparePlayer->tcpSocket.send(namePacket);
 				}
 				sparePlayer = new Player;
