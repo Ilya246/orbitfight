@@ -89,8 +89,8 @@ int main(int argc, char** argv) {
 
 		printf("Hosted server on port %u.\n", port);
 
-		star = new Attractor(2000.f, 2000.0);
-		star->setPosition(25000.0, 0.0);
+		star = new Attractor(2000.f, 4000.0);
+		star->setPosition(30000.0, 0.0);
 		star->setColor(255, 229, 97);
 		planet = new Attractor(400.f, 50.0);
 		planet->setPosition(1000.0, 0.0);
@@ -466,8 +466,13 @@ int main(int argc, char** argv) {
 
 							sf::Packet colorPacket;
 							colorPacket << Packets::ColorEntity << player->entity->id << color[0] << color[1] << color[2];
+							sf::Packet chatPacket;
+							std::string sendMessage;
+							sendMessage.append("<").append(player->name()).append("> has joined.");
+							chatPacket << Packets::Chat << sendMessage;
 							for (Player* p : playerGroup) {
 								p->tcpSocket.send(colorPacket);
+								p->tcpSocket.send(chatPacket);
 							}
 
 							break;

@@ -335,7 +335,12 @@ void Projectile::collide(Entity* with, bool collideOther) {
 		if (debug) {
 			printf("of type triangle\n");
 		}
-		delete with;
+		for (Player* p : playerGroup) {
+			if (p->entity == with) [[unlikely]] {
+				p->tcpSocket.disconnect();
+				delete p;
+			}
+		}
 		delete this;
 	} else if (with->type() == Entities::Attractor) {
 		if (debug) {
