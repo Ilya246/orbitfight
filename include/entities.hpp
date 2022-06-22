@@ -83,7 +83,7 @@ struct Triangle: public Entity {
 	void unloadSyncPacket(sf::Packet& packet) override;
 
 	uint8_t type() override;
-	double accel = 0.004, rotateSpeed = 2.0, boostCooldown = 15.0, boostStrength = 2.0, reload = 6.0, shootPower = 2.0,
+	double accel = 6, rotateSpeed = 2.0, boostCooldown = 15.0, boostStrength = 2.0, reload = 6.0, shootPower = 2.0,
 	lastBoosted = -boostCooldown, lastShot = -reload;
 
 	std::string name = "";

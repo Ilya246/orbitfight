@@ -251,8 +251,8 @@ int main(int argc, char** argv) {
 
 			window->clear(sf::Color(20, 16, 50));
 			g_camera.bindWorld();
-			for (auto* entity : updateGroup) {
-				entity->draw();
+			for (size_t i = 0; i < updateGroup.size(); i++) {
+				updateGroup[i]->draw();
 			}
 			g_camera.bindUI();
 			if (ownEntity) {
@@ -424,8 +424,8 @@ int main(int argc, char** argv) {
 			*(unsigned char*) &lastControls = *(unsigned char*) &controls;
 		}
 
-		for (auto* entity : updateGroup) {
-			entity->update();
+		for (size_t i = 0; i < updateGroup.size(); i++) {
+			updateGroup[i]->update();
 		}
 		if (headless) {
 			int to = playerGroup.size();

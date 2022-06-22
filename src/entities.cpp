@@ -117,9 +117,31 @@ void Entity::update() {
 		}
 		lastCollideScan = globalTime;
 	}
-	for (Entity* e : near) {
+	for (size_t i = 0; i < near.size(); i++) {
+		Entity* e = near[i];
 		if (dst2(x - e->x, y - e->y) <= (radius + e->radius) * (radius + e->radius)) [[unlikely]] {
-			collide(e, true);
+			collide(near[i], true);
+			if (this == star) {
+				bool found = false;
+				for (Player* p : playerGroup) {
+					if (p->entity == e) [[unlikely]] {
+						sf::Packet chatPacket;
+						std::string sendMessage;
+						sendMessage.append("<").append(p->name()).append("> has been incinerated by the star.");
+						std::cout << sendMessage << std::endl;
+						chatPacket << Packets::Chat << sendMessage;
+						p->tcpSocket.disconnect();
+						delete p;
+						for (Player* p : playerGroup) {
+							p->tcpSocket.send(chatPacket);
+						}
+						found = true;
+					}
+				}
+				if (!found) {
+					delete e;
+				}
+			}
 		}
 	}
 }
@@ -128,11 +150,7 @@ void Entity::collide(Entity* with, bool collideOther) {
 	if (debug && dst2(with->velX - velX, with->velY - velY) > 0.1) [[unlikely]] {
 		printf("collision: %u-%u\n", id, with->id);
 	}
-	if (this == star) [[unlikely]] {
-		delete with;
-		return;
-	}
-	if (with->type() == Entities::Projectile || with == star) {
+	if (with->type() == Entities::Projectile) {
 		return;
 	}
 	double dVx = velX - with->velX, dVy = with->velY - velY;
@@ -316,8 +334,13 @@ void Attractor::update() {
 		}
 
 		double xdiff = e->x - x, ydiff = y - e->y;
-		double factor = -mass * delta * G / pow(xdiff * xdiff + ydiff * ydiff, 1.5);
-		e->addVelocity(xdiff * factor, ydiff * factor);
+		double factor = delta * G / pow(xdiff * xdiff + ydiff * ydiff, 1.5);
+		double factorm = -factor * mass;
+		e->addVelocity(xdiff * factorm, ydiff * factorm);
+		if (e->type() != Entities::Attractor) {
+			double factortm = factor * e->mass;
+			addVelocity(xdiff * factortm, ydiff * factortm);
+		}
 	}
 }
 void Attractor::draw() {
