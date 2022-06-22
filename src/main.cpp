@@ -183,6 +183,11 @@ int main(int argc, char** argv) {
 				sf::Packet entityAssign;
 				entityAssign << Packets::AssignEntity << sparePlayer->entity->id;
 				sparePlayer->tcpSocket.send(entityAssign);
+				for (Player* p: playerGroup) {
+					sf::Packet namePacket;
+					namePacket << Packets::Name << player->entity->id << player->username;
+					sparePlayer->tcpSocket.send(namePacket);
+				}
 				sparePlayer = new Player;
 			} else if (status != sf::Socket::NotReady) {
 				printf("An incoming connection has failed.\n");
