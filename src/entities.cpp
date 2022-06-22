@@ -87,7 +87,7 @@ void Entity::update() {
 			if (e == this) [[unlikely]] {
 				continue;
 			}
-			if (dst2((abs(x - e->x) - radius - e->radius), (abs(y - e->y) - radius - e->radius)) / dst2(e->velX - velX, e->velY - velY) < collideScanDistance2) {
+			if ((dst2(abs(x - e->x), abs(y - e->y)) - (radius + e->radius) * (radius + e->radius)) / std::max(0.5, dst2(e->velX - velX, e->velY - velY)) < collideScanDistance2) {
 				if(i == near.size()) {
 					near.push_back(e);
 				} else {
@@ -96,19 +96,26 @@ void Entity::update() {
 				i++;
 			}
 		}
-		if(i < near.size()){
+		if (i < near.size()) {
 			near.erase(near.begin() + i + 1, near.begin() + near.size());
 		}
 		lastCollideScan = globalTime;
 	}
 	for (Entity* e : near) {
 		if (dst2(x - e->x, y - e->y) <= (radius + e->radius) * (radius + e->radius)) [[unlikely]] {
+			if (debug && dst2(e->velX - velX, e->velY - velY) > 0.1) [[unlikely]] {
+				printf("collision: %u-%u\n", id, e->id);
+			}
 			collide(e, true);
 		}
 	}
 }
 
 void Entity::collide(Entity* with, bool collideOther) {
+	if (with->type() == Entities::Projectile) [[unlikely]] {
+		with->collide(this, false);
+		collideOther = false;
+	}
 	double dVx = velX - with->velX, dVy = with->velY - velY;
 	double inHeading = std::atan2(y - with->y, with->x - x);
 	double velHeading = std::atan2(dVy, dVx);
@@ -169,8 +176,15 @@ void Triangle::control(movement& cont) {
 	}
 	if (cont.forward) {
 		addVelocity(accel * xMul * delta, accel * yMul * delta);
+		forwards->setFillColor(sf::Color(255, 196, 0));
+		forwards->setRotation(90.f - rotation);
 	} else if (cont.backward) {
 		addVelocity(-accel * xMul * delta, -accel * yMul * delta);
+		forwards->setFillColor(sf::Color(255, 64, 64));
+		forwards->setRotation(270.f - rotation);
+	} else {
+		forwards->setFillColor(sf::Color::White);
+		forwards->setRotation(90.f - rotation);
 	}
 	if (cont.turnleft) {
 		rotation += rotateSpeed * delta;
@@ -201,7 +215,6 @@ void Triangle::draw() {
 	if(ownEntity) [[likely]] {
 		forwards->setPosition(g_camera.w * 0.5 + (x - ownEntity->x) / g_camera.scale + 14.0 * cos(rotationRad), g_camera.h * 0.5 + (y - ownEntity->y) / g_camera.scale - 14.0 * sin(rotationRad));
 	}
-	forwards->setRotation(90.f - rotation);
 	window->draw(*forwards);
 	g_camera.bindWorld();
 }
@@ -304,7 +317,7 @@ void Projectile::unloadSyncPacket(sf::Packet& packet) {
 }
 
 void Projectile::collide(Entity* with, bool collideOther) {
-	if (!headless) {
+	if (!headless || !collideOther) {
 		Entity::collide(with, collideOther);
 		return;
 	}
@@ -313,7 +326,6 @@ void Projectile::collide(Entity* with, bool collideOther) {
 		delete with;
 	} else if (with->type() == Entities::Attractor) {
 		delete this;
-		return;
 	} else {
 		Entity::collide(with, collideOther);
 	}

@@ -213,7 +213,7 @@ int main(int argc, char** argv) {
 					if(chatting && (int)chatBuffer.getSize() * 8 <= messageLimit && event.text.unicode != 8){
 						chatBuffer += event.text.unicode;
 					}
-					if(debug){
+					if(chatting && debug){
 						printf("chat size: %u\n", (int)chatBuffer.getSize());
 					}
 					break;
