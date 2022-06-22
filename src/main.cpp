@@ -129,7 +129,7 @@ int main(int argc, char** argv) {
 		if (headless) {
 			if(!inputWaiting){
 				if(!inputBuffer.empty()){
-					std::cout << parseToml(inputBuffer) << std::endl;
+					std::cout << parseCommand(inputBuffer) << std::endl;
 					inputBuffer.clear();
 				}
 				inputReader = std::async(std::launch::async, inputListen);
@@ -487,6 +487,7 @@ int main(int argc, char** argv) {
 								sf::Packet chatPacket;
 								std::string sendMessage;
 								sendMessage.append("[").append(player->name()).append("]: ").append(message);
+								std::cout << sendMessage << std::endl;
 								chatPacket << Packets::Chat << sendMessage;
 								for (Player* p : playerGroup) {
 									p->tcpSocket.send(chatPacket);
@@ -503,7 +504,6 @@ int main(int argc, char** argv) {
 						}
 					} else if (status == sf::Socket::Disconnected) {
 						printf("Player %s has disconnected.\n", player->name().c_str());
-						playerGroup.erase(playerGroup.begin() + i);
 						i--;
 						to--;
 						player->tcpSocket.disconnect();

@@ -20,6 +20,7 @@ inline sf::Font* font = nullptr;
 inline obf::Player* sparePlayer = new obf::Player;
 inline std::vector<Entity*> updateGroup;
 inline std::vector<Player*> playerGroup;
+inline std::vector<Attractor*> planets;
 inline sf::Vector2i mousePos;
 inline sf::Clock deltaClock, globalClock;
 inline std::future<void> inputReader;
@@ -33,7 +34,7 @@ inline double delta = 1.0 / 60.0,
 	maxAckTime = 15.0,
 	syncSpacing = 0.1,
 	collideScanSpacing = 0.5, collideScanDistance2 = 60.0 * 60.0, collideRestitution = 0.8,
-	friction = 0.01,
+	friction = 0.002,
 	syncCullThreshold = 0.6, iconDrawThreshold = 2.0,
 	G = 50.0,
 	lastPing = 0.0;

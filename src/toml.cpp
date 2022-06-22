@@ -124,7 +124,34 @@ int parseTomlFile(const string& filename) {
 	return 0;
 }
 
-// string parseCommand (const string& command)
-// TODO
+string parseCommand (const string& command) {
+	if (command.rfind("config ", 0) == 0) {
+		int retcode = parseToml(command.substr(7));
+		switch (retcode) {
+			case 1:
+				return "Invalid key.";
+			case 2:
+				return "Invalid value. Must be integer.";
+			case 3:
+				return "Invalid value. Must be a real number.";
+			case 4:
+				return "Invalid value. Must be true|false.";
+			case 5:
+				return "Invalid type specified for variable.";
+			default:
+				break;
+		}
+	} else if (command.rfind("say ", 0) == 0) {
+		sf::Packet chatPacket;
+		std::string sendMessage;
+		sendMessage.append("Server: ").append(command.substr(4));
+		chatPacket << Packets::Chat << sendMessage;
+		for (Player* p : playerGroup) {
+			p->tcpSocket.send(chatPacket);
+		}
+		return sendMessage;
+	}
+	return "Unknown command.";
+}
 
 }

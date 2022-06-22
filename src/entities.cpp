@@ -5,6 +5,7 @@
 #include "types.hpp"
 
 #include <cmath>
+#include <iostream>
 #include <sstream>
 
 #include <SFML/Graphics.hpp>
@@ -28,6 +29,13 @@ std::string Player::name() {
 	return ret;
 }
 Player::~Player() {
+	for (size_t i = 0; i < playerGroup.size(); i++) {
+		if (playerGroup[i] == this) [[unlikely]] {
+			playerGroup[i] = playerGroup[playerGroup.size() - 1];
+			playerGroup.pop_back();
+			break;
+		}
+	}
 	delete this->entity;
 }
 
@@ -202,12 +210,14 @@ void Triangle::control(movement& cont) {
 			forwards->setRotation(90.f - rotation);
 		}
 	}
-	if (cont.primaryfire && lastShot + reload < globalTime && headless) {
-		Projectile* proj = new Projectile();
-		proj->setPosition(x + (radius + proj->radius * 2.0) * xMul, y - (radius + proj->radius * 2.0) * yMul);
-		proj->setVelocity(velX + shootPower * xMul, velY - shootPower * yMul);
-		addVelocity(-shootPower * xMul * proj->mass / mass, -shootPower * yMul * proj->mass / mass);
-		proj->syncCreation();
+	if (cont.primaryfire && lastShot + reload < globalTime) {
+		if (headless) {
+			Projectile* proj = new Projectile();
+			proj->setPosition(x + (radius + proj->radius * 2.0) * xMul, y - (radius + proj->radius * 2.0) * yMul);
+			proj->setVelocity(velX + shootPower * xMul, velY - shootPower * yMul);
+			addVelocity(-shootPower * xMul * proj->mass / mass, -shootPower * yMul * proj->mass / mass);
+			proj->syncCreation();
+		}
 		lastShot = globalTime;
 	}
 }
@@ -217,13 +227,25 @@ void Triangle::draw() {
 	shape->setRotation(90.f - rotation);
 	shape->setFillColor(sf::Color(color[0], color[1], color[2]));
 	window->draw(*shape);
-	g_camera.bindUI();
-	float rotationRad = rotation * degToRad;
 	if(ownEntity) [[likely]] {
+		g_camera.bindUI();
+		float rotationRad = rotation * degToRad;
 		forwards->setPosition(g_camera.w * 0.5 + (x - ownEntity->x) / g_camera.scale + 14.0 * cos(rotationRad), g_camera.h * 0.5 + (y - ownEntity->y) / g_camera.scale - 14.0 * sin(rotationRad));
+		if (ownEntity == this) {
+			float reloadProgress = std::min(1.0, (globalTime - lastShot) / reload) * 40.f, boostProgress = std::min(1.0, (globalTime - lastBoosted) / boostCooldown) * 40.f;
+			sf::RectangleShape reloadBar(sf::Vector2f(reloadProgress, 4.f));
+			sf::RectangleShape boostReloadBar(sf::Vector2f(boostProgress, 4.f));
+			reloadBar.setFillColor(sf::Color(255, 64, 64));
+			boostReloadBar.setFillColor(sf::Color(64, 255, 64));
+			reloadBar.setPosition(g_camera.w * 0.5f - reloadProgress / 2.f, g_camera.h * 0.5f + 40.f);
+			printf("%f, %f\n", g_camera.w * 0.5f, g_camera.h * 0.5f + 40.f);
+			boostReloadBar.setPosition(g_camera.w * 0.5f - boostProgress / 2.f, g_camera.h * 0.5f - 40.f);
+			window->draw(reloadBar);
+			window->draw(boostReloadBar);
+		}
+		window->draw(*forwards);
+		g_camera.bindWorld();
 	}
-	window->draw(*forwards);
-	g_camera.bindWorld();
 }
 
 uint8_t Triangle::type() {
@@ -337,8 +359,16 @@ void Projectile::collide(Entity* with, bool collideOther) {
 		}
 		for (Player* p : playerGroup) {
 			if (p->entity == with) [[unlikely]] {
+				sf::Packet chatPacket;
+				std::string sendMessage;
+				sendMessage.append("<").append(p->name()).append("> has been killed.");
+				std::cout << sendMessage << std::endl;
+				chatPacket << Packets::Chat << sendMessage;
 				p->tcpSocket.disconnect();
 				delete p;
+				for (Player* p : playerGroup) {
+					p->tcpSocket.send(chatPacket);
+				}
 			}
 		}
 		delete this;
@@ -359,12 +389,12 @@ void Projectile::draw() {
 	shape->setPosition(x, y);
 	shape->setFillColor(sf::Color(color[0], color[1], color[2]));
 	window->draw(*shape);
-	g_camera.bindUI();
 	if(ownEntity && g_camera.scale >= iconDrawThreshold) [[likely]] {
+		g_camera.bindUI();
 		icon->setPosition(g_camera.w * 0.5 + (x - ownEntity->x) / g_camera.scale, g_camera.h * 0.5 + (y - ownEntity->y) / g_camera.scale);
+		window->draw(*icon);
+		g_camera.bindWorld();
 	}
-	window->draw(*icon);
-	g_camera.bindWorld();
 }
 
 uint8_t Projectile::type() {
