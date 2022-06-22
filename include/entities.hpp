@@ -15,8 +15,8 @@ struct movement {
 	int backward: 1 = 0;
 	int turnright: 1 = 0;
 	int turnleft: 1 = 0;
-	int straferight: 1 = 0;
-	int strafeleft: 1 = 0;
+	int boost: 1 = 0;
+	int unknown: 1 = 0;
 	int primaryfire: 1 = 0;
 	int secondaryfire: 1 = 0;
 };
@@ -81,7 +81,8 @@ struct Triangle: public Entity {
 	void unloadSyncPacket(sf::Packet& packet) override;
 
 	static const uint8_t type = 0;
-	double accel = 0.01, rotateSpeed = 2;
+	double accel = 0.01, rotateSpeed = 2.0, boostCooldown = 600.0, boostStrength = 0.6,
+	lastBoosted = 0.0;
 
 	std::unique_ptr<sf::CircleShape> shape, forwards;
 	float rotation = 0;

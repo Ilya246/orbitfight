@@ -123,8 +123,8 @@ void Entity::collide(Entity* with, bool collideOther) {
 	}
 	double vel = dst(dVx, dVy);
 	double inX = std::cos(inHeading), inY = std::sin(inHeading);
-	velX -= vel * inX * factor;
-	velY += vel * inY * factor;
+	velX -= vel * inX * factor + friction * dVx;
+	velY += vel * inY * factor + friction * dVy;
 	x = (x + (with->x - (radius + with->radius) * inX) * massFactor) / (1.0 + massFactor);
 	y = (y + (with->y + (radius + with->radius) * inY) * massFactor) / (1.0 + massFactor);
 }
@@ -170,6 +170,10 @@ void Triangle::control(movement& cont) {
 		rotation += rotateSpeed * delta;
 	} else if (cont.turnright) {
 		rotation -= rotateSpeed * delta;
+	}
+	if (cont.boost && lastBoosted + boostCooldown < globalTime) {
+		addVelocity(boostStrength * std::cos(rotationRad) * delta, boostStrength * std::sin(rotationRad) * delta);
+		lastBoosted = globalTime;
 	}
 }
 

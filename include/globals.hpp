@@ -33,6 +33,7 @@ inline double delta = 1.0 / 60.0,
 	maxAckTime = 15.0,
 	syncSpacing = 0.1,
 	collideScanSpacing = 0.5, collideScanDistance2 = 60.0 * 60.0, collideRestitution = 0.8,
+	friction = 0.01,
 	G = 50.0,
 	lastPing = 0.0;
 inline const int displayMessageCount = 5;
