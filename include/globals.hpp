@@ -66,7 +66,6 @@ inline sf::String displayMessages[displayMessageCount];
 // prespawned entities - temporary
 
 inline Attractor* star = nullptr;
-inline Attractor* planet = nullptr;
 
 inline const std::string configFile = "config.txt", configDocFile = "confighelp.txt";
 

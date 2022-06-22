@@ -86,6 +86,8 @@ struct Triangle: public Entity {
 	double accel = 0.004, rotateSpeed = 2.0, boostCooldown = 15.0, boostStrength = 2.0, reload = 6.0, shootPower = 2.0,
 	lastBoosted = -boostCooldown, lastShot = -reload;
 
+	std::string name = "";
+
 	std::unique_ptr<sf::CircleShape> shape, forwards;
 	float rotation = 0;
 };

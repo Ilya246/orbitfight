@@ -396,6 +396,17 @@ int main(int argc, char** argv) {
 					case Packets::PingInfo:
 						packet >> lastPing;
 						break;
+					case Packets::Name: {
+						uint32_t id;
+						packet >> id;
+						for (Entity* e : updateGroup) {
+							if (e->id == id) [[unlikely]] {
+								packet >> (*(Triangle**)&e)->name;
+								break;
+							}
+						}
+						break;
+					}
 					default:
 						printf("Unknown packet %d received\n", type);
 						break;
@@ -493,11 +504,13 @@ int main(int argc, char** argv) {
 							std::string sendMessage;
 							sendMessage.append("<").append(player->name()).append("> has joined.");
 							chatPacket << Packets::Chat << sendMessage;
+							sf::Packet namePacket;
+							namePacket << Packets::Name << player->entity->id << player->username;
 							for (Player* p : playerGroup) {
 								p->tcpSocket.send(colorPacket);
 								p->tcpSocket.send(chatPacket);
+								p->tcpSocket.send(namePacket);
 							}
-
 							break;
 						}
 						case Packets::Controls:
@@ -508,7 +521,7 @@ int main(int argc, char** argv) {
 							packet >> message;
 							if ((int)sizeof(message) <= messageLimit) {
 								sf::Packet chatPacket;
-								std::string sendMessage;
+								std::string sendMessage = "";
 								sendMessage.append("[").append(player->name()).append("]: ").append(message);
 								std::cout << sendMessage << std::endl;
 								chatPacket << Packets::Chat << sendMessage;

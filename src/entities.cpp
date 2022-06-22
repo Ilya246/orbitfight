@@ -36,6 +36,14 @@ Player::~Player() {
 			break;
 		}
 	}
+	sf::Packet chatPacket;
+	std::string sendMessage = "";
+	sendMessage.append("<").append(name()).append("> has disconnected.");
+	std::cout << sendMessage << std::endl;
+	chatPacket << Packets::Chat << sendMessage;
+	for (Player* p : playerGroup) {
+		p->tcpSocket.send(chatPacket);
+	}
 	delete this->entity;
 }
 
@@ -121,6 +129,9 @@ void Entity::collide(Entity* with, bool collideOther) {
 		printf("collision: %u-%u\n", id, with->id);
 	}
 	if (with->type() == Entities::Projectile) {
+		return;
+	} else if (with == star) {
+		delete this;
 		return;
 	}
 	double dVx = velX - with->velX, dVy = with->velY - velY;
@@ -243,6 +254,13 @@ void Triangle::draw() {
 			window->draw(boostReloadBar);
 		}
 		window->draw(*forwards);
+		sf::Text nameText;
+		nameText.setFont(*font);
+		nameText.setString(name);
+		nameText.setCharacterSize(8);
+		nameText.setFillColor(sf::Color::White);
+		nameText.setPosition(g_camera.w * 0.5 + (x - ownEntity->x) / g_camera.scale - nameText.getLocalBounds().width / 2.0, g_camera.h * 0.5 + (y - ownEntity->y) / g_camera.scale - 28.0);
+		window->draw(nameText);
 		g_camera.bindWorld();
 	}
 }

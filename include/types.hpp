@@ -13,7 +13,8 @@ constexpr uint16_t Ping = 0,
 	ColorEntity = 7,
 	Chat = 8,
 	PingInfo = 9,
-	ResizeView = 10;
+	ResizeView = 10,
+	Name = 11;
 }
 
 namespace obf::Entities {
