@@ -40,7 +40,7 @@ inline double delta = 1.0 / 60.0,
 	lastPing = 0.0;
 inline const int displayMessageCount = 5;
 inline int usernameLimit = 24 * 8,
-messageLimit = 50 * 8,
+messageLimit = 50,
 textCharacterSize = 18,
 nextID = 0;
 inline bool headless = false, autoConnect = false, debug = false,

@@ -236,7 +236,7 @@ int main(int argc, char** argv) {
 					break;
 				}
 				case sf::Event::TextEntered: {
-					if(chatting && (int)chatBuffer.getSize() * 8 <= messageLimit && event.text.unicode != 8){
+					if(chatting && (int)chatBuffer.getSize() <= messageLimit && event.text.unicode != 8){
 						chatBuffer += event.text.unicode;
 					}
 					if(chatting && debug){
@@ -519,10 +519,10 @@ int main(int argc, char** argv) {
 						case Packets::Chat: {
 							std::string message;
 							packet >> message;
-							if ((int)sizeof(message) <= messageLimit) {
+							if ((int)message.size() <= messageLimit && message.size() > 0) {
 								sf::Packet chatPacket;
 								std::string sendMessage = "";
-								sendMessage.append("[").append(player->name()).append("]: ").append(message);
+								sendMessage.append("[").append(player->name()).append("]: ").append(message.substr(1)); // i probably need to implement an alphanumerical regex here
 								std::cout << sendMessage << std::endl;
 								chatPacket << Packets::Chat << sendMessage;
 								for (Player* p : playerGroup) {
