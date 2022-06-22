@@ -92,7 +92,7 @@ int main(int argc, char** argv) {
 		star = new Attractor(4000.f, 8000.0);
 		star->setPosition(0.0, 0.0);
 		star->setColor(255, 229, 97);
-		int planets = (int)rand_f(4.f, 8.f);
+		int planets = (int)rand_f(3.f, 7.f);
 		for (int i = 0; i < planets; i++) {
 			double spawnDst = rand_f(30000.f, 300000.f);
 			float spawnAngle = rand_f(-PI, PI);
