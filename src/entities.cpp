@@ -238,7 +238,6 @@ void Triangle::draw() {
 			reloadBar.setFillColor(sf::Color(255, 64, 64));
 			boostReloadBar.setFillColor(sf::Color(64, 255, 64));
 			reloadBar.setPosition(g_camera.w * 0.5f - reloadProgress / 2.f, g_camera.h * 0.5f + 40.f);
-			printf("%f, %f\n", g_camera.w * 0.5f, g_camera.h * 0.5f + 40.f);
 			boostReloadBar.setPosition(g_camera.w * 0.5f - boostProgress / 2.f, g_camera.h * 0.5f - 40.f);
 			window->draw(reloadBar);
 			window->draw(boostReloadBar);

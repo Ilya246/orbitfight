@@ -89,13 +89,35 @@ int main(int argc, char** argv) {
 
 		printf("Hosted server on port %u.\n", port);
 
-		star = new Attractor(2000.f, 4000.0);
-		star->setPosition(30000.0, 0.0);
+		star = new Attractor(4000.f, 8000.0);
+		star->setPosition(0.0, 0.0);
 		star->setColor(255, 229, 97);
-		planet = new Attractor(400.f, 50.0);
-		planet->setPosition(1000.0, 0.0);
-		planet->addVelocity(0.0, sqrt(G * (planet->mass + star->mass) / (star->x - planet->x)));
-		planet->setColor(165, 165, 165);
+		int planets = (int)rand_f(4.f, 8.f);
+		for (int i = 0; i < planets; i++) {
+			double spawnDst = rand_f(30000.f, 300000.f);
+			float spawnAngle = rand_f(-PI, PI);
+			float radius = rand_f(250.f, 800.f);
+			Attractor* planet = new Attractor(radius, radius * radius / 500.f);
+			planet->setPosition(star->x + spawnDst * std::cos(spawnAngle), star->y + spawnDst * std::sin(spawnAngle));
+			double vel = sqrt(G * star->mass / spawnDst);
+			planet->addVelocity(star->velX + vel * std::cos(spawnAngle + PI / 2.0), -star->velY - vel * std::sin(spawnAngle + PI / 2.0));
+			planet->setColor((int)rand_f(64.f, 255.f), (int)rand_f(64.f, 255.f), (int)rand_f(64.f, 255.f));
+			if (radius >= 600.f) {
+				int moons = (int)(rand_f(0.f, 4.f) * radius * radius / 800 / 800);
+				for (int it = 0; it < moons; it++) {
+					double spawnDst = planet->radius + rand_f(1500.f, 4000.f);
+					float spawnAngle = rand_f(-PI, PI);
+					float radius = rand_f(20.f, 120.f);
+					Attractor* moon = new Attractor(radius, radius * radius / 500.f);
+					moon->setPosition(planet->x + spawnDst * std::cos(spawnAngle), planet->y + spawnDst * std::sin(spawnAngle));
+					double vel = sqrt(G * planet->mass / spawnDst);
+					moon->addVelocity(planet->velX + vel * std::cos(spawnAngle + PI / 2.0), -planet->velY - vel * std::sin(spawnAngle + PI / 2.0));
+					moon->setColor((int)rand_f(64.f, 255.f), (int)rand_f(64.f, 255.f), (int)rand_f(64.f, 255.f));
+					obf::planets.push_back(moon);
+				}
+			}
+			obf::planets.push_back(planet);
+		}
 	} else {
 		window = new sf::RenderWindow(sf::VideoMode(500, 500), "Test");
 
@@ -150,7 +172,8 @@ int main(int argc, char** argv) {
 				}
 
 				sparePlayer->entity = new Triangle();
-				double spawnDst = 1200.0;
+				Attractor* planet = planets[(int)rand_f(0, planets.size() - 1)];
+				double spawnDst = planet->radius + rand_f(600.f, 1500.f);
 				float spawnAngle = rand_f(-PI, PI);
 				sparePlayer->entity->setPosition(planet->x + spawnDst * std::cos(spawnAngle), planet->y + spawnDst * std::sin(spawnAngle));
 				double vel = sqrt(G * planet->mass / spawnDst);
