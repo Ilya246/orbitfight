@@ -112,10 +112,6 @@ void Entity::update() {
 }
 
 void Entity::collide(Entity* with, bool collideOther) {
-	if (with->type() == Entities::Projectile) [[unlikely]] {
-		with->collide(this, false);
-		collideOther = false;
-	}
 	double dVx = velX - with->velX, dVy = with->velY - velY;
 	double inHeading = std::atan2(y - with->y, with->x - x);
 	double velHeading = std::atan2(dVy, dVx);
@@ -124,15 +120,15 @@ void Entity::collide(Entity* with, bool collideOther) {
 	if (factor < 0.0) {
 		return;
 	}
-	if (collideOther) {
-		with->collide(this, false);
-	}
 	double vel = dst(dVx, dVy);
 	double inX = std::cos(inHeading), inY = std::sin(inHeading);
 	velX -= vel * inX * factor + friction * dVx;
 	velY += vel * inY * factor + friction * dVy;
 	x = (x + (with->x - (radius + with->radius) * inX) * massFactor) / (1.0 + massFactor);
 	y = (y + (with->y + (radius + with->radius) * inY) * massFactor) / (1.0 + massFactor);
+	if (collideOther) {
+		with->collide(this, false);
+	}
 }
 
 Triangle::Triangle() : Entity() {
@@ -176,13 +172,17 @@ void Triangle::control(movement& cont) {
 	}
 	if (cont.forward) {
 		addVelocity(accel * xMul * delta, accel * yMul * delta);
-		forwards->setFillColor(sf::Color(255, 196, 0));
-		forwards->setRotation(90.f - rotation);
+		if (!headless) {
+			forwards->setFillColor(sf::Color(255, 196, 0));
+			forwards->setRotation(90.f - rotation);
+		}
 	} else if (cont.backward) {
 		addVelocity(-accel * xMul * delta, -accel * yMul * delta);
-		forwards->setFillColor(sf::Color(255, 64, 64));
-		forwards->setRotation(270.f - rotation);
-	} else {
+		if (!headless) {
+			forwards->setFillColor(sf::Color(255, 64, 64));
+			forwards->setRotation(270.f - rotation);
+		}
+	} else if (!headless) {
 		forwards->setFillColor(sf::Color::White);
 		forwards->setRotation(90.f - rotation);
 	}
@@ -322,8 +322,8 @@ void Projectile::collide(Entity* with, bool collideOther) {
 		return;
 	}
 	if (with->type() == Entities::Triangle) {
-		delete this;
 		delete with;
+		delete this;
 	} else if (with->type() == Entities::Attractor) {
 		delete this;
 	} else {
