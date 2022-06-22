@@ -284,7 +284,7 @@ int main(int argc, char** argv) {
 							break;
 						}
 						case 1: {
-							float radius;
+							double radius;
 							packet >> radius;
 							if(debug){
 								printf(", radius %g", radius);

@@ -50,6 +50,15 @@ Entity::~Entity() noexcept {
 			break;
 		}
 	}
+	for (Entity* en : near) {
+		for (size_t i = 0; i < en->near.size(); i++){
+			if (en->near[i] == this) [[unlikely]] {
+				en->near[i] = en->near[en->near.size() - 1];
+				en->near.pop_back();
+				break;
+			}
+		}
+	}
 
 	if (headless) {
 		for (Player* p : playerGroup) {
@@ -73,14 +82,63 @@ void Entity::control(movement& cont) {}
 void Entity::update() {
 	x += velX * delta;
 	y += velY * delta;
+	if(globalTime - lastCollideScan > collideScanSpacing) [[unlikely]] {
+		size_t i = 0;
+		for (Entity* e : updateGroup) {
+			if (e == this) [[unlikely]] {
+				continue;
+			}
+			if (dst2((abs(x - e->x) - radius - e->radius), (abs(y - e->y) - radius - e->radius)) / dst2(e->velX - velX, e->velY - velY) < collideScanDistance2) {
+				if(i == near.size()) {
+					near.push_back(e);
+				} else {
+					near[i] = e;
+				}
+				i++;
+			}
+		}
+		if(i < near.size()){
+			near.erase(near.begin() + i + 1, near.begin() + near.size());
+		}
+		lastCollideScan = globalTime;
+	}
+	for (Entity* e : near) {
+		if (dst2(x - e->x, y - e->y) <= (radius + e->radius) * (radius + e->radius)) [[unlikely]] {
+			collide(e, true);
+		}
+	}
+}
+
+void Entity::collide(Entity* with, bool collideOther) {
+	double dVx = velX - with->velX, dVy = with->velY - velY;
+	double inHeading = std::atan2(y - with->y, with->x - x);
+	double velHeading = std::atan2(dVy, dVx);
+	printf("id %u; %f, %f\n", id, inHeading * radToDeg, velHeading * radToDeg);
+	double massFactor = std::min(with->mass / mass, 1.0);
+	double factor = massFactor * std::cos(std::abs(deltaAngleRad(inHeading, velHeading))) * collideRestitution;
+	if (factor < 0.0) {
+		return;
+	}
+	if(collideOther){
+		with->collide(this, false);
+	}
+	double vel = dst(dVx, dVy);
+	printf("%u, %f, %f, %f\n", id, inHeading * radToDeg, dVx, -dVy);
+	double inX = std::cos(inHeading), inY = std::sin(inHeading);
+	velX -= vel * inX * factor;
+	velY += vel * inY * factor;
+	x = (x + (with->x - (radius + with->radius) * inX) * massFactor) / (1.0 + massFactor);
+	y = (y + (with->y + (radius + with->radius) * inY) * massFactor) / (1.0 + massFactor);
 }
 
 Triangle::Triangle() : Entity() {
+	mass = 1.0;
+	radius = 8.0;
 	if (!headless) {
-		shape = std::make_unique<sf::CircleShape>(12, 3);
-		shape->setOrigin(12, 12);
-		forwards = std::make_unique<sf::CircleShape>(4, 3);
-		forwards->setOrigin(4, 4);
+		shape = std::make_unique<sf::CircleShape>(radius, 3);
+		shape->setOrigin(radius, radius);
+		forwards = std::make_unique<sf::CircleShape>(4.f, 3);
+		forwards->setOrigin(4.f, 4.f);
 	}
 }
 
@@ -132,14 +190,15 @@ void Triangle::draw() {
 	g_camera.bindWorld();
 }
 
-Attractor::Attractor(float radius) : Entity() {
+Attractor::Attractor(double radius) : Entity() {
 	this->radius = radius;
+	this->mass = 100.0;
 	if (!headless) {
 		shape = std::make_unique<sf::CircleShape>(radius, 50);
 		shape->setOrigin(radius, radius);
 	}
 }
-Attractor::Attractor(float radius, double mass) : Entity() {
+Attractor::Attractor(double radius, double mass) : Entity() {
 	this->radius = radius;
 	this->mass = mass;
 	if (!headless) {

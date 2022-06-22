@@ -31,6 +31,10 @@ struct Entity {
 	virtual void update();
 	virtual void draw() = 0;
 
+	virtual void collide(Entity* with, bool collideOther);
+
+	std::vector<Entity*> near;
+
 	virtual void syncCreation();
 
 	virtual void loadCreatePacket(sf::Packet& packet) = 0;
@@ -58,7 +62,9 @@ struct Entity {
 	}
 
 	Player* player = nullptr;
-	double x = 0, y = 0, mass = 0, velX = 0, velY = 0;
+	double x = 0.0, y = 0.0, velX = 0.0, velY = 0.0, radius = 0.0,
+	mass = 0.0,
+	lastCollideCheck = 0.0, lastCollideScan = 0.0;
 	unsigned char color[3]{255, 255, 255};
 	uint32_t id;
 };
@@ -75,15 +81,15 @@ struct Triangle: public Entity {
 	void unloadSyncPacket(sf::Packet& packet) override;
 
 	static const uint8_t type = 0;
-	double accel = 0.01, rotateSpeed = 2, mass = 1.0;
+	double accel = 0.01, rotateSpeed = 2;
 
 	std::unique_ptr<sf::CircleShape> shape, forwards;
 	float rotation = 0;
 };
 
 struct Attractor: public Entity {
-	Attractor(float radius);
-	Attractor(float radius, double mass);
+	Attractor(double radius);
+	Attractor(double radius, double mass);
 
 	void update() override;
 	void draw() override;
@@ -94,8 +100,6 @@ struct Attractor: public Entity {
 	void unloadSyncPacket(sf::Packet& packet) override;
 
 	static const uint8_t type = 1;
-	double mass = 100.0;
-	float radius;
 
 	std::unique_ptr<sf::CircleShape> shape;
 };
