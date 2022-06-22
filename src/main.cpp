@@ -89,7 +89,7 @@ int main(int argc, char** argv) {
 
 		printf("Hosted server on port %u.\n", port);
 
-		star = new Attractor(4000.f, 40000.0);
+		star = new Attractor(4000.f, 200000.0);
 		star->setPosition(0.0, 0.0);
 		star->setColor(255, 229, 97);
 		int planets = (int)rand_f(3.f, 7.f);
