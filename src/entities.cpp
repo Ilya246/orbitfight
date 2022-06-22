@@ -44,7 +44,7 @@ Player::~Player() {
 	for (Player* p : playerGroup) {
 		p->tcpSocket.send(chatPacket);
 	}
-	delete this->entity;
+	entityDeleteBuffer.push_back(entity);
 }
 
 Entity::Entity() {
@@ -139,7 +139,7 @@ void Entity::update() {
 					}
 				}
 				if (!found) {
-					delete e;
+					entityDeleteBuffer.push_back(e);
 				}
 			}
 		}
@@ -414,12 +414,12 @@ void Projectile::collide(Entity* with, bool collideOther) {
 				}
 			}
 		}
-		delete this;
+		entityDeleteBuffer.push_back(this);
 	} else if (with->type() == Entities::Attractor) {
 		if (debug) {
 			printf("of type attractor\n");
 		}
-		delete this;
+		entityDeleteBuffer.push_back(this);
 	} else {
 		if (debug) {
 			printf("of unaccounted type\n");

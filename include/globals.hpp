@@ -20,6 +20,7 @@ inline sf::Font* font = nullptr;
 inline obf::Player* sparePlayer = new obf::Player;
 inline std::vector<Entity*> updateGroup;
 inline std::vector<Player*> playerGroup;
+inline std::vector<Entity*> entityDeleteBuffer;
 inline std::vector<Attractor*> planets;
 inline sf::Vector2i mousePos;
 inline sf::Clock deltaClock, globalClock;

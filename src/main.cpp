@@ -427,6 +427,10 @@ int main(int argc, char** argv) {
 		for (size_t i = 0; i < updateGroup.size(); i++) {
 			updateGroup[i]->update();
 		}
+		for (Entity* e : entityDeleteBuffer) {
+			delete e;
+		}
+		entityDeleteBuffer.clear();
 		if (headless) {
 			int to = playerGroup.size();
 			for (int i = 0; i < to; i++) {
