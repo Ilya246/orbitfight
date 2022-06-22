@@ -119,7 +119,7 @@ void Entity::collide(Entity* with, bool collideOther) {
 	if (factor < 0.0) {
 		return;
 	}
-	if(collideOther){
+	if (collideOther) {
 		with->collide(this, false);
 	}
 	double vel = dst(dVx, dVy);
