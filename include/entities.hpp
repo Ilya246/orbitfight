@@ -81,7 +81,7 @@ struct Triangle: public Entity {
 	void unloadSyncPacket(sf::Packet& packet) override;
 
 	static const uint8_t type = 0;
-	double accel = 0.01, rotateSpeed = 2.0, boostCooldown = 600.0, boostStrength = 0.6,
+	double accel = 0.01, rotateSpeed = 2.0, boostCooldown = 10.0, boostStrength = 1.0,
 	lastBoosted = 0.0;
 
 	std::unique_ptr<sf::CircleShape> shape, forwards;
