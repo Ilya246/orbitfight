@@ -272,6 +272,8 @@ Triangle::Triangle() : Entity() {
 	}
 }
 Triangle::Triangle(bool ghost) : Entity() {
+	mass = 0.1;
+	radius = 8.0;
 	this->ghost = true;
 }
 
