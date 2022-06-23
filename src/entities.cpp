@@ -292,12 +292,16 @@ void Triangle::simSetup() {
 	resLastBoosted = lastBoosted;
 	resLastShot = lastShot;
 	resHyperboostCharge = hyperboostCharge;
+	resBurnCharge = burnCharge;
+	resBurning = burning;
 }
 void Triangle::simReset() {
 	Entity::simReset();
 	lastBoosted = resLastBoosted;
 	lastShot = resLastShot;
 	hyperboostCharge = resHyperboostCharge;
+	burnCharge = resBurnCharge;
+	burning = resBurning;
 }
 
 void Triangle::control(movement& cont) {
@@ -309,14 +313,22 @@ void Triangle::control(movement& cont) {
 	} else {
 		return;
 	}
-	if (cont.hyperboost) {
+	if (cont.hyperboost || hyperboostCharge > 1.0 || burning) {
 		hyperboostCharge += delta;
-		if (hyperboostCharge > hyperboostTime) {
-			if (cont.boost) {
-				addVelocity(hyperleapStrengh * xMul, hyperleapStrengh * yMul);
-				hyperboostCharge = 0.0;
-				return;
+		hyperboostCharge = std::min(hyperboostCharge, 2.0 * hyperboostTime);
+		if ((cont.boost && hyperboostCharge > hyperboostTime) || burning) {
+			if (!burning) {
+				burning = true;
+				burnCharge = 2.0 * hyperboostTime - hyperboostCharge;
 			}
+			addVelocity(hyperboostStrength * xMul * delta * afterburnStrength, hyperboostStrength * xMul * delta * afterburnStrength);
+			hyperboostCharge -= delta * 2.0;
+			if (hyperboostCharge <= burnCharge) {
+				burning = false;
+				burnCharge = 0.0;
+			}
+			return;
+		} else if (hyperboostCharge > hyperboostTime && cont.hyperboost) {
 			addVelocity(hyperboostStrength * xMul * delta, hyperboostStrength * yMul * delta);
 			if (!headless) {
 				forwards->setFillColor(sf::Color(64, 64, 255));
@@ -407,6 +419,12 @@ void Triangle::draw() {
 				if (hyperboostProgress > 0.0) {
 					sf::RectangleShape hyperboostBar(sf::Vector2f(hyperboostProgress, 4.f));
 					hyperboostBar.setFillColor(sf::Color(64, 64, 255));
+					hyperboostBar.setPosition(g_camera.w * 0.5f - hyperboostProgress / 2.f, g_camera.h * 0.5f + 36.f);
+					window->draw(hyperboostBar);
+				}
+				if (hyperboostProgress < 0.0) {
+					sf::RectangleShape hyperboostBar(sf::Vector2f(hyperboostProgress, 4.f));
+					hyperboostBar.setFillColor(sf::Color(255, 255, 64));
 					hyperboostBar.setPosition(g_camera.w * 0.5f - hyperboostProgress / 2.f, g_camera.h * 0.5f + 36.f);
 					window->draw(hyperboostBar);
 				}
