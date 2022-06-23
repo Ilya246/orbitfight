@@ -7,6 +7,7 @@
 #include <cmath>
 #include <iostream>
 #include <sstream>
+#include <vector>
 
 #include <SFML/Graphics.hpp>
 #include <SFML/Network.hpp>
@@ -51,6 +52,9 @@ Entity::Entity() {
 	id = nextID;
 	nextID++;
 	updateGroup.push_back(this);
+	if (!headless) {
+		trajectory = std::make_unique<std::vector<Point>>();
+	}
 }
 
 Entity::~Entity() noexcept {
@@ -71,6 +75,9 @@ Entity::~Entity() noexcept {
 					e->near.pop_back();
 					break;
 				}
+			}
+			if (e->simRelBody == this) [[unlikely]] {
+				e->simRelBody = nullptr;
 			}
 		}
 	}
@@ -117,32 +124,67 @@ void Entity::update() {
 		}
 		lastCollideScan = globalTime;
 	}
-	for (size_t i = 0; i < near.size(); i++) {
-		Entity* e = near[i];
+	for (Entity* e : near) {
 		if (dst2(x - e->x, y - e->y) <= (radius + e->radius) * (radius + e->radius)) [[unlikely]] {
-			collide(near[i], true);
-			if (this == star) {
-				bool found = false;
-				for (Player* p : playerGroup) {
-					if (p->entity == e) [[unlikely]] {
-						sf::Packet chatPacket;
-						std::string sendMessage;
-						sendMessage.append("<").append(p->name()).append("> has been incinerated by the star.");
-						std::cout << sendMessage << std::endl;
-						chatPacket << Packets::Chat << sendMessage;
-						p->tcpSocket.disconnect();
-						delete p;
-						for (Player* p : playerGroup) {
-							p->tcpSocket.send(chatPacket);
+			collide(e, true);
+			if (type() == Entities::Attractor) {
+				if (this == star && e->type() == Entities::Triangle) [[unlikely]] {
+					bool found = false;
+					for (Player* p : playerGroup) {
+						if (p->entity == e) [[unlikely]] {
+							sf::Packet chatPacket;
+							std::string sendMessage;
+							sendMessage.append("<").append(p->name()).append("> has been incinerated by the star.");
+							std::cout << sendMessage << std::endl;
+							chatPacket << Packets::Chat << sendMessage;
+							p->tcpSocket.disconnect();
+							delete p;
+							for (Player* p : playerGroup) {
+								p->tcpSocket.send(chatPacket);
+							}
+							found = true;
 						}
-						found = true;
 					}
-				}
-				if (!found) {
-					entityDeleteBuffer.push_back(e);
+					if (!found && (headless || simulating)) {
+						entityDeleteBuffer.push_back(e);
+					}
+				} else if (e->type() == Entities::Attractor) [[unlikely]] {
+					if (debug) {
+						printf("Planetary collision: %u, %u\n", id, e->id);
+					}
+					if (mass > e->mass) {
+						double radiusMul = sqrt((mass + e->mass) / mass);
+						mass += e->mass;
+						radius *= radiusMul;
+						if (!headless) {
+							if (!simulating) {
+								((Attractor*)this)->shape->setRadius(radius);
+							}
+						} else {
+							sf::Packet collisionPacket;
+							collisionPacket << Packets::PlanetCollision << id << mass << radius;
+							for (Player* p : playerGroup) {
+								p->tcpSocket.send(collisionPacket);
+							}
+						}
+						if (headless || simulating) {
+							entityDeleteBuffer.push_back(e);
+						}
+					}
 				}
 			}
 		}
+	}
+}
+
+void Entity::draw() {
+	if (trajectory && simRelBody && trajectory->size() > 0) [[likely]] {
+		std::vector<Point> traj = *trajectory;
+		sf::VertexArray lines(sf::LineStrip, traj.size());
+		for (size_t i = 0; i < trajectory->size(); i++){
+			lines[i].position = sf::Vector2f(simRelBody->x + traj[i].x, simRelBody->y + traj[i].y);
+		}
+		window->draw(lines);
 	}
 }
 
@@ -172,6 +214,36 @@ void Entity::collide(Entity* with, bool collideOther) {
 	}
 }
 
+void Entity::simSetup() {
+	resX = x;
+	resY = y;
+	resVelX = velX;
+	resVelY = velY;
+	resMass = mass;
+	resRadius = radius;
+	resNear = near;
+	double maxFactor = 0.0;
+	for (Entity* e : updateGroup) {
+		if (e == this || e->type() != Entities::Attractor) {
+			continue;
+		}
+		double factor = G * e->mass / dst2(e->x - x, e->y - y);
+		if (factor > maxFactor) {
+			simRelBody = e;
+			maxFactor = factor;
+		}
+	}
+}
+void Entity::simReset() {
+	x = resX;
+	y = resY;
+	velX = resVelX;
+	velY = resVelY;
+	mass = resMass;
+	radius = resRadius;
+	near = resNear;
+}
+
 Triangle::Triangle() : Entity() {
 	mass = 0.1;
 	radius = 8.0;
@@ -180,6 +252,9 @@ Triangle::Triangle() : Entity() {
 		shape->setOrigin(radius, radius);
 		forwards = std::make_unique<sf::CircleShape>(4.f, 3);
 		forwards->setOrigin(4.f, 4.f);
+		icon = std::make_unique<sf::CircleShape>(2.f, 3);
+		icon->setOrigin(2.f, 2.f);
+		icon->setFillColor(sf::Color(255, 255, 255));
 	}
 }
 
@@ -210,6 +285,22 @@ void Triangle::control(movement& cont) {
 		yMul = std::sin(rotationRad);
 	} else {
 		return;
+	}
+	if (cont.hyperboost) {
+		hyperboostCharge += delta;
+		if (hyperboostCharge > hyperboostTime) {
+			addVelocity(hyperboostStrength * xMul * delta, hyperboostStrength * yMul * delta);
+			if (!headless) {
+				forwards->setFillColor(sf::Color(64, 64, 255));
+				forwards->setRotation(90.f - rotation);
+			}
+		} else if (!headless) {
+			forwards->setFillColor(sf::Color(255, 255, 0));
+			forwards->setRotation(90.f - rotation);
+		}
+		return;
+	} else {
+		hyperboostCharge = 0.0;
 	}
 	if (cont.forward) {
 		addVelocity(accel * xMul * delta, accel * yMul * delta);
@@ -253,6 +344,7 @@ void Triangle::control(movement& cont) {
 }
 
 void Triangle::draw() {
+	Entity::draw();
 	shape->setPosition(x, y);
 	shape->setRotation(90.f - rotation);
 	shape->setFillColor(sf::Color(color[0], color[1], color[2]));
@@ -260,17 +352,32 @@ void Triangle::draw() {
 	if(ownEntity) [[likely]] {
 		g_camera.bindUI();
 		float rotationRad = rotation * degToRad;
-		forwards->setPosition(g_camera.w * 0.5 + (x - ownEntity->x) / g_camera.scale + 14.0 * cos(rotationRad), g_camera.h * 0.5 + (y - ownEntity->y) / g_camera.scale - 14.0 * sin(rotationRad));
+		double uiX = g_camera.w * 0.5 + (x - ownEntity->x) / g_camera.scale, uiY = g_camera.h * 0.5 + (y - ownEntity->y) / g_camera.scale;
+		forwards->setPosition(uiX + 14.0 * cos(rotationRad), uiY - 14.0 * sin(rotationRad));
 		if (ownEntity == this) {
-			float reloadProgress = std::min(1.0, (globalTime - lastShot) / reload) * 40.f, boostProgress = std::min(1.0, (globalTime - lastBoosted) / boostCooldown) * 40.f;
-			sf::RectangleShape reloadBar(sf::Vector2f(reloadProgress, 4.f));
-			sf::RectangleShape boostReloadBar(sf::Vector2f(boostProgress, 4.f));
-			reloadBar.setFillColor(sf::Color(255, 64, 64));
-			boostReloadBar.setFillColor(sf::Color(64, 255, 64));
-			reloadBar.setPosition(g_camera.w * 0.5f - reloadProgress / 2.f, g_camera.h * 0.5f + 40.f);
-			boostReloadBar.setPosition(g_camera.w * 0.5f - boostProgress / 2.f, g_camera.h * 0.5f - 40.f);
-			window->draw(reloadBar);
-			window->draw(boostReloadBar);
+			float reloadProgress = ((lastShot - globalTime) / reload + 1.0) * 40.f,
+			boostProgress = ((lastBoosted - globalTime) / boostCooldown + 1.0) * 40.f;
+			if (reloadProgress > 0.0) {
+				sf::RectangleShape reloadBar(sf::Vector2f(reloadProgress, 4.f));
+				reloadBar.setFillColor(sf::Color(255, 64, 64));
+				reloadBar.setPosition(g_camera.w * 0.5f - reloadProgress / 2.f, g_camera.h * 0.5f + 40.f);
+				window->draw(reloadBar);
+			}
+			if (boostProgress > 0.0) {
+				sf::RectangleShape boostReloadBar(sf::Vector2f(boostProgress, 4.f));
+				boostReloadBar.setFillColor(sf::Color(64, 255, 64));
+				boostReloadBar.setPosition(g_camera.w * 0.5f - boostProgress / 2.f, g_camera.h * 0.5f - 40.f);
+				window->draw(boostReloadBar);
+			}
+			if (hyperboostCharge > 0.0) {
+				float hyperboostProgress = (1.0 - hyperboostCharge / hyperboostTime) * 40.f;
+				if (hyperboostProgress > 0.0) {
+					sf::RectangleShape hyperboostBar(sf::Vector2f(hyperboostProgress, 4.f));
+					hyperboostBar.setFillColor(sf::Color(64, 64, 255));
+					hyperboostBar.setPosition(g_camera.w * 0.5f - hyperboostProgress / 2.f, g_camera.h * 0.5f + 36.f);
+					window->draw(hyperboostBar);
+				}
+			}
 		}
 		window->draw(*forwards);
 		if (!name.empty()) {
@@ -279,8 +386,12 @@ void Triangle::draw() {
 			nameText.setString(name);
 			nameText.setCharacterSize(8);
 			nameText.setFillColor(sf::Color::White);
-			nameText.setPosition(g_camera.w * 0.5 + (x - ownEntity->x) / g_camera.scale - nameText.getLocalBounds().width / 2.0, g_camera.h * 0.5 + (y - ownEntity->y) / g_camera.scale - 28.0);
+			nameText.setPosition(uiX - nameText.getLocalBounds().width / 2.0, uiY - 28.0);
 			window->draw(nameText);
+		}
+		if (g_camera.scale * 2.0 > radius) {
+			icon->setPosition(uiX, uiY);
+			window->draw(*icon);
 		}
 		g_camera.bindWorld();
 	}
@@ -296,6 +407,8 @@ Attractor::Attractor(double radius) : Entity() {
 	if (!headless) {
 		shape = std::make_unique<sf::CircleShape>(radius, 50);
 		shape->setOrigin(radius, radius);
+		icon = std::make_unique<sf::CircleShape>(2.f, 6);
+		icon->setOrigin(2.f, 2.f);
 	}
 }
 Attractor::Attractor(double radius, double mass) : Entity() {
@@ -304,6 +417,8 @@ Attractor::Attractor(double radius, double mass) : Entity() {
 	if (!headless) {
 		shape = std::make_unique<sf::CircleShape>(radius, 50);
 		shape->setOrigin(radius, radius);
+		icon = std::make_unique<sf::CircleShape>(2.f, 6);
+		icon->setOrigin(2.f, 2.f);
 	}
 }
 
@@ -344,9 +459,17 @@ void Attractor::update() {
 	}
 }
 void Attractor::draw() {
+	Entity::draw();
 	shape->setPosition(x, y);
 	shape->setFillColor(sf::Color(color[0], color[1], color[2]));
 	window->draw(*shape);
+	if (g_camera.scale > radius && ownEntity) {
+		g_camera.bindUI();
+		icon->setPosition(g_camera.w * 0.5 + (x - ownEntity->x) / g_camera.scale, g_camera.h * 0.5 + (y - ownEntity->y) / g_camera.scale);
+		icon->setFillColor(sf::Color(color[0], color[1], color[2]));
+		window->draw(*icon);
+		g_camera.bindWorld();
+	}
 }
 
 uint8_t Attractor::type() {
@@ -392,34 +515,36 @@ void Projectile::collide(Entity* with, bool collideOther) {
 	if (debug) {
 		printf("bullet collision: %u-%u ", id, with->id);
 	}
-	if (!headless) {
-		Entity::collide(with, collideOther);
-		return;
-	}
 	if (with->type() == Entities::Triangle) {
 		if (debug) {
 			printf("of type triangle\n");
 		}
-		for (Player* p : playerGroup) {
-			if (p->entity == with) [[unlikely]] {
-				sf::Packet chatPacket;
-				std::string sendMessage;
-				sendMessage.append("<").append(p->name()).append("> has been killed.");
-				std::cout << sendMessage << std::endl;
-				chatPacket << Packets::Chat << sendMessage;
-				p->tcpSocket.disconnect();
-				delete p;
-				for (Player* p : playerGroup) {
-					p->tcpSocket.send(chatPacket);
+		if (headless) {
+			for (Player* p : playerGroup) {
+				if (p->entity == with) [[unlikely]] {
+					sf::Packet chatPacket;
+					std::string sendMessage;
+					sendMessage.append("<").append(p->name()).append("> has been killed.");
+					std::cout << sendMessage << std::endl;
+					chatPacket << Packets::Chat << sendMessage;
+					p->tcpSocket.disconnect();
+					delete p;
+					for (Player* p : playerGroup) {
+						p->tcpSocket.send(chatPacket);
+					}
 				}
 			}
 		}
-		entityDeleteBuffer.push_back(this);
+		if (headless || simulating) {
+			entityDeleteBuffer.push_back(this);
+		}
 	} else if (with->type() == Entities::Attractor) {
 		if (debug) {
 			printf("of type attractor\n");
 		}
-		entityDeleteBuffer.push_back(this);
+		if (headless || simulating) {
+			entityDeleteBuffer.push_back(this);
+		}
 	} else {
 		if (debug) {
 			printf("of unaccounted type\n");
@@ -429,10 +554,11 @@ void Projectile::collide(Entity* with, bool collideOther) {
 }
 
 void Projectile::draw() {
+	Entity::draw();
 	shape->setPosition(x, y);
 	shape->setFillColor(sf::Color(color[0], color[1], color[2]));
 	window->draw(*shape);
-	if(ownEntity && g_camera.scale >= iconDrawThreshold) [[likely]] {
+	if (g_camera.scale > radius && ownEntity) {
 		g_camera.bindUI();
 		icon->setPosition(g_camera.w * 0.5 + (x - ownEntity->x) / g_camera.scale, g_camera.h * 0.5 + (y - ownEntity->y) / g_camera.scale);
 		window->draw(*icon);

@@ -16,9 +16,14 @@ struct movement {
 	int turnright: 1 = 0;
 	int turnleft: 1 = 0;
 	int boost: 1 = 0;
-	int unknown: 1 = 0;
+	int hyperboost: 1 = 0;
 	int primaryfire: 1 = 0;
 	int secondaryfire: 1 = 0;
+};
+
+struct Point {
+	double x;
+	double y;
 };
 
 bool operator ==(movement& mov1, movement& mov2);
@@ -29,11 +34,12 @@ struct Entity {
 
 	virtual void control(movement& cont);
 	virtual void update();
-	virtual void draw() = 0;
+	virtual void draw();
 
 	virtual void collide(Entity* with, bool collideOther);
 
 	std::vector<Entity*> near;
+	std::vector<Entity*> resNear;
 
 	virtual void syncCreation();
 
@@ -41,6 +47,9 @@ struct Entity {
 	virtual void unloadCreatePacket(sf::Packet& packet) = 0;
 	virtual void loadSyncPacket(sf::Packet& packet) = 0;
 	virtual void unloadSyncPacket(sf::Packet& packet) = 0;
+
+	virtual void simSetup();
+	virtual void simReset();
 
 	inline void setPosition(double x, double y) {
 		this->x = x;
@@ -61,12 +70,17 @@ struct Entity {
 		color[2] = b;
 	}
 
+	std::unique_ptr<sf::CircleShape> icon;
+
+	std::unique_ptr<std::vector<Point>> trajectory;
 
 	virtual uint8_t type() = 0;
 	Player* player = nullptr;
 	double x = 0.0, y = 0.0, velX = 0.0, velY = 0.0, radius = 0.0,
 	mass = 0.0,
+	resX, resY, resVelX, resVelY, resMass, resRadius,
 	lastCollideCheck = 0.0, lastCollideScan = 0.0;
+	Entity* simRelBody = nullptr;
 	unsigned char color[3]{255, 255, 255};
 	uint32_t id;
 };
@@ -83,8 +97,8 @@ struct Triangle: public Entity {
 	void unloadSyncPacket(sf::Packet& packet) override;
 
 	uint8_t type() override;
-	double accel = 0.006, rotateSpeed = 2.0, boostCooldown = 15.0, boostStrength = 2.0, reload = 6.0, shootPower = 2.0,
-	lastBoosted = -boostCooldown, lastShot = -reload;
+	double accel = 0.008, rotateSpeed = 2.0, boostCooldown = 15.0, boostStrength = 1.5, reload = 6.0, shootPower = 2.0, hyperboostStrength = 0.08, hyperboostTime = 10.0 * 60.0,
+	lastBoosted = -boostCooldown, lastShot = -reload, hyperboostCharge = 0.0;
 
 	std::string name = "";
 
@@ -123,7 +137,7 @@ struct Projectile: public Entity {
 
 	uint8_t type() override;
 
-	std::unique_ptr<sf::CircleShape> shape, icon;
+	std::unique_ptr<sf::CircleShape> shape;
 };
 
 struct Player {

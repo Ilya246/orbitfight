@@ -89,26 +89,26 @@ int main(int argc, char** argv) {
 
 		printf("Hosted server on port %u.\n", port);
 
-		star = new Attractor(4000.f, 200000.0);
+		star = new Attractor(12000.f, 800000.0);
 		star->setPosition(0.0, 0.0);
 		star->setColor(255, 229, 97);
 		int planets = (int)rand_f(3.f, 7.f);
 		for (int i = 0; i < planets; i++) {
-			double spawnDst = rand_f(30000.f, 300000.f);
+			double spawnDst = rand_f(30000.f, 600000.f);
 			float spawnAngle = rand_f(-PI, PI);
-			float radius = rand_f(250.f, 800.f);
-			Attractor* planet = new Attractor(radius, radius * radius / 400.f);
+			float radius = rand_f(400.f, 1600.f);
+			Attractor* planet = new Attractor(radius, radius * radius / 800.f);
 			planet->setPosition(star->x + spawnDst * std::cos(spawnAngle), star->y + spawnDst * std::sin(spawnAngle));
 			double vel = sqrt(G * star->mass / spawnDst);
 			planet->addVelocity(star->velX + vel * std::cos(spawnAngle + PI / 2.0), -star->velY - vel * std::sin(spawnAngle + PI / 2.0));
 			planet->setColor((int)rand_f(64.f, 255.f), (int)rand_f(64.f, 255.f), (int)rand_f(64.f, 255.f));
 			if (radius >= 600.f) {
-				int moons = (int)(rand_f(0.f, 4.f) * radius * radius / 800 / 800);
+				int moons = (int)(rand_f(0.f, 4.f) * radius * radius / (1000.0 * 1000.0));
 				for (int it = 0; it < moons; it++) {
 					double spawnDst = planet->radius + rand_f(1500.f, 4000.f);
 					float spawnAngle = rand_f(-PI, PI);
-					float radius = rand_f(20.f, 120.f);
-					Attractor* moon = new Attractor(radius, radius * radius / 400.f);
+					float radius = rand_f(30.f, 200.f);
+					Attractor* moon = new Attractor(radius, radius * radius / 800.f);
 					moon->setPosition(planet->x + spawnDst * std::cos(spawnAngle), planet->y + spawnDst * std::sin(spawnAngle));
 					double vel = sqrt(G * planet->mass / spawnDst);
 					moon->addVelocity(planet->velX + vel * std::cos(spawnAngle + PI / 2.0), -planet->velY - vel * std::sin(spawnAngle + PI / 2.0));
@@ -199,7 +199,8 @@ int main(int argc, char** argv) {
 				controls.backward = sf::Keyboard::isKeyPressed(sf::Keyboard::S);
 				controls.turnleft = sf::Keyboard::isKeyPressed(sf::Keyboard::A);
 				controls.turnright = sf::Keyboard::isKeyPressed(sf::Keyboard::D);
-				controls.boost = sf::Keyboard::isKeyPressed(sf::Keyboard::LShift);
+				controls.boost = sf::Keyboard::isKeyPressed(sf::Keyboard::LControl);
+				controls.hyperboost = sf::Keyboard::isKeyPressed(sf::Keyboard::LShift);
 				controls.primaryfire = sf::Keyboard::isKeyPressed(sf::Keyboard::Space);
 			}
 
@@ -412,6 +413,19 @@ int main(int argc, char** argv) {
 						}
 						break;
 					}
+					case Packets::PlanetCollision: {
+						uint32_t id;
+						packet >> id;
+						for (Entity* e : updateGroup) {
+							if (e->id == id) [[unlikely]] {
+								Attractor* at = (Attractor*)e;
+								packet >> at->mass >> at->radius;
+								at->shape->setRadius(at->radius);
+								break;
+							}
+						}
+						break;
+					}
 					default:
 						printf("Unknown packet %d received\n", type);
 						break;
@@ -436,6 +450,44 @@ int main(int argc, char** argv) {
 			delete e;
 		}
 		entityDeleteBuffer.clear();
+		if (!headless && globalTime - lastPredict > predictSpacing) [[unlikely]] {
+			double resdelta = delta;
+			delta = predictDelta;
+			for (Entity* e : updateGroup) {
+				e->simSetup();
+				e->trajectory->clear();
+			}
+			std::vector<Entity*> simEntities(updateGroup);
+			for (int i = 0; i < predictSteps; i++) {
+				for (Entity* e : simEntities) {
+					e->update();
+					e->trajectory->push_back({e->x - e->simRelBody->x, e->y - e->simRelBody->y});
+				}
+				for (Entity* en : entityDeleteBuffer) {
+					for (size_t i = 0; i < simEntities.size(); i++) {
+						Entity* e = simEntities[i];
+						if (e == en) [[unlikely]] {
+							simEntities[i] = simEntities[simEntities.size() - 1];
+							simEntities.pop_back();
+						} else {
+							for (size_t i = 0; i < e->near.size(); i++){
+								if (e->near[i] == en) [[unlikely]] {
+									e->near[i] = e->near[e->near.size() - 1];
+									e->near.pop_back();
+									break;
+								}
+							}
+						}
+					}
+				}
+				entityDeleteBuffer.clear();
+			}
+			delta = resdelta;
+			for (Entity* e : updateGroup) {
+				e->simReset();
+			}
+			lastPredict = globalTime;
+		}
 		if (headless) {
 			int to = playerGroup.size();
 			for (int i = 0; i < to; i++) {
