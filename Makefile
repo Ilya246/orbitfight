@@ -4,7 +4,7 @@ STRIP := strip
 STANDARD ?= c++20
 CXXFLAGS ?= -O3 -Wall -Wextra -pedantic -g
 override CXXFLAGS += -std=$(STANDARD) -c -Iinclude
-LDFLAGS := $(shell pkg-config --libs sfml-window sfml-graphics sfml-system sfml-network)
+LDFLAGS := $(shell pkg-config --libs sfml-window sfml-graphics sfml-system sfml-network) -pthread
 
 sources := $(shell find src -type f -name "*.cpp") src/font.cpp
 objects := $(sources:src/%.cpp=build/%.o)
