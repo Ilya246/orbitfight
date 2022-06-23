@@ -21,8 +21,6 @@ struct movement {
 	int secondaryfire: 1 = 0;
 };
 
-inline unsigned char simControlsBitmask = 0b00001110;
-
 struct Point {
 	double x;
 	double y;
@@ -82,6 +80,7 @@ struct Entity {
 	mass = 0.0,
 	lastCollideCheck = 0.0, lastCollideScan = 0.0,
 	resX, resY, resVelX, resVelY, resMass, resRadius, resCollideScan;
+	bool ghost = false;
 	Entity* simRelBody = nullptr;
 	unsigned char color[3]{255, 255, 255};
 	uint32_t id;
@@ -89,6 +88,7 @@ struct Entity {
 
 struct Triangle: public Entity {
 	Triangle();
+	Triangle(bool ghost);
 
 	void control(movement& cont) override;
 	void draw() override;
@@ -109,6 +109,7 @@ struct Triangle: public Entity {
 	bool burning, resBurning;
 	std::string name = "";
 
+	std::unique_ptr<std::vector<Point>> inertTrajectory;
 	std::unique_ptr<sf::CircleShape> shape, forwards;
 	float rotation = 0;
 };

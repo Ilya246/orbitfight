@@ -453,20 +453,30 @@ int main(int argc, char** argv) {
 			double resdelta = delta;
 			delta = predictDelta;
 			simulating = true;
+			bool controlsActive = *(unsigned char*) &controls != 0;
+			if (ownEntity) {
+				if (controlsActive) {
+					ghost = new Triangle(true);
+					ghost->x = ownEntity->x;
+					ghost->y = ownEntity->y;
+					ghost->velX = ownEntity->velX;
+					ghost->velY = ownEntity->velY;
+				}
+				((Triangle*)ownEntity)->inertTrajectory->clear();
+			}
 			for (Entity* e : updateGroup) {
 				e->simSetup();
 				e->trajectory->clear();
 			}
 			std::vector<Entity*> simEntities(updateGroup);
-			movement simControls = (movement)(*(unsigned char*) &controls & simControlsBitmask);
 			for (int i = 0; i < predictSteps; i++) {
 				predictingFor = predictDelta * predictSteps;
 				for (Entity* e : simEntities) {
-					e->update();
 					e->trajectory->push_back({e->x - e->simRelBody->x, e->y - e->simRelBody->y});
+					e->update();
 				}
 				if (ownEntity) {
-					ownEntity->control(simControls);
+					ownEntity->control(controls);
 				}
 				for (Entity* en : entityDeleteBuffer) {
 					for (size_t i = 0; i < simEntities.size(); i++) {
@@ -486,6 +496,10 @@ int main(int argc, char** argv) {
 					}
 				}
 				entityDeleteBuffer.clear();
+			}
+			if (ownEntity && controlsActive) {
+				*((Triangle*)ownEntity)->inertTrajectory = *ghost->trajectory;
+				delete ghost;
 			}
 			for (Entity* e : updateGroup) {
 				e->simReset();

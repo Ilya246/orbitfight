@@ -115,7 +115,7 @@ void Entity::update() {
 	if(globalTime - lastCollideScan > collideScanSpacing || (simulating && predictingFor - lastCollideScan > collideScanSpacing * 60.0)) [[unlikely]] {
 		size_t i = 0;
 		for (Entity* e : updateGroup) {
-			if (e == this) [[unlikely]] {
+			if (e == this || ((e->ghost || ghost) && type() == Entities::Triangle && e->type() == Entities::Triangle)) [[unlikely]] {
 				continue;
 			}
 			if ((dst2(abs(x - e->x), abs(y - e->y)) - (radius + e->radius) * (radius + e->radius)) / std::max(0.5, dst2(e->velX - velX, e->velY - velY)) < collideScanDistance2) {
@@ -190,7 +190,7 @@ void Entity::draw() {
 	if (trajectory && simRelBody && trajectory->size() > 0) [[likely]] {
 		std::vector<Point> traj = *trajectory;
 		sf::VertexArray lines(sf::LineStrip, traj.size());
-		for (size_t i = 0; i < trajectory->size(); i++){
+		for (size_t i = 0; i < traj.size(); i++){
 			lines[i].position = sf::Vector2f(simRelBody->x + traj[i].x, simRelBody->y + traj[i].y);
 			lines[i].color = trajColor;
 		}
@@ -268,7 +268,11 @@ Triangle::Triangle() : Entity() {
 		icon = std::make_unique<sf::CircleShape>(3.f, 3);
 		icon->setOrigin(2.f, 2.f);
 		icon->setFillColor(sf::Color(255, 255, 255));
+		inertTrajectory = std::make_unique<std::vector<Point>>();
 	}
+}
+Triangle::Triangle(bool ghost) : Entity() {
+	this->ghost = true;
 }
 
 void Triangle::loadCreatePacket(sf::Packet& packet) {
@@ -384,6 +388,16 @@ void Triangle::control(movement& cont) {
 
 void Triangle::draw() {
 	Entity::draw();
+	if (inertTrajectory && simRelBody && inertTrajectory->size() > 0) [[likely]] {
+		sf::Color trajColor((unsigned char)(color[0] * 0.7), (unsigned char)(color[1] * 0.7), (unsigned char)(color[2] * 0.7));
+		std::vector<Point> traj = *inertTrajectory;
+		sf::VertexArray lines(sf::LineStrip, traj.size());
+		for (size_t i = 0; i < traj.size(); i++){
+			lines[i].position = sf::Vector2f(simRelBody->x + traj[i].x, simRelBody->y + traj[i].y);
+			lines[i].color = trajColor;
+		}
+		window->draw(lines);
+	}
 	shape->setPosition(x, y);
 	shape->setRotation(90.f - rotation);
 	shape->setFillColor(sf::Color(color[0], color[1], color[2]));
