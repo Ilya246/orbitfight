@@ -89,25 +89,25 @@ int main(int argc, char** argv) {
 
 		printf("Hosted server on port %u.\n", port);
 
-		star = new Attractor(12000.f, 800000.0);
+		star = new Attractor(15000.f, 4000000.0);
 		star->setPosition(0.0, 0.0);
 		star->setColor(255, 229, 97);
-		int planets = (int)rand_f(3.f, 7.f);
+		int planets = (int)rand_f(4.f, 9.f);
 		for (int i = 0; i < planets; i++) {
-			double spawnDst = rand_f(30000.f, 600000.f);
+			double spawnDst = rand_f(30000.f, 1000000.f);
 			float spawnAngle = rand_f(-PI, PI);
-			float radius = rand_f(400.f, 1600.f);
+			float radius = rand_f(400.f, 2000.f);
 			Attractor* planet = new Attractor(radius, radius * radius / 800.f);
 			planet->setPosition(star->x + spawnDst * std::cos(spawnAngle), star->y + spawnDst * std::sin(spawnAngle));
 			double vel = sqrt(G * star->mass / spawnDst);
 			planet->addVelocity(star->velX + vel * std::cos(spawnAngle + PI / 2.0), -star->velY - vel * std::sin(spawnAngle + PI / 2.0));
 			planet->setColor((int)rand_f(64.f, 255.f), (int)rand_f(64.f, 255.f), (int)rand_f(64.f, 255.f));
-			if (radius >= 600.f) {
+			if (radius >= 900.f) {
 				int moons = (int)(rand_f(0.f, 4.f) * radius * radius / (1000.0 * 1000.0));
 				for (int it = 0; it < moons; it++) {
-					double spawnDst = planet->radius + rand_f(1500.f, 4000.f);
+					double spawnDst = planet->radius + rand_f(3000.f, 15000.f);
 					float spawnAngle = rand_f(-PI, PI);
-					float radius = rand_f(30.f, 200.f);
+					float radius = rand_f(30.f, planet->radius / 5.f);
 					Attractor* moon = new Attractor(radius, radius * radius / 800.f);
 					moon->setPosition(planet->x + spawnDst * std::cos(spawnAngle), planet->y + spawnDst * std::sin(spawnAngle));
 					double vel = sqrt(G * planet->mass / spawnDst);
@@ -286,8 +286,7 @@ int main(int argc, char** argv) {
 			chat.setString(chatString);
 			chat.setCharacterSize(textCharacterSize);
 			chat.setFillColor(sf::Color::White);
-			sf::FloatRect pos = chat.getLocalBounds();
-			chat.move(2, g_camera.h - 10);
+			chat.move(2, g_camera.h - (textCharacterSize + 4) * 6);
 			window->draw(chat);
 			g_camera.bindWorld();
 			window->display();
