@@ -242,7 +242,7 @@ int main(int argc, char** argv) {
 					break;
 				}
 				case sf::Event::TextEntered: {
-					if(chatting && (int)chatBuffer.getSize() <= messageLimit && event.text.unicode != 8){
+					if(chatting && (int)chatBuffer.getSize() < messageLimit && event.text.unicode != 8){
 						chatBuffer += event.text.unicode;
 					}
 					if(chatting && debug){
@@ -287,7 +287,7 @@ int main(int argc, char** argv) {
 			chat.setCharacterSize(textCharacterSize);
 			chat.setFillColor(sf::Color::White);
 			sf::FloatRect pos = chat.getLocalBounds();
-			chat.move(2, g_camera.h - pos.top - pos.height - 10);
+			chat.move(2, g_camera.h - 10);
 			window->draw(chat);
 			g_camera.bindWorld();
 			window->display();
