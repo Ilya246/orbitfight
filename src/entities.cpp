@@ -260,9 +260,9 @@ Triangle::Triangle() : Entity() {
 	if (!headless) {
 		shape = std::make_unique<sf::CircleShape>(radius, 3);
 		shape->setOrigin(radius, radius);
-		forwards = std::make_unique<sf::CircleShape>(4.f, 6);
+		forwards = std::make_unique<sf::CircleShape>(2.f, 6);
 		forwards->setOrigin(4.f, 4.f);
-		icon = std::make_unique<sf::CircleShape>(2.f, 3);
+		icon = std::make_unique<sf::CircleShape>(3.f, 3);
 		icon->setOrigin(2.f, 2.f);
 		icon->setFillColor(sf::Color(255, 255, 255));
 	}
@@ -316,7 +316,7 @@ void Triangle::control(movement& cont) {
 		hyperboostCharge = std::min(hyperboostCharge, 2.0 * hyperboostTime);
 		burning = hyperboostCharge > hyperboostTime && (burning || cont.boost);
 		if (burning) {
-			addVelocity(hyperboostStrength * xMul * delta * afterburnStrength, hyperboostStrength * yMul * delta * afterburnStrength);
+			addVelocity(afterburnStrength * xMul * delta, afterburnStrength * yMul * delta);
 			if (!headless) {
 				forwards->setFillColor(sf::Color(196, 32, 255));
 				forwards->setRotation(90.f - rotation);
