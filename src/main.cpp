@@ -119,7 +119,7 @@ int main(int argc, char** argv) {
 			obf::planets.push_back(planet);
 		}
 	} else {
-		window = new sf::RenderWindow(sf::VideoMode(500, 500), "Test");
+		window = new sf::RenderWindow(sf::VideoMode(500, 500), "Orbitfight");
 
 		g_camera.scale = 1;
 		g_camera.resize();
