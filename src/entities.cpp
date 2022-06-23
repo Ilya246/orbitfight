@@ -88,6 +88,14 @@ Entity::~Entity() noexcept {
 			despawnPacket << Packets::DeleteEntity << this->id;
 			p->tcpSocket.send(despawnPacket);
 		}
+		for (size_t i = 0; i < planets.size(); i++) {
+			Entity* e = planets[i];
+			if (e == this) [[unlikely]] {
+				planets[i] = planets[planets.size() - 1];
+				planets.pop_back();
+				break;
+			}
+		}
 	}
 }
 
@@ -178,11 +186,13 @@ void Entity::update() {
 }
 
 void Entity::draw() {
+	sf::Color trajColor(color[0], color[1], color[2]);
 	if (trajectory && simRelBody && trajectory->size() > 0) [[likely]] {
 		std::vector<Point> traj = *trajectory;
 		sf::VertexArray lines(sf::LineStrip, traj.size());
 		for (size_t i = 0; i < trajectory->size(); i++){
 			lines[i].position = sf::Vector2f(simRelBody->x + traj[i].x, simRelBody->y + traj[i].y);
+			lines[i].color = trajColor;
 		}
 		window->draw(lines);
 	}
@@ -205,8 +215,8 @@ void Entity::collide(Entity* with, bool collideOther) {
 	}
 	double vel = dst(dVx, dVy);
 	double inX = std::cos(inHeading), inY = std::sin(inHeading);
-	velX -= vel * inX * factor + friction * dVx;
-	velY += vel * inY * factor + friction * dVy;
+	velX -= vel * inX * factor + friction * dVx * delta;
+	velY += vel * inY * factor + friction * dVy * delta;
 	x = (x + (with->x - (radius + with->radius) * inX) * massFactor) / (1.0 + massFactor);
 	y = (y + (with->y + (radius + with->radius) * inY) * massFactor) / (1.0 + massFactor);
 	if (collideOther) {
@@ -275,6 +285,19 @@ void Triangle::loadSyncPacket(sf::Packet& packet) {
 }
 void Triangle::unloadSyncPacket(sf::Packet& packet) {
 	packet >> x >> y >> velX >> velY >> rotation;
+}
+
+void Triangle::simSetup() {
+	Entity::simSetup();
+	resLastBoosted = lastBoosted;
+	resLastShot = lastShot;
+	resHyperboostCharge = hyperboostCharge;
+}
+void Triangle::simReset() {
+	Entity::simReset();
+	lastBoosted = resLastBoosted;
+	lastShot = resLastShot;
+	hyperboostCharge = resHyperboostCharge;
 }
 
 void Triangle::control(movement& cont) {

@@ -38,7 +38,7 @@ inline double delta = 1.0 / 60.0,
 	collideRestitution = 1.2, // how "bouncy" collisions should be
 	friction = 0.002, // friction of colliding bodies, stops infinite sliding
 	syncCullThreshold = 0.6,
-	predictSpacing = 1.0, predictDelta = 15.0,
+	predictSpacing = 0.5, predictDelta = 15.0,
 	G = 50.0,
 	lastPing = 0.0, lastPredict = 0.0;
 inline const int displayMessageCount = 5;

@@ -453,6 +453,7 @@ int main(int argc, char** argv) {
 		if (!headless && globalTime - lastPredict > predictSpacing) [[unlikely]] {
 			double resdelta = delta;
 			delta = predictDelta;
+			simulating = true;
 			for (Entity* e : updateGroup) {
 				e->simSetup();
 				e->trajectory->clear();
@@ -462,6 +463,9 @@ int main(int argc, char** argv) {
 				for (Entity* e : simEntities) {
 					e->update();
 					e->trajectory->push_back({e->x - e->simRelBody->x, e->y - e->simRelBody->y});
+				}
+				if (ownEntity) {
+					ownEntity->control(controls);
 				}
 				for (Entity* en : entityDeleteBuffer) {
 					for (size_t i = 0; i < simEntities.size(); i++) {
@@ -482,10 +486,11 @@ int main(int argc, char** argv) {
 				}
 				entityDeleteBuffer.clear();
 			}
-			delta = resdelta;
 			for (Entity* e : updateGroup) {
 				e->simReset();
 			}
+			delta = resdelta;
+			simulating = false;
 			lastPredict = globalTime;
 		}
 		if (headless) {

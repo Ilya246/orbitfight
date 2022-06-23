@@ -96,9 +96,13 @@ struct Triangle: public Entity {
 	void loadSyncPacket(sf::Packet& packet) override;
 	void unloadSyncPacket(sf::Packet& packet) override;
 
+	void simSetup() override;
+	void simReset() override;
+
 	uint8_t type() override;
-	double accel = 0.008, rotateSpeed = 2.0, boostCooldown = 15.0, boostStrength = 1.5, reload = 6.0, shootPower = 2.0, hyperboostStrength = 0.08, hyperboostTime = 10.0 * 60.0,
-	lastBoosted = -boostCooldown, lastShot = -reload, hyperboostCharge = 0.0;
+	double accel = 0.008, rotateSpeed = 2.0, boostCooldown = 12.0, boostStrength = 1.5, reload = 6.0, shootPower = 2.0, hyperboostStrength = 0.06, hyperboostTime = 15.0 * 60.0,
+	lastBoosted = -boostCooldown, lastShot = -reload, hyperboostCharge = 0.0,
+	resLastBoosted, resLastShot, resHyperboostCharge;
 
 	std::string name = "";
 
