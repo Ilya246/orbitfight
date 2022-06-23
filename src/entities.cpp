@@ -312,11 +312,9 @@ void Triangle::control(movement& cont) {
 	if (cont.hyperboost) {
 		hyperboostCharge += delta;
 		if (hyperboostCharge > hyperboostTime) {
-			if(cont.boost) {
+			if (cont.boost) {
 				addVelocity(hyperleapStrengh * xMul, hyperleapStrengh * yMul);
 				hyperboostCharge = 0.0;
-				if (!headless) {
-				}
 				return;
 			}
 			addVelocity(hyperboostStrength * xMul * delta, hyperboostStrength * yMul * delta);
