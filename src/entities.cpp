@@ -260,7 +260,7 @@ Triangle::Triangle() : Entity() {
 	if (!headless) {
 		shape = std::make_unique<sf::CircleShape>(radius, 3);
 		shape->setOrigin(radius, radius);
-		forwards = std::make_unique<sf::CircleShape>(4.f, 3);
+		forwards = std::make_unique<sf::CircleShape>(4.f, 6);
 		forwards->setOrigin(4.f, 4.f);
 		icon = std::make_unique<sf::CircleShape>(2.f, 3);
 		icon->setOrigin(2.f, 2.f);
@@ -292,7 +292,6 @@ void Triangle::simSetup() {
 	resLastBoosted = lastBoosted;
 	resLastShot = lastShot;
 	resHyperboostCharge = hyperboostCharge;
-	resBurnCharge = burnCharge;
 	resBurning = burning;
 }
 void Triangle::simReset() {
@@ -300,7 +299,6 @@ void Triangle::simReset() {
 	lastBoosted = resLastBoosted;
 	lastShot = resLastShot;
 	hyperboostCharge = resHyperboostCharge;
-	burnCharge = resBurnCharge;
 	burning = resBurning;
 }
 
@@ -313,35 +311,32 @@ void Triangle::control(movement& cont) {
 	} else {
 		return;
 	}
-	if (cont.hyperboost || hyperboostCharge > 1.0 || burning) {
-		hyperboostCharge += delta;
+	if (cont.hyperboost || burning) {
+		hyperboostCharge += delta * (1 - 2 * burning);
 		hyperboostCharge = std::min(hyperboostCharge, 2.0 * hyperboostTime);
-		if ((cont.boost && hyperboostCharge > hyperboostTime) || burning) {
-			if (!burning) {
-				burning = true;
-				burnCharge = 2.0 * hyperboostTime - hyperboostCharge;
-			}
-			addVelocity(hyperboostStrength * xMul * delta * afterburnStrength, hyperboostStrength * xMul * delta * afterburnStrength);
-			hyperboostCharge -= delta * 2.0;
-			if (hyperboostCharge <= burnCharge) {
-				burning = false;
-				burnCharge = 0.0;
+		burning = hyperboostCharge > hyperboostTime && (burning || cont.boost);
+		if (burning) {
+			addVelocity(hyperboostStrength * xMul * delta * afterburnStrength, hyperboostStrength * yMul * delta * afterburnStrength);
+			if (!headless) {
+				forwards->setFillColor(sf::Color(196, 32, 255));
+				forwards->setRotation(90.f - rotation);
 			}
 			return;
-		} else if (hyperboostCharge > hyperboostTime && cont.hyperboost) {
+		}
+		if (cont.turnleft) {
+			rotation += rotateSpeed * delta * hyperboostTurnMult;
+		} else if (cont.turnright) {
+			rotation -= rotateSpeed * delta * hyperboostTurnMult;
+		}
+		if (hyperboostCharge > hyperboostTime) {
 			addVelocity(hyperboostStrength * xMul * delta, hyperboostStrength * yMul * delta);
 			if (!headless) {
 				forwards->setFillColor(sf::Color(64, 64, 255));
 				forwards->setRotation(90.f - rotation);
 			}
 		} else if (!headless) {
-			if (cont.boost) {
-				forwards->setFillColor(sf::Color(196, 32, 255));
-				forwards->setRotation(90.f - rotation);
-			} else {
-				forwards->setFillColor(sf::Color(255, 255, 0));
-				forwards->setRotation(90.f - rotation);
-			}
+			forwards->setFillColor(sf::Color(255, 255, 0));
+			forwards->setRotation(90.f - rotation);
 		}
 		return;
 	} else {
@@ -423,9 +418,9 @@ void Triangle::draw() {
 					window->draw(hyperboostBar);
 				}
 				if (hyperboostProgress < 0.0) {
-					sf::RectangleShape hyperboostBar(sf::Vector2f(hyperboostProgress, 4.f));
+					sf::RectangleShape hyperboostBar(sf::Vector2f(-hyperboostProgress, 4.f));
 					hyperboostBar.setFillColor(sf::Color(255, 255, 64));
-					hyperboostBar.setPosition(g_camera.w * 0.5f - hyperboostProgress / 2.f, g_camera.h * 0.5f + 36.f);
+					hyperboostBar.setPosition(g_camera.w * 0.5f + hyperboostProgress / 2.f, g_camera.h * 0.5f + 36.f);
 					window->draw(hyperboostBar);
 				}
 			}

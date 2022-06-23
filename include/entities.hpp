@@ -100,9 +100,9 @@ struct Triangle: public Entity {
 	void simReset() override;
 
 	uint8_t type() override;
-	double accel = 0.008, rotateSpeed = 2.0, boostCooldown = 12.0, boostStrength = 1.5, reload = 6.0, shootPower = 2.0, hyperboostStrength = 0.06, hyperboostTime = 15.0 * 60.0, afterburnStrength = 3.0,
-	lastBoosted = -boostCooldown, lastShot = -reload, hyperboostCharge = 0.0, burnCharge = 0.0,
-	resLastBoosted, resLastShot, resHyperboostCharge, resBurnCharge;
+	double accel = 0.008, rotateSpeed = 2.0, boostCooldown = 12.0, boostStrength = 1.5, reload = 6.0, shootPower = 2.0, hyperboostStrength = 0.06, hyperboostTime = 15.0 * 60.0, hyperboostTurnMult = 0.02, afterburnStrength = 0.12,
+	lastBoosted = -boostCooldown, lastShot = -reload, hyperboostCharge = 0.0,
+	resLastBoosted, resLastShot, resHyperboostCharge;
 
 	bool burning, resBurning;
 	std::string name = "";
