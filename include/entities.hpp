@@ -21,6 +21,8 @@ struct movement {
 	int secondaryfire: 1 = 0;
 };
 
+inline unsigned char simControlsBitmask = 0b00001110;
+
 struct Point {
 	double x;
 	double y;

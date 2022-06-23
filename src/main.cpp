@@ -458,6 +458,7 @@ int main(int argc, char** argv) {
 				e->trajectory->clear();
 			}
 			std::vector<Entity*> simEntities(updateGroup);
+			movement simControls = (movement)(*(unsigned char*) &controls & simControlsBitmask);
 			for (int i = 0; i < predictSteps; i++) {
 				predictingFor = predictDelta * predictSteps;
 				for (Entity* e : simEntities) {
@@ -465,7 +466,7 @@ int main(int argc, char** argv) {
 					e->trajectory->push_back({e->x - e->simRelBody->x, e->y - e->simRelBody->y});
 				}
 				if (ownEntity) {
-					ownEntity->control(controls);
+					ownEntity->control(simControls);
 				}
 				for (Entity* en : entityDeleteBuffer) {
 					for (size_t i = 0; i < simEntities.size(); i++) {
