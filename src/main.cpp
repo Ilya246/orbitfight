@@ -459,6 +459,7 @@ int main(int argc, char** argv) {
 			}
 			std::vector<Entity*> simEntities(updateGroup);
 			for (int i = 0; i < predictSteps; i++) {
+				predictingFor = predictDelta * predictSteps;
 				for (Entity* e : simEntities) {
 					e->update();
 					e->trajectory->push_back({e->x - e->simRelBody->x, e->y - e->simRelBody->y});

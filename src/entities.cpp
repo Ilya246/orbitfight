@@ -112,7 +112,7 @@ void Entity::control(movement& cont) {}
 void Entity::update() {
 	x += velX * delta;
 	y += velY * delta;
-	if(globalTime - lastCollideScan > collideScanSpacing) [[unlikely]] {
+	if(globalTime - lastCollideScan > collideScanSpacing || (simulating && predictingFor - lastCollideScan > collideScanSpacing * 60.0)) [[unlikely]] {
 		size_t i = 0;
 		for (Entity* e : updateGroup) {
 			if (e == this) [[unlikely]] {
@@ -130,7 +130,7 @@ void Entity::update() {
 		if (i < near.size()) {
 			near.erase(near.begin() + i + 1, near.begin() + near.size());
 		}
-		lastCollideScan = globalTime;
+		lastCollideScan = simulating ? predictingFor : globalTime;
 	}
 	for (Entity* e : near) {
 		if (dst2(x - e->x, y - e->y) <= (radius + e->radius) * (radius + e->radius)) [[unlikely]] {
@@ -232,6 +232,8 @@ void Entity::simSetup() {
 	resMass = mass;
 	resRadius = radius;
 	resNear = near;
+	resCollideScan = lastCollideScan;
+	lastCollideScan = 0.0;
 	double maxFactor = 0.0;
 	for (Entity* e : updateGroup) {
 		if (e == this || e->type() != Entities::Attractor) {
@@ -252,6 +254,7 @@ void Entity::simReset() {
 	mass = resMass;
 	radius = resRadius;
 	near = resNear;
+	lastCollideScan = resCollideScan;
 }
 
 Triangle::Triangle() : Entity() {
@@ -293,6 +296,7 @@ void Triangle::simSetup() {
 	resLastShot = lastShot;
 	resHyperboostCharge = hyperboostCharge;
 	resBurning = burning;
+	resRotation = rotation;
 }
 void Triangle::simReset() {
 	Entity::simReset();
@@ -300,21 +304,16 @@ void Triangle::simReset() {
 	lastShot = resLastShot;
 	hyperboostCharge = resHyperboostCharge;
 	burning = resBurning;
+	rotation = resRotation;
 }
 
 void Triangle::control(movement& cont) {
 	float rotationRad = rotation * degToRad;
-	double xMul = 0.0, yMul = 0.0;
-	if (*(unsigned char*) &cont != 0){
-		xMul = std::cos(rotationRad);
-		yMul = std::sin(rotationRad);
-	} else {
-		return;
-	}
+	double xMul = std::cos(rotationRad), yMul = std::sin(rotationRad);
 	if (cont.hyperboost || burning) {
-		hyperboostCharge += delta * (1 - 2 * burning);
+		hyperboostCharge += delta * (burning ? -2 : 1);
 		hyperboostCharge = std::min(hyperboostCharge, 2.0 * hyperboostTime);
-		burning = hyperboostCharge > hyperboostTime && (burning || cont.boost);
+		burning = hyperboostCharge > hyperboostTime && (burning || (cont.boost && hyperboostCharge > minAfterburn));
 		if (burning) {
 			addVelocity(afterburnStrength * xMul * delta, afterburnStrength * yMul * delta);
 			if (!headless) {
