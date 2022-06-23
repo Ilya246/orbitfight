@@ -313,7 +313,13 @@ void Triangle::control(movement& cont) {
 		hyperboostCharge += delta;
 		if (hyperboostCharge > hyperboostTime) {
 			if(cont.boost) {
-				addVelocity(hyperboostStrength * xMul * delta * boostStrength, hyperboostStrength * yMul * delta * boostStrength);
+				addVelocity(hyperleapStrengh * xMul, hyperleapStrengh * yMul);
+				hyperboostCharge = 0.0;
+				if (!headless) {
+					forwards->setFillColor(sf::Color(196, 32, 255));
+					forwards->setRotation(90.f - rotation);
+				}
+				return;
 			}
 			addVelocity(hyperboostStrength * xMul * delta, hyperboostStrength * yMul * delta);
 			if (!headless) {
