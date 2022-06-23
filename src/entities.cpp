@@ -312,6 +312,9 @@ void Triangle::control(movement& cont) {
 	if (cont.hyperboost) {
 		hyperboostCharge += delta;
 		if (hyperboostCharge > hyperboostTime) {
+			if(cont.boost) {
+				addVelocity(hyperboostStrength * xMul * delta * boostStrength, hyperboostStrength * yMul * delta * boostStrength);
+			}
 			addVelocity(hyperboostStrength * xMul * delta, hyperboostStrength * yMul * delta);
 			if (!headless) {
 				forwards->setFillColor(sf::Color(64, 64, 255));
