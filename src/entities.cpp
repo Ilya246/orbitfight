@@ -316,8 +316,6 @@ void Triangle::control(movement& cont) {
 				addVelocity(hyperleapStrengh * xMul, hyperleapStrengh * yMul);
 				hyperboostCharge = 0.0;
 				if (!headless) {
-					forwards->setFillColor(sf::Color(196, 32, 255));
-					forwards->setRotation(90.f - rotation);
 				}
 				return;
 			}
@@ -327,8 +325,13 @@ void Triangle::control(movement& cont) {
 				forwards->setRotation(90.f - rotation);
 			}
 		} else if (!headless) {
-			forwards->setFillColor(sf::Color(255, 255, 0));
-			forwards->setRotation(90.f - rotation);
+			if (cont.boost) {
+				forwards->setFillColor(sf::Color(196, 32, 255));
+				forwards->setRotation(90.f - rotation);
+			} else {
+				forwards->setFillColor(sf::Color(255, 255, 0));
+				forwards->setRotation(90.f - rotation);
+			}
 		}
 		return;
 	} else {
