@@ -458,6 +458,7 @@ int main(int argc, char** argv) {
 		entityDeleteBuffer.clear();
 		if (!headless && globalTime - lastPredict > predictSpacing) [[unlikely]] {
 			double resdelta = delta;
+			double resTime = globalTime;
 			delta = predictDelta;
 			simulating = true;
 			bool controlsActive = *(unsigned char*) &controls != 0;
@@ -478,6 +479,7 @@ int main(int argc, char** argv) {
 			std::vector<Entity*> retUpdateGroup(updateGroup);
 			for (int i = 0; i < predictSteps; i++) {
 				predictingFor = predictDelta * predictSteps;
+				globalTime += predictDelta / 60.0;
 				for (Entity* e : updateGroup) {
 					e->update();
 				}
@@ -516,6 +518,7 @@ int main(int argc, char** argv) {
 			}
 			delta = resdelta;
 			simulating = false;
+			globalTime = resTime;
 			lastPredict = globalTime;
 		}
 		if (headless) {
