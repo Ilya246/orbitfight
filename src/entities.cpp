@@ -191,7 +191,7 @@ void Entity::draw() {
 		std::vector<Point> traj = *trajectory;
 		sf::VertexArray lines(sf::LineStrip, traj.size());
 		for (size_t i = 0; i < traj.size(); i++){
-			lines[i].position = sf::Vector2f(simRelBody->x + traj[i].x, simRelBody->y + traj[i].y);
+			lines[i].position = sf::Vector2f(simRelBody->x + traj[i].x + drawShiftX, simRelBody->y + traj[i].y + drawShiftY);
 			lines[i].color = trajColor;
 		}
 		window->draw(lines);
@@ -258,8 +258,8 @@ void Entity::simReset() {
 }
 
 Triangle::Triangle() : Entity() {
-	mass = 0.1;
-	radius = 8.0;
+	mass = 0.4;
+	radius = 16.0;
 	if (!headless) {
 		shape = std::make_unique<sf::CircleShape>(radius, 3);
 		shape->setOrigin(radius, radius);
@@ -272,8 +272,8 @@ Triangle::Triangle() : Entity() {
 	}
 }
 Triangle::Triangle(bool ghost) : Entity() {
-	mass = 0.1;
-	radius = 8.0;
+	mass = 0.4;
+	radius = 16.0;
 	this->ghost = true;
 }
 
@@ -395,12 +395,12 @@ void Triangle::draw() {
 		std::vector<Point> traj = *inertTrajectory;
 		sf::VertexArray lines(sf::LineStrip, traj.size());
 		for (size_t i = 0; i < traj.size(); i++){
-			lines[i].position = sf::Vector2f(simRelBody->x + traj[i].x, simRelBody->y + traj[i].y);
+			lines[i].position = sf::Vector2f(simRelBody->x + traj[i].x + drawShiftX, simRelBody->y + traj[i].y + drawShiftY);
 			lines[i].color = trajColor;
 		}
 		window->draw(lines);
 	}
-	shape->setPosition(x, y);
+	shape->setPosition(x + drawShiftX, y + drawShiftY);
 	shape->setRotation(90.f - rotation);
 	shape->setFillColor(sf::Color(color[0], color[1], color[2]));
 	window->draw(*shape);
@@ -521,7 +521,7 @@ void Attractor::update() {
 }
 void Attractor::draw() {
 	Entity::draw();
-	shape->setPosition(x, y);
+	shape->setPosition(x + drawShiftX, y + drawShiftY);
 	shape->setFillColor(sf::Color(color[0], color[1], color[2]));
 	window->draw(*shape);
 	if (g_camera.scale > radius && ownEntity) {
@@ -538,8 +538,8 @@ uint8_t Attractor::type() {
 }
 
 Projectile::Projectile() : Entity() {
-	this->radius = 4;
-	this->mass = 0.02;
+	this->radius = 6;
+	this->mass = 0.08;
 	this->color[0] = 180;
 	this->color[1] = 0;
 	this->color[2] = 0;
@@ -616,7 +616,7 @@ void Projectile::collide(Entity* with, bool collideOther) {
 
 void Projectile::draw() {
 	Entity::draw();
-	shape->setPosition(x, y);
+	shape->setPosition(x + drawShiftX, y + drawShiftY);
 	shape->setFillColor(sf::Color(color[0], color[1], color[2]));
 	window->draw(*shape);
 	if (g_camera.scale > radius && ownEntity) {

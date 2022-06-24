@@ -89,26 +89,26 @@ int main(int argc, char** argv) {
 
 		printf("Hosted server on port %u.\n", port);
 
-		star = new Attractor(15000.f, 4000000.0);
+		star = new Attractor(60000.f, 16000000.0);
 		star->setPosition(0.0, 0.0);
 		star->setColor(255, 229, 97);
 		int planets = (int)rand_f(4.f, 9.f);
 		for (int i = 0; i < planets; i++) {
-			double spawnDst = rand_f(30000.f, 1000000.f);
+			double spawnDst = rand_f(120000.f, 4000000.f);
 			float spawnAngle = rand_f(-PI, PI);
-			float radius = rand_f(400.f, 2000.f);
-			Attractor* planet = new Attractor(radius, radius * radius / 800.f);
+			float radius = rand_f(500.f, 8000.f);
+			Attractor* planet = new Attractor(radius, radius * radius / 1000.f);
 			planet->setPosition(star->x + spawnDst * std::cos(spawnAngle), star->y + spawnDst * std::sin(spawnAngle));
 			double vel = sqrt(G * star->mass / spawnDst);
 			planet->addVelocity(star->velX + vel * std::cos(spawnAngle + PI / 2.0), -star->velY - vel * std::sin(spawnAngle + PI / 2.0));
 			planet->setColor((int)rand_f(64.f, 255.f), (int)rand_f(64.f, 255.f), (int)rand_f(64.f, 255.f));
-			if (radius >= 900.f) {
-				int moons = (int)(rand_f(0.f, 4.f) * radius * radius / (1000.0 * 1000.0));
+			if (radius >= 5000.f) {
+				int moons = (int)(rand_f(0.f, 4.f) * radius * radius / (5000.0 * 5000.0));
 				for (int it = 0; it < moons; it++) {
-					double spawnDst = planet->radius + rand_f(3000.f, 15000.f);
+					double spawnDst = planet->radius + rand_f(8000.f, 40000.f);
 					float spawnAngle = rand_f(-PI, PI);
-					float radius = rand_f(30.f, planet->radius / 5.f);
-					Attractor* moon = new Attractor(radius, radius * radius / 800.f);
+					float radius = rand_f(120.f, planet->radius / 6.f);
+					Attractor* moon = new Attractor(radius, radius * radius / 1000.f);
 					moon->setPosition(planet->x + spawnDst * std::cos(spawnAngle), planet->y + spawnDst * std::sin(spawnAngle));
 					double vel = sqrt(G * planet->mass / spawnDst);
 					moon->addVelocity(planet->velX + vel * std::cos(spawnAngle + PI / 2.0), -planet->velY - vel * std::sin(spawnAngle + PI / 2.0));
@@ -257,14 +257,18 @@ int main(int argc, char** argv) {
 
 			window->clear(sf::Color(20, 16, 50));
 			g_camera.bindWorld();
+			if (ownEntity) [[likely]] {
+				drawShiftX = -ownEntity->x, drawShiftY = -ownEntity->y;
+				g_camera.pos.x = 0;
+				g_camera.pos.y = 0;
+			} else {
+				drawShiftX = 0, drawShiftY = 0;
+			}
 			for (size_t i = 0; i < updateGroup.size(); i++) {
 				updateGroup[i]->draw();
 			}
 			g_camera.bindUI();
 			if (ownEntity) {
-				g_camera.pos.x = ownEntity->x;
-				g_camera.pos.y = ownEntity->y;
-
 				ownEntity->control(controls);
 
 				sf::Text coords;
@@ -472,8 +476,10 @@ int main(int argc, char** argv) {
 			for (int i = 0; i < predictSteps; i++) {
 				predictingFor = predictDelta * predictSteps;
 				for (Entity* e : simEntities) {
-					e->trajectory->push_back({e->x - e->simRelBody->x, e->y - e->simRelBody->y});
 					e->update();
+				}
+				for (Entity* e : simEntities) {
+					e->trajectory->push_back({e->x - e->simRelBody->x, e->y - e->simRelBody->y});
 				}
 				if (ownEntity) {
 					ownEntity->control(controls);
