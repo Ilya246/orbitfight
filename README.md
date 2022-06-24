@@ -6,6 +6,16 @@ Matrix server: https://matrix.to/#/#orbitfight:matrix.org
 
 This game is more of a learning project than a real game and is not really intended to be particularly interesting, another side effect of which is that the code may be rather cursed in places (example: main.cpp#404)
 
+# Controls
+- W - forwards
+- A - rotate left
+- S - backwards
+- D - rotate right
+- LShift - charge up hyperboost (NOT a fuel bar)
+- LCtrl - boost | afterburn during hyperboost
+- Spacebar - fire
+- Tab - set/change/unset reference body to predict trajectories against
+
 # Hosting
 `orbitfight.exe --headless`
 
