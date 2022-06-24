@@ -199,13 +199,15 @@ int main(int argc, char** argv) {
 		} else {
 			if (window->hasFocus()) {
 				mousePos = sf::Mouse::getPosition(*window);
-				controls.forward = sf::Keyboard::isKeyPressed(sf::Keyboard::W);
-				controls.backward = sf::Keyboard::isKeyPressed(sf::Keyboard::S);
-				controls.turnleft = sf::Keyboard::isKeyPressed(sf::Keyboard::A);
-				controls.turnright = sf::Keyboard::isKeyPressed(sf::Keyboard::D);
-				controls.boost = sf::Keyboard::isKeyPressed(sf::Keyboard::LControl);
-				controls.hyperboost = sf::Keyboard::isKeyPressed(sf::Keyboard::LShift);
-				controls.primaryfire = sf::Keyboard::isKeyPressed(sf::Keyboard::Space);
+				if (!chatting) {
+					controls.forward = sf::Keyboard::isKeyPressed(sf::Keyboard::W);
+					controls.backward = sf::Keyboard::isKeyPressed(sf::Keyboard::S);
+					controls.turnleft = sf::Keyboard::isKeyPressed(sf::Keyboard::A);
+					controls.turnright = sf::Keyboard::isKeyPressed(sf::Keyboard::D);
+					controls.boost = sf::Keyboard::isKeyPressed(sf::Keyboard::LControl);
+					controls.hyperboost = sf::Keyboard::isKeyPressed(sf::Keyboard::LShift);
+					controls.primaryfire = sf::Keyboard::isKeyPressed(sf::Keyboard::Space);
+				}
 			}
 
 			sf::Event event;
