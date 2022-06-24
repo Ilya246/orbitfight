@@ -9,6 +9,7 @@
 #include <SFML/Graphics.hpp>
 #include <SFML/Network.hpp>
 
+#include <cfloat>
 #include <cmath>
 #include <cstring>
 #include <fstream>
@@ -451,6 +452,24 @@ int main(int argc, char** argv) {
 
 		for (size_t i = 0; i < updateGroup.size(); i++) {
 			updateGroup[i]->update();
+		}
+		if (headless && lastSweep + projectileSweepSpacing < globalTime) {
+			for (Entity* e : updateGroup) {
+				if (e->type() != Entities::Projectile) {
+					continue;
+				}
+				double closest = DBL_MAX;
+				for (Player* p : playerGroup) {
+					if (!p->entity) {
+						continue;
+					}
+					closest = std::min(closest, dst2(e->x - p->entity->x, e->y - p->entity->y));
+				}
+				if (closest > sweepThreshold) {
+					entityDeleteBuffer.push_back(e);
+				}
+			}
+			lastSweep = globalTime;
 		}
 		for (Entity* e : entityDeleteBuffer) {
 			delete e;
