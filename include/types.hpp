@@ -15,7 +15,8 @@ constexpr uint16_t Ping = 0,
 	PingInfo = 9,
 	ResizeView = 10,
 	Name = 11,
-	PlanetCollision = 12;
+	PlanetCollision = 12,
+	SystemInfo = 13;
 }
 
 namespace obf::Entities {

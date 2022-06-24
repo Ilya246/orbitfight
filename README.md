@@ -4,7 +4,7 @@ A very in-development game where you're a spaceship shooting other spaceships in
 
 Matrix server: https://matrix.to/#/#orbitfight:matrix.org
 
-This game is more of a learning project than a real game and is not really intended to be particularly interesting, another side effect of which is that the code may be rather cursed in places (example: main.cpp#404)
+This game is more of a learning project than a real game and is not really intended to be particularly interesting, another side effect of which is that the code may be rather cursed in places
 
 # Controls
 - W - forwards

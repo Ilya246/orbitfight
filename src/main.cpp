@@ -90,12 +90,20 @@ int main(int argc, char** argv) {
 
 		printf("Hosted server on port %u.\n", port);
 
-		star = new Attractor(60000.f, 1.6e19);
+		blackholeSystem = rand_f(0.f, 1.f) < 1.f / 3.f;
+		float minrange = 120000.f;
+		if (blackholeSystem) {
+			star = new Attractor(1.f, 1.6e21);
+			star->setColor(0, 0, 0);
+			minrange = 12000.f;
+		} else {
+			star = new Attractor(60000.f, 1.6e20);
+			star->setColor(255, 229, 97);
+		}
 		star->setPosition(0.0, 0.0);
-		star->setColor(255, 229, 97);
 		int planets = (int)rand_f(5.f, 10.f);
 		for (int i = 0; i < planets; i++) {
-			double spawnDst = rand_f(120000.f, 4000000.f);
+			double spawnDst = rand_f(minrange, 4000000.f);
 			double factor = sqrt(spawnDst) / 500.0;
 			float spawnAngle = rand_f(-PI, PI);
 			float radius = rand_f(600.f, 6000.f * factor);
@@ -187,6 +195,9 @@ int main(int argc, char** argv) {
 				sf::Packet entityAssign;
 				entityAssign << Packets::AssignEntity << sparePlayer->entity->id;
 				sparePlayer->tcpSocket.send(entityAssign);
+				sf::Packet systemInfo;
+				systemInfo << Packets::SystemInfo << star->id << blackholeSystem;
+				sparePlayer->tcpSocket.send(systemInfo);
 				for (Player* p: playerGroup) {
 					sf::Packet namePacket;
 					namePacket << Packets::Name << p->entity->id << p->username;
@@ -277,7 +288,7 @@ int main(int argc, char** argv) {
 				}
 			}
 
-			window->clear(sf::Color(20, 16, 50));
+			window->clear(sf::Color(16, 0, 32));
 			g_camera.bindWorld();
 			if (ownEntity) [[likely]] {
 				drawShiftX = -ownEntity->x, drawShiftY = -ownEntity->y;
@@ -308,6 +319,16 @@ int main(int argc, char** argv) {
 					selection.setPosition(g_camera.w * 0.5 + (lastTrajectoryRef->x - ownEntity->x) / g_camera.scale, g_camera.h * 0.5 + (lastTrajectoryRef->y - ownEntity->y) / g_camera.scale);
 					selection.setFillColor(sf::Color(0, 0, 0, 0));
 					selection.setOutlineColor(sf::Color(255, 255, 64));
+					selection.setOutlineThickness(1.f);
+					window->draw(selection);
+				}
+				if (star && (!lastTrajectoryRef || lastTrajectoryRef != star) && blackholeSystem) {
+					float radius = std::max(6.f, (float)(star->radius / g_camera.scale));
+					sf::CircleShape selection(radius, 4);
+					selection.setOrigin(radius, radius);
+					selection.setPosition(g_camera.w * 0.5 + (star->x - ownEntity->x) / g_camera.scale, g_camera.h * 0.5 + (star->y - ownEntity->y) / g_camera.scale);
+					selection.setFillColor(sf::Color(0, 0, 0, 0));
+					selection.setOutlineColor(sf::Color(255, 0, 0));
 					selection.setOutlineThickness(1.f);
 					window->draw(selection);
 				}
@@ -459,6 +480,18 @@ int main(int argc, char** argv) {
 								break;
 							}
 						}
+						break;
+					}
+					case Packets::SystemInfo: {
+						uint32_t id;
+						packet >> id;
+						for (Entity* e : updateGroup) {
+							if (e->id == id) [[unlikely]] {
+								star = (Attractor*)e;
+								break;
+							}
+						}
+						packet >> blackholeSystem;
 						break;
 					}
 					default:

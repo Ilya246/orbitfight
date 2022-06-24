@@ -52,7 +52,8 @@ predictSteps = (int)(30.0 / predictDelta * 60.0);
 inline bool headless = false, autoConnect = false, debug = false,
 inputWaiting = false,
 chatting = false,
-simulating = false;
+simulating = false,
+blackholeSystem = false;
 
 struct Var {
 	uint8_t type;

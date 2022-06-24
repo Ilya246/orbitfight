@@ -262,7 +262,7 @@ Triangle::Triangle() : Entity() {
 	}
 }
 Triangle::Triangle(bool ghost) : Entity() {
-	mass = 0.4;
+	mass = 5000.0;
 	radius = 16.0;
 	this->ghost = true;
 }
@@ -456,7 +456,7 @@ Attractor::Attractor(double radius) : Entity() {
 	this->radius = radius;
 	this->mass = 100.0;
 	if (!headless) {
-		shape = std::make_unique<sf::CircleShape>(radius, (int)(sqrt(radius)));
+		shape = std::make_unique<sf::CircleShape>(radius, std::max(4, (int)(sqrt(radius))));
 		shape->setOrigin(radius, radius);
 		icon = std::make_unique<sf::CircleShape>(2.f, 6);
 		icon->setOrigin(2.f, 2.f);
@@ -466,7 +466,7 @@ Attractor::Attractor(double radius, double mass) : Entity() {
 	this->radius = radius;
 	this->mass = mass;
 	if (!headless) {
-		shape = std::make_unique<sf::CircleShape>(radius, (int)(sqrt(radius)));
+		shape = std::make_unique<sf::CircleShape>(radius, std::max(4, (int)(sqrt(radius))));
 		shape->setOrigin(radius, radius);
 		icon = std::make_unique<sf::CircleShape>(2.f, 6);
 		icon->setOrigin(2.f, 2.f);
@@ -529,7 +529,7 @@ uint8_t Attractor::type() {
 
 Projectile::Projectile() : Entity() {
 	this->radius = 6;
-	this->mass = 0.08;
+	this->mass = 500.0;
 	this->color[0] = 180;
 	this->color[1] = 0;
 	this->color[2] = 0;
