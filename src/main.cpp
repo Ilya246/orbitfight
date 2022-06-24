@@ -197,7 +197,7 @@ int main(int argc, char** argv) {
 				printf("An incoming connection has failed.\n");
 			}
 		} else {
-			if (window->hasFocus() && !chatting) {
+			if (window->hasFocus()) {
 				mousePos = sf::Mouse::getPosition(*window);
 				controls.forward = sf::Keyboard::isKeyPressed(sf::Keyboard::W);
 				controls.backward = sf::Keyboard::isKeyPressed(sf::Keyboard::S);
@@ -230,7 +230,23 @@ int main(int argc, char** argv) {
 					break;
 				}
 				case sf::Event::KeyPressed: {
-					if (event.key.code == sf::Keyboard::Return) {
+					if (event.key.code == sf::Keyboard::Tab && ownEntity) {
+						double minDst = DBL_MAX;
+						Entity* closestEntity = nullptr;
+						for (Entity* e : updateGroup) {
+							double dst = dst2(e->x - ownEntity->x - (mousePos.x - g_camera.w * 0.5) * g_camera.scale, e->y - ownEntity->y - (mousePos.y - g_camera.h * 0.5) * g_camera.scale) - e->radius * e->radius;
+							if (dst < minDst) {
+								minDst = dst;
+								closestEntity = e;
+							}
+						}
+						if (closestEntity == trajectoryRef) {
+							trajectoryRef = nullptr;
+							lastTrajectoryRef = nullptr;
+						} else {
+							trajectoryRef = closestEntity;
+						}
+					} else if (event.key.code == sf::Keyboard::Return) {
 						if(chatting && (int)chatBuffer.getSize() > 1){
 							sf::Packet chatPacket;
 							chatPacket << Packets::Chat << chatBuffer.toAnsiString();
@@ -283,6 +299,16 @@ int main(int argc, char** argv) {
 				coords.setCharacterSize(textCharacterSize);
 				coords.setFillColor(sf::Color::White);
 				window->draw(coords);
+				if (lastTrajectoryRef) {
+					float radius = std::max(5.f, (float)(lastTrajectoryRef->radius / g_camera.scale));
+					sf::CircleShape selection(radius, 4);
+					selection.setOrigin(radius, radius);
+					selection.setPosition(g_camera.w * 0.5 + (lastTrajectoryRef->x - ownEntity->x) / g_camera.scale, g_camera.h * 0.5 + (lastTrajectoryRef->y - ownEntity->y) / g_camera.scale);
+					selection.setFillColor(sf::Color(0, 0, 0, 0));
+					selection.setOutlineColor(sf::Color(255, 255, 64));
+					selection.setOutlineThickness(1.f);
+					window->draw(selection);
+				}
 			}
 			sf::Text chat;
 			chat.setFont(*font);
@@ -475,7 +501,7 @@ int main(int argc, char** argv) {
 			delete e;
 		}
 		entityDeleteBuffer.clear();
-		if (!headless && globalTime - lastPredict > predictSpacing) [[unlikely]] {
+		if (!headless && globalTime - lastPredict > predictSpacing && trajectoryRef) [[unlikely]] {
 			double resdelta = delta;
 			double resTime = globalTime;
 			delta = predictDelta;
@@ -503,7 +529,7 @@ int main(int argc, char** argv) {
 					e->update();
 				}
 				for (Entity* e : updateGroup) {
-					e->trajectory->push_back({e->x - e->simRelBody->x, e->y - e->simRelBody->y});
+					e->trajectory->push_back({e->x - trajectoryRef->x, e->y - trajectoryRef->y});
 				}
 				if (ownEntity) {
 					ownEntity->control(controls);
@@ -539,6 +565,7 @@ int main(int argc, char** argv) {
 			simulating = false;
 			globalTime = resTime;
 			lastPredict = globalTime;
+			lastTrajectoryRef = trajectoryRef;
 		}
 		if (headless) {
 			int to = playerGroup.size();

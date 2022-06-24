@@ -72,10 +72,10 @@ inline std::map<std::string, Var> vars {{"port", {Int, &port}},
 
 inline sf::String displayMessages[displayMessageCount];
 
-// prespawned entities
-
 inline Attractor* star = nullptr;
 inline Triangle* ghost = nullptr;
+inline Entity* trajectoryRef = nullptr;
+inline Entity* lastTrajectoryRef = nullptr;
 
 inline const std::string configFile = "config.txt", configDocFile = "confighelp.txt";
 

@@ -96,6 +96,13 @@ Entity::~Entity() noexcept {
 				break;
 			}
 		}
+	} else {
+		if (this == lastTrajectoryRef) {
+			lastTrajectoryRef = nullptr;
+		}
+		if (this == trajectoryRef) {
+			trajectoryRef = nullptr;
+		}
 	}
 }
 
@@ -182,11 +189,11 @@ void Entity::update() {
 
 void Entity::draw() {
 	sf::Color trajColor(color[0], color[1], color[2]);
-	if (trajectory && simRelBody && trajectory->size() > 0) [[likely]] {
+	if (trajectory && lastTrajectoryRef && trajectory->size() > 0) [[likely]] {
 		std::vector<Point> traj = *trajectory;
 		sf::VertexArray lines(sf::LineStrip, traj.size());
 		for (size_t i = 0; i < traj.size(); i++){
-			lines[i].position = sf::Vector2f(simRelBody->x + traj[i].x + drawShiftX, simRelBody->y + traj[i].y + drawShiftY);
+			lines[i].position = sf::Vector2f(lastTrajectoryRef->x + traj[i].x + drawShiftX, lastTrajectoryRef->y + traj[i].y + drawShiftY);
 			lines[i].color = trajColor;
 		}
 		window->draw(lines);
@@ -228,18 +235,6 @@ void Entity::simSetup() {
 	resRadius = radius;
 	resNear = near;
 	resCollideScan = lastCollideScan;
-	lastCollideScan = 0.0;
-	double maxFactor = 0.0;
-	for (Entity* e : updateGroup) {
-		if (e == this || e->type() != Entities::Attractor) {
-			continue;
-		}
-		double factor = G * e->mass / dst2(e->x - x, e->y - y);
-		if (factor > maxFactor) {
-			simRelBody = e;
-			maxFactor = factor;
-		}
-	}
 }
 void Entity::simReset() {
 	x = resX;
@@ -385,12 +380,12 @@ void Triangle::control(movement& cont) {
 
 void Triangle::draw() {
 	Entity::draw();
-	if (inertTrajectory && simRelBody && inertTrajectory->size() > 0) [[likely]] {
+	if (inertTrajectory && lastTrajectoryRef && inertTrajectory->size() > 0) [[likely]] {
 		sf::Color trajColor((unsigned char)(color[0] * 0.7), (unsigned char)(color[1] * 0.7), (unsigned char)(color[2] * 0.7));
 		std::vector<Point> traj = *inertTrajectory;
 		sf::VertexArray lines(sf::LineStrip, traj.size());
 		for (size_t i = 0; i < traj.size(); i++){
-			lines[i].position = sf::Vector2f(simRelBody->x + traj[i].x + drawShiftX, simRelBody->y + traj[i].y + drawShiftY);
+			lines[i].position = sf::Vector2f(lastTrajectoryRef->x + traj[i].x + drawShiftX, lastTrajectoryRef->y + traj[i].y + drawShiftY);
 			lines[i].color = trajColor;
 		}
 		window->draw(lines);
