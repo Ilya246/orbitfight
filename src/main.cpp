@@ -92,21 +92,21 @@ int main(int argc, char** argv) {
 		star = new Attractor(60000.f, 16000000.0);
 		star->setPosition(0.0, 0.0);
 		star->setColor(255, 229, 97);
-		int planets = (int)rand_f(4.f, 9.f);
+		int planets = (int)rand_f(5.f, 10.f);
 		for (int i = 0; i < planets; i++) {
 			double spawnDst = rand_f(120000.f, 4000000.f);
 			double factor = sqrt(spawnDst) / 500.0;
 			float spawnAngle = rand_f(-PI, PI);
-			float radius = rand_f(600.f, 6000.f) * factor;
+			float radius = rand_f(600.f, 6000.f * factor);
 			Attractor* planet = new Attractor(radius, radius * radius / 1000.f);
 			planet->setPosition(star->x + spawnDst * std::cos(spawnAngle), star->y + spawnDst * std::sin(spawnAngle));
 			double vel = sqrt(G * star->mass / spawnDst);
 			planet->addVelocity(star->velX + vel * std::cos(spawnAngle + PI / 2.0), -star->velY - vel * std::sin(spawnAngle + PI / 2.0));
 			planet->setColor((int)rand_f(64.f, 255.f), (int)rand_f(64.f, 255.f), (int)rand_f(64.f, 255.f));
-			if (radius >= 5000.f) {
-				int moons = (int)(rand_f(0.f, factor) * radius * radius / (5000.0 * 5000.0));
+			if (radius >= 4000.f) {
+				int moons = (int)(rand_f(0.f, 4.f) * radius * radius / (13000.0 * 13000.0));
 				for (int it = 0; it < moons; it++) {
-					double mSpawnDst = planet->radius + rand_f(6000.f, 60000.f) * factor;
+					double mSpawnDst = planet->radius + rand_f(6000.f, 80000.f) * factor;
 					float spawnAngle = rand_f(-PI, PI);
 					float radius = rand_f(120.f, planet->radius / 6.f);
 					Attractor* moon = new Attractor(radius, radius * radius / 1000.f);
