@@ -112,7 +112,7 @@ void Entity::control(movement& cont) {}
 void Entity::update() {
 	x += velX * delta;
 	y += velY * delta;
-	if(globalTime - lastCollideScan > collideScanSpacing || (simulating && predictingFor - lastCollideScan > collideScanSpacing * 60.0)) [[unlikely]] {
+	if (globalTime - lastCollideScan > collideScanSpacing || (simulating && predictingFor - lastCollideScan > collideScanSpacing * 60.0)) [[unlikely]] {
 		size_t i = 0;
 		for (Entity* e : updateGroup) {
 			if (e == this || ((e->ghost || ghost) && type() == Entities::Triangle && e->type() == Entities::Triangle)) [[unlikely]] {
@@ -151,6 +151,7 @@ void Entity::update() {
 								p->tcpSocket.send(chatPacket);
 							}
 							found = true;
+							break;
 						}
 					}
 					if (!found && (headless || simulating)) {
@@ -160,24 +161,18 @@ void Entity::update() {
 					if (debug) {
 						printf("Planetary collision: %u, %u\n", id, e->id);
 					}
-					if (mass > e->mass) {
+					if (mass > e->mass && (headless || simulating)) {
 						double radiusMul = sqrt((mass + e->mass) / mass);
 						mass += e->mass;
 						radius *= radiusMul;
-						if (!headless) {
-							if (!simulating) {
-								((Attractor*)this)->shape->setRadius(radius);
-							}
-						} else {
+						if (headless) {
 							sf::Packet collisionPacket;
 							collisionPacket << Packets::PlanetCollision << id << mass << radius;
 							for (Player* p : playerGroup) {
 								p->tcpSocket.send(collisionPacket);
 							}
 						}
-						if (headless || simulating) {
-							entityDeleteBuffer.push_back(e);
-						}
+						entityDeleteBuffer.push_back(e);
 					}
 				}
 			}
@@ -266,7 +261,7 @@ Triangle::Triangle() : Entity() {
 		forwards = std::make_unique<sf::CircleShape>(2.f, 6);
 		forwards->setOrigin(4.f, 4.f);
 		icon = std::make_unique<sf::CircleShape>(3.f, 3);
-		icon->setOrigin(2.f, 2.f);
+		icon->setOrigin(3.f, 3.f);
 		icon->setFillColor(sf::Color(255, 255, 255));
 		inertTrajectory = std::make_unique<std::vector<Point>>();
 	}

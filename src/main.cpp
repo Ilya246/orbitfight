@@ -95,22 +95,23 @@ int main(int argc, char** argv) {
 		int planets = (int)rand_f(4.f, 9.f);
 		for (int i = 0; i < planets; i++) {
 			double spawnDst = rand_f(120000.f, 4000000.f);
+			double factor = sqrt(spawnDst) / 500.0;
 			float spawnAngle = rand_f(-PI, PI);
-			float radius = rand_f(500.f, 8000.f);
+			float radius = rand_f(600.f, 6000.f) * factor;
 			Attractor* planet = new Attractor(radius, radius * radius / 1000.f);
 			planet->setPosition(star->x + spawnDst * std::cos(spawnAngle), star->y + spawnDst * std::sin(spawnAngle));
 			double vel = sqrt(G * star->mass / spawnDst);
 			planet->addVelocity(star->velX + vel * std::cos(spawnAngle + PI / 2.0), -star->velY - vel * std::sin(spawnAngle + PI / 2.0));
 			planet->setColor((int)rand_f(64.f, 255.f), (int)rand_f(64.f, 255.f), (int)rand_f(64.f, 255.f));
 			if (radius >= 5000.f) {
-				int moons = (int)(rand_f(0.f, 4.f) * radius * radius / (5000.0 * 5000.0));
+				int moons = (int)(rand_f(0.f, factor) * radius * radius / (5000.0 * 5000.0));
 				for (int it = 0; it < moons; it++) {
-					double spawnDst = planet->radius + rand_f(8000.f, 40000.f);
+					double mSpawnDst = planet->radius + rand_f(6000.f, 60000.f) * factor;
 					float spawnAngle = rand_f(-PI, PI);
 					float radius = rand_f(120.f, planet->radius / 6.f);
 					Attractor* moon = new Attractor(radius, radius * radius / 1000.f);
-					moon->setPosition(planet->x + spawnDst * std::cos(spawnAngle), planet->y + spawnDst * std::sin(spawnAngle));
-					double vel = sqrt(G * planet->mass / spawnDst);
+					moon->setPosition(planet->x + mSpawnDst * std::cos(spawnAngle), planet->y + mSpawnDst * std::sin(spawnAngle));
+					double vel = sqrt(G * planet->mass / mSpawnDst);
 					moon->addVelocity(planet->velX + vel * std::cos(spawnAngle + PI / 2.0), -planet->velY - vel * std::sin(spawnAngle + PI / 2.0));
 					moon->setColor((int)rand_f(64.f, 255.f), (int)rand_f(64.f, 255.f), (int)rand_f(64.f, 255.f));
 					obf::planets.push_back(moon);
@@ -472,24 +473,24 @@ int main(int argc, char** argv) {
 				e->simSetup();
 				e->trajectory->clear();
 			}
-			std::vector<Entity*> simEntities(updateGroup);
+			std::vector<Entity*> retUpdateGroup(updateGroup);
 			for (int i = 0; i < predictSteps; i++) {
 				predictingFor = predictDelta * predictSteps;
-				for (Entity* e : simEntities) {
+				for (Entity* e : updateGroup) {
 					e->update();
 				}
-				for (Entity* e : simEntities) {
+				for (Entity* e : updateGroup) {
 					e->trajectory->push_back({e->x - e->simRelBody->x, e->y - e->simRelBody->y});
 				}
 				if (ownEntity) {
 					ownEntity->control(controls);
 				}
 				for (Entity* en : entityDeleteBuffer) {
-					for (size_t i = 0; i < simEntities.size(); i++) {
-						Entity* e = simEntities[i];
+					for (size_t i = 0; i < updateGroup.size(); i++) {
+						Entity* e = updateGroup[i];
 						if (e == en) [[unlikely]] {
-							simEntities[i] = simEntities[simEntities.size() - 1];
-							simEntities.pop_back();
+							updateGroup[i] = updateGroup[updateGroup.size() - 1];
+							updateGroup.pop_back();
 						} else {
 							for (size_t i = 0; i < e->near.size(); i++){
 								if (e->near[i] == en) [[unlikely]] {
@@ -503,6 +504,7 @@ int main(int argc, char** argv) {
 				}
 				entityDeleteBuffer.clear();
 			}
+			updateGroup = retUpdateGroup;
 			if (ownEntity && controlsActive) {
 				*((Triangle*)ownEntity)->inertTrajectory = *ghost->trajectory;
 				delete ghost;
