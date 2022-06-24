@@ -102,7 +102,7 @@ struct Triangle: public Entity {
 	void simReset() override;
 
 	uint8_t type() override;
-	double accel = 0.008, rotateSpeed = 2.0, boostCooldown = 12.0, boostStrength = 1.5, reload = 6.0, shootPower = 2.0, hyperboostStrength = 0.12, hyperboostTime = 20.0 * 60.0, hyperboostTurnMult = 0.02, afterburnStrength = 0.3, minAfterburn = hyperboostTime + 8.0 * 60.0,
+	double accel = 0.015, rotateSpeed = 2.0, boostCooldown = 12.0, boostStrength = 1.5, reload = 6.0, shootPower = 2.0, hyperboostStrength = 0.12, hyperboostTime = 20.0 * 60.0, hyperboostTurnMult = 0.02, afterburnStrength = 0.3, minAfterburn = hyperboostTime + 8.0 * 60.0,
 	lastBoosted = -boostCooldown, lastShot = -reload, hyperboostCharge = 0.0,
 	resLastBoosted, resLastShot, resHyperboostCharge, resRotation;
 
