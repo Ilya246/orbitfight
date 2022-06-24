@@ -39,7 +39,7 @@ inline double delta = 1.0 / 60.0,
 	friction = 0.002, // friction of colliding bodies, stops infinite sliding
 	syncCullThreshold = 0.6,
 	predictSpacing = 0.2, predictDelta = 6.0,
-	G = 50.0,
+	G = 6.67e-11,
 	lastPing = 0.0, lastPredict = 0.0,
 	predictingFor = 0.0,
 	drawShiftX, drawShiftY;

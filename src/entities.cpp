@@ -112,7 +112,7 @@ void Entity::control(movement& cont) {}
 void Entity::update() {
 	x += velX * delta;
 	y += velY * delta;
-	if (globalTime - lastCollideScan > collideScanSpacing || (simulating && predictingFor - lastCollideScan > collideScanSpacing * 60.0)) [[unlikely]] {
+	if (globalTime - lastCollideScan > collideScanSpacing) [[unlikely]] {
 		size_t i = 0;
 		for (Entity* e : updateGroup) {
 			if (e == this || ((e->ghost || ghost) && type() == Entities::Triangle && e->type() == Entities::Triangle)) [[unlikely]] {
@@ -130,7 +130,7 @@ void Entity::update() {
 		if (i < near.size()) {
 			near.erase(near.begin() + i + 1, near.begin() + near.size());
 		}
-		lastCollideScan = simulating ? predictingFor : globalTime;
+		lastCollideScan = globalTime;
 	}
 	for (Entity* e : near) {
 		if (dst2(x - e->x, y - e->y) <= (radius + e->radius) * (radius + e->radius)) [[unlikely]] {

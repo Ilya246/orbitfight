@@ -89,7 +89,7 @@ int main(int argc, char** argv) {
 
 		printf("Hosted server on port %u.\n", port);
 
-		star = new Attractor(60000.f, 16000000.0);
+		star = new Attractor(60000.f, 1.6e19);
 		star->setPosition(0.0, 0.0);
 		star->setColor(255, 229, 97);
 		int planets = (int)rand_f(5.f, 10.f);
@@ -98,7 +98,8 @@ int main(int argc, char** argv) {
 			double factor = sqrt(spawnDst) / 500.0;
 			float spawnAngle = rand_f(-PI, PI);
 			float radius = rand_f(600.f, 6000.f * factor);
-			Attractor* planet = new Attractor(radius, radius * radius / 1000.f);
+			double density = 8e9 / pow(radius, 1.0 / 3.0);
+			Attractor* planet = new Attractor(radius, radius * radius * density);
 			planet->setPosition(star->x + spawnDst * std::cos(spawnAngle), star->y + spawnDst * std::sin(spawnAngle));
 			double vel = sqrt(G * star->mass / spawnDst);
 			planet->addVelocity(star->velX + vel * std::cos(spawnAngle + PI / 2.0), -star->velY - vel * std::sin(spawnAngle + PI / 2.0));
@@ -109,7 +110,8 @@ int main(int argc, char** argv) {
 					double mSpawnDst = planet->radius + rand_f(6000.f, 80000.f) * factor;
 					float spawnAngle = rand_f(-PI, PI);
 					float radius = rand_f(120.f, planet->radius / 6.f);
-					Attractor* moon = new Attractor(radius, radius * radius / 1000.f);
+					double density = 8e9 / pow(radius, 1.0 / 3.0);
+					Attractor* moon = new Attractor(radius, radius * radius * density);
 					moon->setPosition(planet->x + mSpawnDst * std::cos(spawnAngle), planet->y + mSpawnDst * std::sin(spawnAngle));
 					double vel = sqrt(G * planet->mass / mSpawnDst);
 					moon->addVelocity(planet->velX + vel * std::cos(spawnAngle + PI / 2.0), -planet->velY - vel * std::sin(spawnAngle + PI / 2.0));
