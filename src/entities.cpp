@@ -259,7 +259,7 @@ Triangle::Triangle() : Entity() {
 		shape = std::make_unique<sf::CircleShape>(radius, 3);
 		shape->setOrigin(radius, radius);
 		forwards = std::make_unique<sf::CircleShape>(2.f, 6);
-		forwards->setOrigin(4.f, 4.f);
+		forwards->setOrigin(2.f, 2.f);
 		icon = std::make_unique<sf::CircleShape>(3.f, 3);
 		icon->setOrigin(3.f, 3.f);
 		icon->setFillColor(sf::Color(255, 255, 255));
@@ -461,7 +461,7 @@ Attractor::Attractor(double radius) : Entity() {
 	this->radius = radius;
 	this->mass = 100.0;
 	if (!headless) {
-		shape = std::make_unique<sf::CircleShape>(radius, 50);
+		shape = std::make_unique<sf::CircleShape>(radius, (int)(sqrt(radius)));
 		shape->setOrigin(radius, radius);
 		icon = std::make_unique<sf::CircleShape>(2.f, 6);
 		icon->setOrigin(2.f, 2.f);
@@ -471,7 +471,7 @@ Attractor::Attractor(double radius, double mass) : Entity() {
 	this->radius = radius;
 	this->mass = mass;
 	if (!headless) {
-		shape = std::make_unique<sf::CircleShape>(radius, 50);
+		shape = std::make_unique<sf::CircleShape>(radius, (int)(sqrt(radius)));
 		shape->setOrigin(radius, radius);
 		icon = std::make_unique<sf::CircleShape>(2.f, 6);
 		icon->setOrigin(2.f, 2.f);
