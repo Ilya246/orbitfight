@@ -580,7 +580,7 @@ int main(int argc, char** argv) {
 						}
 						case Packets::Nickname: {
 							packet >> player->username;
-							if (player->username.empty() || (int)sizeof(player->username) > usernameLimit) {
+							if (player->username.empty() || (int)player->username.size() > usernameLimit) {
 								player->username = "impostor";
 							}
 
@@ -643,8 +643,9 @@ int main(int argc, char** argv) {
 				}
 
 				if (globalTime - player->lastSynced > syncSpacing) {
+					bool fullsync = player->lastFullsynced + fullsyncSpacing < globalTime;
 					for (Entity* e : updateGroup) {
-						if (player->entity && (abs(e->y - player->entity->y) > player->viewH * syncCullThreshold || abs(e->x - player->entity->x) > player->viewW * syncCullThreshold)) {
+						if (player->entity && !fullsync && (abs(e->y - player->entity->y) - syncCullOffset > player->viewH * syncCullThreshold || abs(e->x - player->entity->x) - syncCullOffset > player->viewW * syncCullThreshold)) {
 							continue;
 						}
 						sf::Packet packet;
@@ -652,8 +653,10 @@ int main(int argc, char** argv) {
 						e->loadSyncPacket(packet);
 						player->tcpSocket.send(packet);
 					}
-
 					player->lastSynced = globalTime;
+					if (fullsync) {
+						player->lastFullsynced = globalTime;
+					}
 				}
 
 				if (player->entity) {

@@ -33,18 +33,18 @@ inline movement lastControls, controls;
 inline double delta = 1.0 / 60.0,
 	globalTime = 0.0,
 	maxAckTime = 15.0,
-	syncSpacing = 0.1,
+	syncSpacing = 0.1, fullsyncSpacing = 5.0,
 	collideScanSpacing = 0.5, collideScanDistance2 = 60.0 * 60.0,
 	collideRestitution = 1.2, // how "bouncy" collisions should be
 	friction = 0.002, // friction of colliding bodies, stops infinite sliding
-	syncCullThreshold = 0.6,
+	syncCullThreshold = 0.6, syncCullOffset = 20000.0,
 	predictSpacing = 0.2, predictDelta = 6.0,
 	G = 6.67e-11,
 	lastPing = 0.0, lastPredict = 0.0,
 	predictingFor = 0.0,
 	drawShiftX, drawShiftY;
 inline const int displayMessageCount = 5;
-inline int usernameLimit = 24 * 8,
+inline int usernameLimit = 24,
 messageLimit = 50,
 textCharacterSize = 18,
 nextID = 0,
