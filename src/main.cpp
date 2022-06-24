@@ -102,6 +102,7 @@ int main(int argc, char** argv) {
 		}
 		star->setPosition(0.0, 0.0);
 		int planets = (int)rand_f(5.f, 10.f);
+		int totalMoons = 0;
 		for (int i = 0; i < planets; i++) {
 			double spawnDst = rand_f(minrange, 4000000.f);
 			double factor = sqrt(spawnDst) / 500.0;
@@ -115,6 +116,7 @@ int main(int argc, char** argv) {
 			planet->setColor((int)rand_f(64.f, 255.f), (int)rand_f(64.f, 255.f), (int)rand_f(64.f, 255.f));
 			if (radius >= 4000.f) {
 				int moons = (int)(rand_f(0.f, 4.f) * radius * radius / (13000.0 * 13000.0));
+				totalMoons += moons;
 				for (int it = 0; it < moons; it++) {
 					double mSpawnDst = planet->radius + rand_f(6000.f, 80000.f) * factor;
 					float spawnAngle = rand_f(-PI, PI);
@@ -130,6 +132,7 @@ int main(int argc, char** argv) {
 			}
 			obf::planets.push_back(planet);
 		}
+		printf("Generated system: black hole %u, %u planets, %u moons\n", blackholeSystem, planets, totalMoons);
 	} else {
 		window = new sf::RenderWindow(sf::VideoMode(500, 500), "Orbitfight");
 
@@ -163,7 +166,8 @@ int main(int argc, char** argv) {
 		if (headless) {
 			if(!inputWaiting){
 				if(!inputBuffer.empty()){
-					std::cout << parseCommand(inputBuffer) << std::endl;
+					std::string_view view(inputBuffer);
+					parseCommand(view);
 					inputBuffer.clear();
 				}
 				inputReader = std::async(std::launch::async, inputListen);

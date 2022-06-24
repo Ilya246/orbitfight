@@ -2,6 +2,7 @@
 #include "types.hpp"
 
 #include <fstream>
+#include <iostream>
 #include <regex>
 #include <string>
 
@@ -12,6 +13,21 @@ namespace obf {
 static const regex int_regex = regex("[0-9]*"),
 	double_regex = regex("[0-9]*\\.[0-9]*"),
 	boolt_regex = regex("([tT][rR][uU][eE])|1"), boolf_regex = regex("([fF][aA][lL][sS][eE])|0");
+
+void splitString(string_view str, vector<string_view> &vec, char delim) {
+	size_t last = 0;
+	for (size_t i = 0; i < str.size(); i++) {
+		if (str[i] == delim) {
+			if (i > last) {
+				vec.push_back(str.substr(last, i - last));
+			}
+			last = i + 1;
+		}
+	}
+	if (last < str.size()) {
+		vec.push_back(str.substr(last, str.size() - last));
+	}
+}
 
 int parseToml(const string& line) {
 	string key = "";
@@ -124,24 +140,38 @@ int parseTomlFile(const string& filename) {
 	return 0;
 }
 
-string parseCommand (const string& command) {
-	if (command.rfind("config ", 0) == 0) {
-		int retcode = parseToml(command.substr(7));
+void parseCommand (const string_view& command) {
+	vector<string_view> args;
+	splitString(command, args, ' ');
+	if (args[0] == "help") {
+		printf("help - print this\n");
+		printf("config - parse argument like a config file line\n");
+		printf("say - say argument into ingame chat\n");
+		printf("lookup - print info about entity ID in argument\n");
+		return;
+	} else if (args[0] == "config") {
+		int retcode = parseToml(string(command.substr(7)));
 		switch (retcode) {
 			case 1:
-				return "Invalid key.";
+				printf("Invalid key.\n");
+				break;
 			case 2:
-				return "Invalid value. Must be integer.";
+				printf("Invalid value. Must be integer.\n");
+				break;
 			case 3:
-				return "Invalid value. Must be a real number.";
+				printf("Invalid value. Must be a real number.\n");
+				break;
 			case 4:
-				return "Invalid value. Must be true|false.";
+				printf("Invalid value. Must be true|false.\n");
+				break;
 			case 5:
-				return "Invalid type specified for variable.";
+				printf("Invalid type specified for variable.\n");
+				break;
 			default:
 				break;
 		}
-	} else if (command.rfind("say ", 0) == 0) {
+		return;
+	} else if (args[0] == "say") {
 		sf::Packet chatPacket;
 		std::string sendMessage;
 		sendMessage.append("Server: ").append(command.substr(4));
@@ -149,9 +179,25 @@ string parseCommand (const string& command) {
 		for (Player* p : playerGroup) {
 			p->tcpSocket.send(chatPacket);
 		}
-		return sendMessage;
+		cout << sendMessage << endl;
+		return;
+	} else if (args[0] == "lookup") {
+		string id_s(command.substr(7));
+		if (!regex_match(id_s, int_regex)) {
+			printf("Invalid ID.\n");
+			return;
+		}
+		size_t id = stoi(id_s);
+		for (Entity* e : updateGroup) {
+			if (e->id == id) {
+				printf("Mass %g, radius %g, relative to star: x %g, y %g, vX %g, vY %g\n", e->mass, e->radius, e->x - star->x, e->y - star->y, e->velX - star->velX, e->velY - star->velY);
+				return;
+			}
+		}
+		printf("No entity ID %llu found.\n", id);
+		return;
 	}
-	return "Unknown command.";
+	printf("Unknown command.\n");
 }
 
 }
