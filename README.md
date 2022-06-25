@@ -6,6 +6,10 @@ Matrix server: https://matrix.to/#/#orbitfight:matrix.org
 
 This game is more of a learning project than a real game and is not really intended to be particularly interesting, another side effect of which is that the code may be rather cursed in places
 
+On screenshot: myself orbiting a moon in a planetary system after having shot a projectile, trajectoriess selected to be drawn relative to the main planet
+
+![preview](https://user-images.githubusercontent.com/57039557/175764692-c55b948b-7c8f-4055-b6cb-bed32db5f239.png)
+
 # Controls
 - W - forwards
 - A - rotate left
