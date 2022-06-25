@@ -533,6 +533,7 @@ int main(int argc, char** argv) {
 								Attractor* at = (Attractor*)e;
 								packet >> at->mass >> at->radius;
 								at->shape->setRadius(at->radius);
+								at->shape->setOrigin(at->radius, at->radius);
 								break;
 							}
 						}
