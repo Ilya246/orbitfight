@@ -58,8 +58,6 @@ Entity::Entity() {
 }
 
 Entity::~Entity() noexcept {
-	// swap remove this from updateGroup
-	// O(n) complexity since iterates whole thing at worst
 	if (debug) {
 		printf("Deleting entity id %u\n", this->id);
 	}
@@ -143,13 +141,13 @@ void Entity::update() {
 		if (dst2(x - e->x, y - e->y) <= (radius + e->radius) * (radius + e->radius)) [[unlikely]] {
 			collide(e, true);
 			if (type() == Entities::Attractor) {
-				if (this == star && e->type() == Entities::Triangle) [[unlikely]] {
+				if (((Attractor*)this)->star && e->type() == Entities::Triangle) [[unlikely]] {
 					bool found = false;
 					for (Player* p : playerGroup) {
 						if (p->entity == e) [[unlikely]] {
 							sf::Packet chatPacket;
 							std::string sendMessage;
-							sendMessage.append("<").append(p->name()).append("> has been incinerated by the star.");
+							sendMessage.append("<").append(p->name()).append("> has been incinerated.");
 							std::cout << sendMessage << std::endl;
 							chatPacket << Packets::Chat << sendMessage;
 							p->tcpSocket.disconnect();
@@ -258,7 +256,6 @@ Triangle::Triangle() : Entity() {
 		icon = std::make_unique<sf::CircleShape>(3.f, 3);
 		icon->setOrigin(3.f, 3.f);
 		icon->setFillColor(sf::Color(255, 255, 255));
-		inertTrajectory = std::make_unique<std::vector<Point>>();
 	}
 }
 Triangle::Triangle(bool ghost) : Entity() {
@@ -380,16 +377,6 @@ void Triangle::control(movement& cont) {
 
 void Triangle::draw() {
 	Entity::draw();
-	if (inertTrajectory && lastTrajectoryRef && inertTrajectory->size() > 0) [[likely]] {
-		sf::Color trajColor((unsigned char)(color[0] * 0.7), (unsigned char)(color[1] * 0.7), (unsigned char)(color[2] * 0.7));
-		std::vector<Point> traj = *inertTrajectory;
-		sf::VertexArray lines(sf::LineStrip, traj.size());
-		for (size_t i = 0; i < traj.size(); i++){
-			lines[i].position = sf::Vector2f(lastTrajectoryRef->x + traj[i].x + drawShiftX, lastTrajectoryRef->y + traj[i].y + drawShiftY);
-			lines[i].color = trajColor;
-		}
-		window->draw(lines);
-	}
 	shape->setPosition(x + drawShiftX, y + drawShiftY);
 	shape->setRotation(90.f - rotation);
 	shape->setFillColor(sf::Color(color[0], color[1], color[2]));
@@ -454,12 +441,17 @@ uint8_t Triangle::type() {
 
 Attractor::Attractor(double radius) : Entity() {
 	this->radius = radius;
-	this->mass = 100.0;
+	this->mass = 1.0e18;
 	if (!headless) {
 		shape = std::make_unique<sf::CircleShape>(radius, std::max(4, (int)(sqrt(radius))));
 		shape->setOrigin(radius, radius);
 		icon = std::make_unique<sf::CircleShape>(2.f, 6);
 		icon->setOrigin(2.f, 2.f);
+		warning = std::make_unique<sf::CircleShape>(5.f, 4);
+		warning->setOrigin(5.f, 5.f);
+		warning->setFillColor(sf::Color(0, 0, 0, 0));
+		warning->setOutlineColor(sf::Color(255, 0, 0));
+		warning->setOutlineThickness(1.f);
 	}
 }
 Attractor::Attractor(double radius, double mass) : Entity() {
@@ -470,17 +462,32 @@ Attractor::Attractor(double radius, double mass) : Entity() {
 		shape->setOrigin(radius, radius);
 		icon = std::make_unique<sf::CircleShape>(2.f, 6);
 		icon->setOrigin(2.f, 2.f);
+		warning = std::make_unique<sf::CircleShape>(5.f, 4);
+		warning->setOrigin(5.f, 5.f);
+		warning->setFillColor(sf::Color(0, 0, 0, 0));
+		warning->setOutlineColor(sf::Color(255, 0, 0));
+		warning->setOutlineThickness(1.f);
+	}
+}
+Attractor::Attractor(bool ghost) {
+	for (size_t i = 0; i < updateGroup.size(); i++) {
+		Entity* e = updateGroup[i];
+		if (e == this) [[unlikely]] {
+			updateGroup[i] = updateGroup[updateGroup.size() - 1];
+			updateGroup.pop_back();
+			break;
+		}
 	}
 }
 
 void Attractor::loadCreatePacket(sf::Packet& packet) {
-	packet << type() << radius << id << x << y << velX << velY << mass << color[0] << color[1] << color[2];
+	packet << type() << radius << id << x << y << velX << velY << mass << star << blackhole << color[0] << color[1] << color[2];
 	if(debug){
 		printf("Sent id %d: %g %g %g %g\n", id, x, y, velX, velY);
 	}
 }
 void Attractor::unloadCreatePacket(sf::Packet& packet) {
-	packet >> id >> x >> y >> velX >> velY >> mass >> color[0] >> color[1] >> color[2];
+	packet >> id >> x >> y >> velX >> velY >> mass >> star >> blackhole >> color[0] >> color[1] >> color[2];
 	if(debug){
 		printf(", id %d: %g %g %g %g\n", id, x, y, velX, velY);
 	}
@@ -514,11 +521,18 @@ void Attractor::draw() {
 	shape->setPosition(x + drawShiftX, y + drawShiftY);
 	shape->setFillColor(sf::Color(color[0], color[1], color[2]));
 	window->draw(*shape);
-	if (g_camera.scale > radius && ownEntity) {
+	if (ownEntity) {
 		g_camera.bindUI();
-		icon->setPosition(g_camera.w * 0.5 + (x - ownEntity->x) / g_camera.scale, g_camera.h * 0.5 + (y - ownEntity->y) / g_camera.scale);
-		icon->setFillColor(sf::Color(color[0], color[1], color[2]));
-		window->draw(*icon);
+		double uiX = g_camera.w * 0.5 + (x - ownEntity->x) / g_camera.scale, uiY = g_camera.h * 0.5 + (y - ownEntity->y) / g_camera.scale;
+		if (g_camera.scale > radius) {
+			icon->setPosition(uiX, uiY);
+			icon->setFillColor(sf::Color(color[0], color[1], color[2]));
+			window->draw(*icon);
+		}
+		if (blackhole && this != lastTrajectoryRef) {
+			warning->setPosition(uiX, uiY);
+			window->draw(*warning);
+		}
 		g_camera.bindWorld();
 	}
 }

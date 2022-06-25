@@ -106,17 +106,17 @@ struct Triangle: public Entity {
 	lastBoosted = -boostCooldown, lastShot = -reload, hyperboostCharge = 0.0,
 	resLastBoosted, resLastShot, resHyperboostCharge, resRotation;
 
-	bool burning, resBurning;
+	bool burning = false, resBurning;
 	std::string name = "";
 
-	std::unique_ptr<std::vector<Point>> inertTrajectory;
 	std::unique_ptr<sf::CircleShape> shape, forwards;
-	float rotation = 0;
+	float rotation = 0.f;
 };
 
 struct Attractor: public Entity {
 	Attractor(double radius);
 	Attractor(double radius, double mass);
+	Attractor(bool ghost);
 
 	void update() override;
 	void draw() override;
@@ -128,7 +128,9 @@ struct Attractor: public Entity {
 
 	uint8_t type() override;
 
-	std::unique_ptr<sf::CircleShape> shape;
+	bool star = false, blackhole = false;
+
+	std::unique_ptr<sf::CircleShape> shape, warning;
 };
 
 struct Projectile: public Entity {
@@ -157,11 +159,11 @@ struct Player {
 
 	sf::TcpSocket tcpSocket;
 	std::vector<sf::Packet> tcpQueue;
-	std::string username = "", ip;
+	std::string username = "", ip = "";
 	double lastAck = 0.0, lastPingSent = 0.0, lastSynced = 0.0, lastFullsynced = 0.0, ping = 0.0,
 	viewW = 500.0, viewH = 500.0;
 	movement controls;
-	unsigned short port;
+	unsigned short port = 0;
 };
 
 }

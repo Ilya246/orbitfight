@@ -90,32 +90,57 @@ int main(int argc, char** argv) {
 
 		printf("Hosted server on port %u.\n", port);
 
-		blackholeSystem = rand_f(0.f, 1.f) < 1.f / 3.f;
-		float minrange = 120000.f;
-		float maxrange = 4000000.f;
-		if (blackholeSystem) {
-			double M = 1.0e21;
-			star = new Attractor(2.0 * G * M / (CC), M);
-			star->setColor(0, 0, 0);
-			minrange = 12000.f;
-			maxrange = 6000000.f;
-		} else {
-			star = new Attractor(60000.f, 5.0e20);
-			star->setColor(255, 229, 97);
+		int starsN = 1;
+		while (rand_f(0.f, 1.f) < extraStarChance) {
+			starsN += 1;
 		}
-		star->setPosition(0.0, 0.0);
+		double angleSpacing = TAU / starsN, angle = 0.0;
+		double starsMass = starMass * starsN, dist = (starsN - 1) * starR * 2.0;
+		for (int i = 0; i < starsN; i++) {
+			Attractor* star = nullptr;
+			double posX = std::cos(angle) * dist, posY = std::sin(angle) * dist;
+			if (rand_f(0.f, 1.f) < blackholeChance) {
+				star = new Attractor(2.0 * G * starMass / (CC), starMass * 1.0001);
+				star->setColor(0, 0, 0);
+				star->blackhole = true;
+			} else {
+				star = new Attractor(starR, starMass);
+				star->setColor(255, 229, 97);
+			}
+			star->setPosition(posX, posY);
+			star->star = true;
+			stars.push_back(star);
+			angle += angleSpacing;
+		}
+		if (starsN > 1) {
+			double aX = 0.0, aY = 0.0;
+			for (int i = 1; i < starsN; i++) {
+				double xdiff = stars[i]->x - stars[0]->x, ydiff = stars[i]->y - stars[0]->y,
+				factor = stars[i]->mass * G / pow(xdiff * xdiff + ydiff * ydiff, 1.5);
+				aX += factor * xdiff;
+				aY += factor * ydiff;
+			}
+			double vel = sqrt(dst(aX, aY) * dist);
+			angle = 0.0;
+			for (int i = 0; i < starsN; i++) {
+				stars[i]->addVelocity(vel * std::cos(angle + PI / 2.0), -vel * std::sin(angle + PI / 2.0));
+				angle += angleSpacing;
+			}
+		}
+		float minrange = 120000.0 + starsN * starR * 2.0;
+		float maxrange = 4000000.0 + starsN * starR * 30.0;
 		int planets = (int)rand_f(5.f, 10.f);
 		int totalMoons = 0;
 		for (int i = 0; i < planets; i++) {
 			double spawnDst = rand_f(minrange, maxrange);
-			double factor = sqrt(spawnDst) / (blackholeSystem ? 1000.0 : 500.0);
+			double factor = sqrt(spawnDst) / (600.0 + starsN * 100.0);
 			float spawnAngle = rand_f(-PI, PI);
 			float radius = rand_f(600.f, 6000.f * factor);
 			double density = 8e9 / pow(radius, 1.0 / 3.0);
 			Attractor* planet = new Attractor(radius, radius * radius * density);
-			planet->setPosition(star->x + spawnDst * std::cos(spawnAngle), star->y + spawnDst * std::sin(spawnAngle));
-			double vel = sqrt(G * star->mass / spawnDst);
-			planet->addVelocity(star->velX + vel * std::cos(spawnAngle + PI / 2.0), -star->velY - vel * std::sin(spawnAngle + PI / 2.0));
+			planet->setPosition(spawnDst * std::cos(spawnAngle), spawnDst * std::sin(spawnAngle));
+			double vel = sqrt(G * starsMass / spawnDst);
+			planet->addVelocity(vel * std::cos(spawnAngle + PI / 2.0), -vel * std::sin(spawnAngle + PI / 2.0));
 			planet->setColor((int)rand_f(64.f, 255.f), (int)rand_f(64.f, 255.f), (int)rand_f(64.f, 255.f));
 			if (radius >= 4000.f) {
 				int moons = (int)(rand_f(0.f, 4.f) * radius * radius / (13000.0 * 13000.0));
@@ -135,9 +160,11 @@ int main(int argc, char** argv) {
 			}
 			obf::planets.push_back(planet);
 		}
-		printf("Generated system: black hole %u, %u planets, %u moons\n", blackholeSystem, planets, totalMoons);
+		printf("Generated system: %u stars, %u planets, %u moons\n", starsN, planets, totalMoons);
 	} else {
 		window = new sf::RenderWindow(sf::VideoMode(500, 500), "Orbitfight");
+
+		systemCenter = new Attractor(true);
 
 		g_camera.scale = 1;
 		g_camera.resize();
@@ -202,9 +229,6 @@ int main(int argc, char** argv) {
 				sf::Packet entityAssign;
 				entityAssign << Packets::AssignEntity << sparePlayer->entity->id;
 				sparePlayer->tcpSocket.send(entityAssign);
-				sf::Packet systemInfo;
-				systemInfo << Packets::SystemInfo << star->id << blackholeSystem;
-				sparePlayer->tcpSocket.send(systemInfo);
 				for (Player* p: playerGroup) {
 					sf::Packet namePacket;
 					namePacket << Packets::Name << p->entity->id << p->username;
@@ -260,6 +284,9 @@ int main(int argc, char** argv) {
 								closestEntity = e;
 							}
 						}
+						if (dst2(systemCenter->x - ownEntity->x - (mousePos.x - g_camera.w * 0.5) * g_camera.scale, systemCenter->y - ownEntity->y - (mousePos.y - g_camera.h * 0.5) * g_camera.scale) < minDst) {
+							closestEntity = systemCenter;
+						}
 						if (closestEntity == trajectoryRef) {
 							trajectoryRef = nullptr;
 							lastTrajectoryRef = nullptr;
@@ -304,6 +331,28 @@ int main(int argc, char** argv) {
 			} else {
 				drawShiftX = 0, drawShiftY = 0;
 			}
+			for (size_t i = 0; i < ghostTrajectories.size(); i++) {
+				std::vector<Point> traj = ghostTrajectories[i];
+				if (lastTrajectoryRef && traj.size() > 0) [[likely]] {
+					sf::Color trajColor = ghostTrajectoryColors[i];
+					sf::VertexArray lines(sf::LineStrip, traj.size());
+					for (size_t i = 0; i < traj.size(); i++){
+						lines[i].position = sf::Vector2f(lastTrajectoryRef->x + traj[i].x + drawShiftX, lastTrajectoryRef->y + traj[i].y + drawShiftY);
+						lines[i].color = trajColor;
+					}
+					window->draw(lines);
+				}
+			}
+			if (!stars.empty()) {
+				double x = 0.0, y = 0.0;
+				for (Attractor* star : stars) {
+					x += star->x;
+					y += star->y;
+				}
+				x /= stars.size();
+				y /= stars.size();
+				systemCenter->setPosition(x, y);
+			}
 			for (size_t i = 0; i < updateGroup.size(); i++) {
 				updateGroup[i]->draw();
 			}
@@ -333,16 +382,6 @@ int main(int argc, char** argv) {
 					selection.setPosition(g_camera.w * 0.5 + (lastTrajectoryRef->x - ownEntity->x) / g_camera.scale, g_camera.h * 0.5 + (lastTrajectoryRef->y - ownEntity->y) / g_camera.scale);
 					selection.setFillColor(sf::Color(0, 0, 0, 0));
 					selection.setOutlineColor(sf::Color(255, 255, 64));
-					selection.setOutlineThickness(1.f);
-					window->draw(selection);
-				}
-				if (star && (!lastTrajectoryRef || lastTrajectoryRef != star) && blackholeSystem) {
-					float radius = std::max(6.f, (float)(star->radius / g_camera.scale));
-					sf::CircleShape selection(radius, 4);
-					selection.setOrigin(radius, radius);
-					selection.setPosition(g_camera.w * 0.5 + (star->x - ownEntity->x) / g_camera.scale, g_camera.h * 0.5 + (star->y - ownEntity->y) / g_camera.scale);
-					selection.setFillColor(sf::Color(0, 0, 0, 0));
-					selection.setOutlineColor(sf::Color(255, 0, 0));
 					selection.setOutlineThickness(1.f);
 					window->draw(selection);
 				}
@@ -402,6 +441,9 @@ int main(int argc, char** argv) {
 							}
 							Attractor* e = new Attractor(radius);
 							e->unloadCreatePacket(packet);
+							if (e->star) {
+								stars.push_back(e);
+							}
 							break;
 						}
 						case Entities::Projectile: {
@@ -496,18 +538,6 @@ int main(int argc, char** argv) {
 						}
 						break;
 					}
-					case Packets::SystemInfo: {
-						uint32_t id;
-						packet >> id;
-						for (Entity* e : updateGroup) {
-							if (e->id == id) [[unlikely]] {
-								star = (Attractor*)e;
-								break;
-							}
-						}
-						packet >> blackholeSystem;
-						break;
-					}
 					default:
 						printf("Unknown packet %d received\n", type);
 						break;
@@ -555,16 +585,17 @@ int main(int argc, char** argv) {
 			double resTime = globalTime;
 			delta = predictDelta;
 			simulating = true;
+			ghostTrajectories.clear();
+			ghostTrajectoryColors.clear();
 			bool controlsActive = *(unsigned char*) &controls != 0;
-			if (ownEntity) {
-				if (controlsActive) {
-					ghost = new Triangle(true);
-					ghost->x = ownEntity->x;
-					ghost->y = ownEntity->y;
-					ghost->velX = ownEntity->velX;
-					ghost->velY = ownEntity->velY;
-				}
-				((Triangle*)ownEntity)->inertTrajectory->clear();
+			Triangle* ghost = nullptr;
+			if (ownEntity && controlsActive) {
+				ghost = new Triangle(true);
+				ghost->x = ownEntity->x;
+				ghost->y = ownEntity->y;
+				ghost->velX = ownEntity->velX;
+				ghost->velY = ownEntity->velY;
+				ghostTrajectoryColors.push_back(sf::Color(ownEntity->color[0] * 0.7, ownEntity->color[1] * 0.7, ownEntity->color[2] * 0.7));
 			}
 			for (Entity* e : updateGroup) {
 				e->simSetup();
@@ -576,6 +607,16 @@ int main(int argc, char** argv) {
 				globalTime += predictDelta / 60.0;
 				for (Entity* e : updateGroup) {
 					e->update();
+				}
+				if (!stars.empty()) [[likely]] {
+					double x = 0.0, y = 0.0;
+					for (Attractor* star : stars) {
+						x += star->x;
+						y += star->y;
+					}
+					x /= stars.size();
+					y /= stars.size();
+					systemCenter->setPosition(x, y);
 				}
 				for (Entity* e : updateGroup) {
 					e->trajectory->push_back({e->x - trajectoryRef->x, e->y - trajectoryRef->y});
@@ -603,8 +644,8 @@ int main(int argc, char** argv) {
 				entityDeleteBuffer.clear();
 			}
 			updateGroup = retUpdateGroup;
-			if (ownEntity && controlsActive) {
-				*((Triangle*)ownEntity)->inertTrajectory = *ghost->trajectory;
+			if (ghost) {
+				ghostTrajectories.push_back(*ghost->trajectory);
 				delete ghost;
 			}
 			for (Entity* e : updateGroup) {

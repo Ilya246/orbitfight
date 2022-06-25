@@ -190,7 +190,7 @@ void parseCommand (const string_view& command) {
 		size_t id = stoi(id_s);
 		for (Entity* e : updateGroup) {
 			if (e->id == id) {
-				printf("Mass %g, radius %g, relative to star: x %g, y %g, vX %g, vY %g\n", e->mass, e->radius, e->x - star->x, e->y - star->y, e->velX - star->velX, e->velY - star->velY);
+				printf("Mass %g, radius %g, relative to star 0: x %g, y %g, vX %g, vY %g\n", e->mass, e->radius, e->x - stars[0]->x, e->y - stars[0]->y, e->velX - stars[0]->velX, e->velY - stars[0]->velY);
 				return;
 			}
 		}
