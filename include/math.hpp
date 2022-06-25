@@ -9,6 +9,10 @@ constexpr double TAU = atan(1.0) * 8.0;
 constexpr double radToDeg = 180.0 / PI;
 constexpr double degToRad = PI / 180.0;
 
+// physics
+constexpr double C = 3.0e8;
+constexpr double CC = C * C;
+
 double dst2(double, double);
 double dst(double, double);
 float rand_f(float, float);

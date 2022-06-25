@@ -94,7 +94,8 @@ int main(int argc, char** argv) {
 		float minrange = 120000.f;
 		float maxrange = 4000000.f;
 		if (blackholeSystem) {
-			star = new Attractor(1.f, 1.0e21);
+			double M = 1.0e21;
+			star = new Attractor(2.0 * G * M / (CC), M);
 			star->setColor(0, 0, 0);
 			minrange = 12000.f;
 			maxrange = 6000000.f;
@@ -312,9 +313,16 @@ int main(int argc, char** argv) {
 
 				sf::Text coords;
 				coords.setFont(*font);
-				coords.setString(std::to_string((int)ownEntity->x).append(" ").append(std::to_string((int)ownEntity->y))
-				.append("\nFPS: ").append(std::to_string(60.0 / delta))
-				.append("\nPing: ").append(std::to_string((int)(lastPing * 1000.0))).append("ms"));
+				std::string info = "";
+				info.append("FPS: ").append(std::to_string(60.0 / delta))
+				.append("\nPing: ").append(std::to_string((int)(lastPing * 1000.0))).append("ms");
+				if (lastTrajectoryRef) {
+					info.append("\nrX: ").append(std::to_string((int)(ownEntity->x - lastTrajectoryRef->x)))
+					.append(", rY: ").append(std::to_string((int)(ownEntity->y - lastTrajectoryRef->y)))
+					.append("\nrVx: ").append(std::to_string((int)(ownEntity->velX - lastTrajectoryRef->velX)))
+					.append(", rVy: ").append(std::to_string((int)(ownEntity->velY - lastTrajectoryRef->velY)));
+				}
+				coords.setString(info);
 				coords.setCharacterSize(textCharacterSize);
 				coords.setFillColor(sf::Color::White);
 				window->draw(coords);
