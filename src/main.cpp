@@ -93,11 +93,11 @@ int main(int argc, char** argv) {
 		blackholeSystem = rand_f(0.f, 1.f) < 1.f / 3.f;
 		float minrange = 120000.f;
 		if (blackholeSystem) {
-			star = new Attractor(1.f, 4e21);
+			star = new Attractor(1.f, 1.0e21);
 			star->setColor(0, 0, 0);
 			minrange = 12000.f;
 		} else {
-			star = new Attractor(60000.f, 5e20);
+			star = new Attractor(60000.f, 5.0e20);
 			star->setColor(255, 229, 97);
 		}
 		star->setPosition(0.0, 0.0);
