@@ -248,7 +248,7 @@ void Entity::simReset() {
 }
 
 Triangle::Triangle() : Entity() {
-	mass = 0.4;
+	mass = 5000.0;
 	radius = 16.0;
 	if (!headless) {
 		shape = std::make_unique<sf::CircleShape>(radius, 3);
