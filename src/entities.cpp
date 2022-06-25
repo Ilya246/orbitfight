@@ -520,7 +520,8 @@ void Attractor::update() {
 		}
 
 		double xdiff = e->x - x, ydiff = y - e->y;
-		double factor = delta * G / pow(xdiff * xdiff + ydiff * ydiff, 1.5);
+		double dist = dst(xdiff, ydiff);
+		double factor = delta * G / (dist * dist * dist);
 		double factorm = -factor * mass;
 		e->addVelocity(xdiff * factorm, ydiff * factorm);
 		if (e->type() != Entities::Attractor) {
