@@ -372,12 +372,17 @@ void Triangle::control(movement& cont) {
 		}
 	}
 	if (cont.primaryfire && lastShot + reload < globalTime) {
-		if (headless) {
+		if (headless || simulating) {
 			Projectile* proj = new Projectile();
+			if (simulating) {
+				simCleanupBuffer.push_back(proj);
+			}
 			proj->setPosition(x + (radius + proj->radius * 2.0) * xMul, y - (radius + proj->radius * 2.0) * yMul);
 			proj->setVelocity(velX + shootPower * xMul, velY - shootPower * yMul);
 			addVelocity(-shootPower * xMul * proj->mass / mass, -shootPower * yMul * proj->mass / mass);
-			proj->syncCreation();
+			if (headless) {
+				proj->syncCreation();
+			}
 		}
 		lastShot = globalTime;
 	}

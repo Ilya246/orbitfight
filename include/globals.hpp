@@ -21,6 +21,7 @@ inline obf::Player* sparePlayer = new obf::Player;
 inline std::vector<Entity*> updateGroup;
 inline std::vector<Player*> playerGroup;
 inline std::vector<Entity*> entityDeleteBuffer;
+inline std::vector<Entity*> simCleanupBuffer;
 inline std::vector<Attractor*> planets;
 inline std::vector<std::vector<Point>> ghostTrajectories;
 inline std::vector<sf::Color> ghostTrajectoryColors;
@@ -54,7 +55,7 @@ nextID = 0,
 predictSteps = (int)(30.0 / predictDelta * 60.0);
 inline bool headless = false, autoConnect = false, debug = false,
 inputWaiting = false,
-chatting = false,
+chatting = false, lockControls = false,
 simulating = false;
 
 struct Var {

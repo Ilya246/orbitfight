@@ -11,7 +11,7 @@ using namespace std;
 namespace obf {
 
 static const regex int_regex = regex("[0-9]*"),
-	double_regex = regex("[0-9]*\\.[0-9]*"),
+	double_regex = regex("[0-9]*(\\.[0-9]*)?"),
 	boolt_regex = regex("([tT][rR][uU][eE])|1"), boolf_regex = regex("([fF][aA][lL][sS][eE])|0");
 
 void splitString(string_view str, vector<string_view> &vec, char delim) {

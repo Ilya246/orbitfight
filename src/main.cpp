@@ -242,7 +242,6 @@ int main(int argc, char** argv) {
 					controls.turnleft = sf::Keyboard::isKeyPressed(sf::Keyboard::A);
 					controls.turnright = sf::Keyboard::isKeyPressed(sf::Keyboard::D);
 					controls.boost = sf::Keyboard::isKeyPressed(sf::Keyboard::LControl);
-					controls.hyperboost = sf::Keyboard::isKeyPressed(sf::Keyboard::LShift);
 					controls.primaryfire = sf::Keyboard::isKeyPressed(sf::Keyboard::Space);
 				}
 			}
@@ -269,7 +268,14 @@ int main(int argc, char** argv) {
 					break;
 				}
 				case sf::Event::KeyPressed: {
-					if (event.key.code == sf::Keyboard::Tab && ownEntity) {
+					if (!chatting && event.key.code == sf::Keyboard::LShift && ownEntity) {
+						controls.hyperboost = !controls.hyperboost;
+					} else if (!chatting && event.key.code == sf::Keyboard::LAlt) {
+						lockControls = !lockControls;
+						sf::Packet controlsPacket;
+						controlsPacket << Packets::Controls << (lockControls ? (unsigned char) 0 : *(unsigned char*) &controls);
+						serverSocket->send(controlsPacket);
+					} else if (event.key.code == sf::Keyboard::Tab && ownEntity) {
 						double minDst = DBL_MAX;
 						Entity* closestEntity = nullptr;
 						for (Entity* e : updateGroup) {
@@ -360,7 +366,9 @@ int main(int argc, char** argv) {
 			}
 			g_camera.bindUI();
 			if (ownEntity) {
-				ownEntity->control(controls);
+				if (!lockControls) {
+					ownEntity->control(controls);
+				}
 
 				sf::Text coords;
 				coords.setFont(*font);
@@ -550,12 +558,12 @@ int main(int argc, char** argv) {
 					connectToServer();
 				}
 			}
-			if (ownEntity && lastControls != controls) {
+			if (ownEntity && lastControls != controls && !lockControls) {
 				sf::Packet controlsPacket;
 				controlsPacket << Packets::Controls << *(unsigned char*) &controls;
 				serverSocket->send(controlsPacket);
+				*(unsigned char*) &lastControls = *(unsigned char*) &controls;
 			}
-			*(unsigned char*) &lastControls = *(unsigned char*) &controls;
 		}
 
 		for (size_t i = 0; i < updateGroup.size(); i++) {
@@ -646,6 +654,26 @@ int main(int argc, char** argv) {
 				}
 				entityDeleteBuffer.clear();
 			}
+			for (Entity* en : simCleanupBuffer) {
+				for (size_t i = 0; i < updateGroup.size(); i++) {
+					Entity* e = updateGroup[i];
+					if (e == en) [[unlikely]] {
+						ghostTrajectories.push_back(*en->trajectory);
+						ghostTrajectoryColors.push_back(sf::Color(en->color[0], en->color[1], en->color[2]));
+						updateGroup[i] = updateGroup[updateGroup.size() - 1];
+						updateGroup.pop_back();
+					} else {
+						for (size_t i = 0; i < e->near.size(); i++){
+							if (e->near[i] == en) [[unlikely]] {
+								e->near[i] = e->near[e->near.size() - 1];
+								e->near.pop_back();
+								break;
+							}
+						}
+					}
+				}
+			}
+			simCleanupBuffer.clear();
 			updateGroup = retUpdateGroup;
 			if (ghost) {
 				ghostTrajectories.push_back(*ghost->trajectory);
