@@ -65,11 +65,14 @@ struct Var {
 using namespace obf::Types;
 
 inline std::map<std::string, Var> vars {{"port", {Int, &port}},
+	{"predictSteps", {Int, &predictSteps}},
 	{"syncSpacing", {Double, &syncSpacing}},
 	{"collideRestitution", {Double, &collideRestitution}},
 	{"gravityStrength", {Double, &G}},
 	{"blackholeChance", {Double, &blackholeChance}},
 	{"extraStarChance", {Double, &extraStarChance}},
+	{"predictDelta", {Double, &predictDelta}},
+	{"predictSpacing", {Double, &predictSpacing}},
 	{"name", {String, &name}},
 	{"serverAddress", {String, &serverAddress}},
 	{"autoConnect", {Bool, &autoConnect}},

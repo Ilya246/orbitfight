@@ -8,7 +8,12 @@
 
 namespace obf {
 
+
 struct Player;
+
+struct Entity;
+
+void setupShip(Entity* ship);
 
 struct movement {
 	int forward: 1 = 0;

@@ -18,6 +18,15 @@ bool operator ==(movement& mov1, movement& mov2) {
 	return *(unsigned char*) &mov1 == *(unsigned char*) &mov2;
 }
 
+void setupShip(Entity* ship) {
+	Attractor* planet = planets[(int)rand_f(0, planets.size() - 1)];
+	double spawnDst = planet->radius + rand_f(600.f, 1500.f);
+	float spawnAngle = rand_f(-PI, PI);
+	ship->setPosition(planet->x + spawnDst * std::cos(spawnAngle), planet->y + spawnDst * std::sin(spawnAngle));
+	double vel = sqrt(G * planet->mass / spawnDst);
+	ship->setVelocity(planet->velX + vel * std::cos(spawnAngle + PI / 2.0), planet->velY + vel * std::sin(spawnAngle + PI / 2.0));
+}
+
 std::string Player::name() {
 	if (username.size()) return username;
 
@@ -150,11 +159,10 @@ void Entity::update() {
 							sendMessage.append("<").append(p->name()).append("> has been incinerated.");
 							std::cout << sendMessage << std::endl;
 							chatPacket << Packets::Chat << sendMessage;
-							p->tcpSocket.disconnect();
-							delete p;
 							for (Player* p : playerGroup) {
 								p->tcpSocket.send(chatPacket);
 							}
+							setupShip(p->entity);
 							found = true;
 							break;
 						}
@@ -592,11 +600,10 @@ void Projectile::collide(Entity* with, bool collideOther) {
 					sendMessage.append("<").append(p->name()).append("> has been killed.");
 					std::cout << sendMessage << std::endl;
 					chatPacket << Packets::Chat << sendMessage;
-					p->tcpSocket.disconnect();
-					delete p;
 					for (Player* p : playerGroup) {
 						p->tcpSocket.send(chatPacket);
 					}
+					setupShip(p->entity);
 				}
 			}
 		}

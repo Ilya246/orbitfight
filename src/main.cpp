@@ -218,12 +218,7 @@ int main(int argc, char** argv) {
 				}
 
 				sparePlayer->entity = new Triangle();
-				Attractor* planet = planets[(int)rand_f(0, planets.size() - 1)];
-				double spawnDst = planet->radius + rand_f(600.f, 1500.f);
-				float spawnAngle = rand_f(-PI, PI);
-				sparePlayer->entity->setPosition(planet->x + spawnDst * std::cos(spawnAngle), planet->y + spawnDst * std::sin(spawnAngle));
-				double vel = sqrt(G * planet->mass / spawnDst);
-				sparePlayer->entity->addVelocity(planet->velX + vel * std::cos(spawnAngle + PI / 2.0), -planet->velY - vel * std::sin(spawnAngle + PI / 2.0));
+				setupShip(sparePlayer->entity);
 				sparePlayer->entity->player = sparePlayer;
 				sparePlayer->entity->syncCreation();
 				sf::Packet entityAssign;
@@ -295,8 +290,15 @@ int main(int argc, char** argv) {
 						}
 					} else if (event.key.code == sf::Keyboard::Return) {
 						if(chatting && (int)chatBuffer.getSize() > 1){
+							std::string sendMessage = chatBuffer.toAnsiString();
+							if (chatBuffer[1] == '/') {
+								parseCommand(sendMessage.substr(2, sendMessage.size() - 2));
+								chatting = !chatting;
+								chatBuffer.clear();
+								break;
+							}
 							sf::Packet chatPacket;
-							chatPacket << Packets::Chat << chatBuffer.toAnsiString();
+							chatPacket << Packets::Chat << sendMessage;
 							serverSocket->send(chatPacket);
 							chatBuffer.clear();
 						}
@@ -742,6 +744,7 @@ int main(int argc, char** argv) {
 								p->tcpSocket.send(chatPacket);
 								p->tcpSocket.send(namePacket);
 							}
+							printf("%s has set their name.\n", player->name().c_str());
 							break;
 						}
 						case Packets::Controls:
