@@ -92,10 +92,12 @@ int main(int argc, char** argv) {
 
 		blackholeSystem = rand_f(0.f, 1.f) < 1.f / 3.f;
 		float minrange = 120000.f;
+		float maxrange = 4000000.f;
 		if (blackholeSystem) {
 			star = new Attractor(1.f, 1.0e21);
 			star->setColor(0, 0, 0);
 			minrange = 12000.f;
+			maxrange = 6000000.f;
 		} else {
 			star = new Attractor(60000.f, 5.0e20);
 			star->setColor(255, 229, 97);
@@ -104,8 +106,8 @@ int main(int argc, char** argv) {
 		int planets = (int)rand_f(5.f, 10.f);
 		int totalMoons = 0;
 		for (int i = 0; i < planets; i++) {
-			double spawnDst = rand_f(minrange, 4000000.f);
-			double factor = sqrt(spawnDst) / 500.0;
+			double spawnDst = rand_f(minrange, maxrange);
+			double factor = sqrt(spawnDst) / (blackholeSystem ? 1000.0 : 500.0);
 			float spawnAngle = rand_f(-PI, PI);
 			float radius = rand_f(600.f, 6000.f * factor);
 			double density = 8e9 / pow(radius, 1.0 / 3.0);
