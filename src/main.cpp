@@ -3,6 +3,7 @@
 #include "font.hpp"
 #include "globals.hpp"
 #include "math.hpp"
+#include "net.hpp"
 #include "types.hpp"
 #include "toml.hpp"
 
@@ -45,6 +46,80 @@ void inputListen() {
 		inputBuffer.append(buffer);
 	} while (std::cin.eof() || std::cin.fail());
 	inputWaiting = false;
+}
+
+void generateSystem() {
+	int starsN = 1;
+	while (rand_f(0.f, 1.f) < extraStarChance) {
+		starsN += 1;
+	}
+	double angleSpacing = TAU / starsN, angle = 0.0;
+	double starsMass = starMass * starsN, dist = (starsN - 1) * starR * 2.0;
+	for (int i = 0; i < starsN; i++) {
+		Attractor* star = nullptr;
+		double posX = std::cos(angle) * dist, posY = std::sin(angle) * dist;
+		if (rand_f(0.f, 1.f) < blackholeChance) {
+			star = new Attractor(2.0 * G * starMass / (CC), starMass * 1.0001);
+			star->setColor(0, 0, 0);
+			star->blackhole = true;
+		} else {
+			star = new Attractor(starR, starMass);
+			star->setColor(255, 229, 97);
+		}
+		star->setPosition(posX, posY);
+		star->star = true;
+		stars.push_back(star);
+		angle += angleSpacing;
+	}
+	if (starsN > 1) {
+		double aX = 0.0, aY = 0.0;
+		for (int i = 1; i < starsN; i++) {
+			double xdiff = stars[i]->x - stars[0]->x, ydiff = stars[i]->y - stars[0]->y,
+			factor = stars[i]->mass * G / pow(xdiff * xdiff + ydiff * ydiff, 1.5);
+			aX += factor * xdiff;
+			aY += factor * ydiff;
+		}
+		double vel = sqrt(dst(aX, aY) * dist);
+		angle = 0.0;
+		for (int i = 0; i < starsN; i++) {
+			stars[i]->addVelocity(vel * std::cos(angle + PI / 2.0), -vel * std::sin(angle + PI / 2.0));
+			angle += angleSpacing;
+		}
+	}
+	float minrange = 120000.0 + starsN * starR * 2.0;
+	float maxrange = 4000000.0 + starsN * starR * 30.0;
+	int planets = (int)rand_f(5.f, 10.f);
+	int totalMoons = 0;
+	for (int i = 0; i < planets; i++) {
+		double spawnDst = rand_f(minrange, maxrange);
+		double factor = sqrt(spawnDst) / (600.0 + starsN * 100.0);
+		float spawnAngle = rand_f(-PI, PI);
+		float radius = rand_f(600.f, 6000.f * factor);
+		double density = 8e9 / pow(radius, 1.0 / 3.0);
+		Attractor* planet = new Attractor(radius, radius * radius * density);
+		planet->setPosition(spawnDst * std::cos(spawnAngle), spawnDst * std::sin(spawnAngle));
+		double vel = sqrt(G * starsMass / spawnDst);
+		planet->addVelocity(vel * std::cos(spawnAngle + PI / 2.0), -vel * std::sin(spawnAngle + PI / 2.0));
+		planet->setColor((int)rand_f(64.f, 255.f), (int)rand_f(64.f, 255.f), (int)rand_f(64.f, 255.f));
+		if (radius >= 4000.f) {
+			int moons = (int)(rand_f(0.f, 4.f) * radius * radius / (13000.0 * 13000.0));
+			totalMoons += moons;
+			for (int it = 0; it < moons; it++) {
+				double mSpawnDst = planet->radius + rand_f(6000.f, 80000.f) * factor;
+				float spawnAngle = rand_f(-PI, PI);
+				float radius = rand_f(120.f, planet->radius / 6.f);
+				double density = 8e9 / pow(radius, 1.0 / 3.0);
+				Attractor* moon = new Attractor(radius, radius * radius * density);
+				moon->setPosition(planet->x + mSpawnDst * std::cos(spawnAngle), planet->y + mSpawnDst * std::sin(spawnAngle));
+				double vel = sqrt(G * planet->mass / mSpawnDst);
+				moon->addVelocity(planet->velX + vel * std::cos(spawnAngle + PI / 2.0), -planet->velY - vel * std::sin(spawnAngle + PI / 2.0));
+				moon->setColor((int)rand_f(64.f, 255.f), (int)rand_f(64.f, 255.f), (int)rand_f(64.f, 255.f));
+				obf::planets.push_back(moon);
+			}
+		}
+		obf::planets.push_back(planet);
+	}
+	printf("Generated system: %u stars, %u planets, %u moons\n", starsN, planets, totalMoons);
 }
 
 int main(int argc, char** argv) {
@@ -90,77 +165,7 @@ int main(int argc, char** argv) {
 
 		printf("Hosted server on port %u.\n", port);
 
-		int starsN = 1;
-		while (rand_f(0.f, 1.f) < extraStarChance) {
-			starsN += 1;
-		}
-		double angleSpacing = TAU / starsN, angle = 0.0;
-		double starsMass = starMass * starsN, dist = (starsN - 1) * starR * 2.0;
-		for (int i = 0; i < starsN; i++) {
-			Attractor* star = nullptr;
-			double posX = std::cos(angle) * dist, posY = std::sin(angle) * dist;
-			if (rand_f(0.f, 1.f) < blackholeChance) {
-				star = new Attractor(2.0 * G * starMass / (CC), starMass * 1.0001);
-				star->setColor(0, 0, 0);
-				star->blackhole = true;
-			} else {
-				star = new Attractor(starR, starMass);
-				star->setColor(255, 229, 97);
-			}
-			star->setPosition(posX, posY);
-			star->star = true;
-			stars.push_back(star);
-			angle += angleSpacing;
-		}
-		if (starsN > 1) {
-			double aX = 0.0, aY = 0.0;
-			for (int i = 1; i < starsN; i++) {
-				double xdiff = stars[i]->x - stars[0]->x, ydiff = stars[i]->y - stars[0]->y,
-				factor = stars[i]->mass * G / pow(xdiff * xdiff + ydiff * ydiff, 1.5);
-				aX += factor * xdiff;
-				aY += factor * ydiff;
-			}
-			double vel = sqrt(dst(aX, aY) * dist);
-			angle = 0.0;
-			for (int i = 0; i < starsN; i++) {
-				stars[i]->addVelocity(vel * std::cos(angle + PI / 2.0), -vel * std::sin(angle + PI / 2.0));
-				angle += angleSpacing;
-			}
-		}
-		float minrange = 120000.0 + starsN * starR * 2.0;
-		float maxrange = 4000000.0 + starsN * starR * 30.0;
-		int planets = (int)rand_f(5.f, 10.f);
-		int totalMoons = 0;
-		for (int i = 0; i < planets; i++) {
-			double spawnDst = rand_f(minrange, maxrange);
-			double factor = sqrt(spawnDst) / (600.0 + starsN * 100.0);
-			float spawnAngle = rand_f(-PI, PI);
-			float radius = rand_f(600.f, 6000.f * factor);
-			double density = 8e9 / pow(radius, 1.0 / 3.0);
-			Attractor* planet = new Attractor(radius, radius * radius * density);
-			planet->setPosition(spawnDst * std::cos(spawnAngle), spawnDst * std::sin(spawnAngle));
-			double vel = sqrt(G * starsMass / spawnDst);
-			planet->addVelocity(vel * std::cos(spawnAngle + PI / 2.0), -vel * std::sin(spawnAngle + PI / 2.0));
-			planet->setColor((int)rand_f(64.f, 255.f), (int)rand_f(64.f, 255.f), (int)rand_f(64.f, 255.f));
-			if (radius >= 4000.f) {
-				int moons = (int)(rand_f(0.f, 4.f) * radius * radius / (13000.0 * 13000.0));
-				totalMoons += moons;
-				for (int it = 0; it < moons; it++) {
-					double mSpawnDst = planet->radius + rand_f(6000.f, 80000.f) * factor;
-					float spawnAngle = rand_f(-PI, PI);
-					float radius = rand_f(120.f, planet->radius / 6.f);
-					double density = 8e9 / pow(radius, 1.0 / 3.0);
-					Attractor* moon = new Attractor(radius, radius * radius * density);
-					moon->setPosition(planet->x + mSpawnDst * std::cos(spawnAngle), planet->y + mSpawnDst * std::sin(spawnAngle));
-					double vel = sqrt(G * planet->mass / mSpawnDst);
-					moon->addVelocity(planet->velX + vel * std::cos(spawnAngle + PI / 2.0), -planet->velY - vel * std::sin(spawnAngle + PI / 2.0));
-					moon->setColor((int)rand_f(64.f, 255.f), (int)rand_f(64.f, 255.f), (int)rand_f(64.f, 255.f));
-					obf::planets.push_back(moon);
-				}
-			}
-			obf::planets.push_back(planet);
-		}
-		printf("Generated system: %u stars, %u planets, %u moons\n", starsN, planets, totalMoons);
+		generateSystem();
 	} else {
 		window = new sf::RenderWindow(sf::VideoMode(500, 500), "Orbitfight");
 
@@ -202,6 +207,43 @@ int main(int argc, char** argv) {
 				}
 				inputReader = std::async(std::launch::async, inputListen);
 				inputWaiting = true;
+			}
+			if (autorestart) {
+				if (playerGroup.size() == 0) {
+					delta = 0.0;
+					lastAutorestartNotif = -autorestartNotifSpacing;
+					lastAutorestart = globalTime;
+					if (!autorestartRegenned) {
+						for (Entity* e : updateGroup) {
+							delete e;
+						}
+						generateSystem();
+					}
+					autorestartRegenned = true;
+				} else {
+					if (lastAutorestart + autorestartSpacing < globalTime) {
+						delta = 0.0;
+						for (Entity* e :updateGroup) {
+							if (e->type() != Entities::Triangle) {
+								delete e;
+							}
+						}
+						generateSystem();
+						for (Player* p : playerGroup) {
+							setupShip(p->entity);
+						}
+						std::string sendMessage = "ANNOUNCEMENT: The system has been regenerated.";
+						relayMessage(sendMessage);
+						lastAutorestartNotif = -autorestartNotifSpacing;
+						lastAutorestart = globalTime;
+					} else if (lastAutorestartNotif + autorestartNotifSpacing < globalTime) {
+						std::string sendMessage = "";
+						sendMessage.append("ANNOUNCEMENT: ").append(std::to_string((int)((autorestartSpacing - globalTime + lastAutorestart) / 60.0))).append("min until autorestart.");
+						relayMessage(sendMessage);
+						lastAutorestartNotif = globalTime;
+					}
+					autorestartRegenned = false;
+				}
 			}
 			sf::Socket::Status status = connectListener->accept(sparePlayer->tcpSocket);
 			if (status == sf::Socket::Done) {
@@ -425,140 +467,7 @@ int main(int argc, char** argv) {
 
 				serverSocket->setBlocking(true);
 				if (status == sf::Socket::Done) {
-					uint16_t type;
-					packet >> type;
-					if(debug && type != Packets::SyncEntity){
-						printf("Got packet %d, size %llu\n", type, packet.getDataSize());
-					}
-					switch (type) {
-					case Packets::Ping: {
-						sf::Packet ackPacket;
-						ackPacket << Packets::Ping;
-						serverSocket->send(ackPacket);
-						break;
-					}
-					case Packets::CreateEntity: {
-						uint8_t entityType;
-						packet >> entityType;
-						if(debug){
-							printf("Received entity of type %u\n", entityType);
-						}
-						switch (entityType) {
-						case Entities::Triangle: {
-							Triangle* e = new Triangle;
-							e->unloadCreatePacket(packet);
-							break;
-						}
-						case Entities::Attractor: {
-							double radius;
-							packet >> radius;
-							if(debug){
-								printf(", radius %g", radius);
-							}
-							Attractor* e = new Attractor(radius);
-							e->unloadCreatePacket(packet);
-							if (e->star) {
-								stars.push_back(e);
-							}
-							break;
-						}
-						case Entities::Projectile: {
-							Projectile* e = new Projectile;
-							e->unloadCreatePacket(packet);
-							break;
-						}
-						default:
-							printf("Received entity of unknown entity type %d\n", entityType);
-							break;
-						}
-						break;
-					}
-					case Packets::SyncEntity: {
-						uint32_t entityID;
-						packet >> entityID;
-						for (Entity* e : updateGroup) {
-							if (e->id == entityID) [[unlikely]] {
-								e->unloadSyncPacket(packet);
-								break;
-							}
-						}
-						break;
-					}
-					case Packets::AssignEntity: {
-						uint32_t entityID;
-						packet >> entityID;
-						for (Entity* e : updateGroup) {
-							if (e->id == entityID) [[unlikely]] {
-								ownEntity = e;
-								break;
-							}
-						}
-						break;
-					}
-					case Packets::DeleteEntity: {
-						uint32_t deleteID;
-						packet >> deleteID;
-						for (Entity* e : updateGroup) {
-							if (e->id == deleteID) [[unlikely]] {
-								delete e;
-								break;
-							}
-						}
-						break;
-					}
-					case Packets::ColorEntity: {
-						uint32_t id;
-						packet >> id;
-						for (Entity* e : updateGroup) {
-							if (e->id == id) [[unlikely]] {
-								packet >> e->color[0] >> e->color[1] >> e->color[2];
-								break;
-							}
-						}
-						break;
-					}
-					case Packets::Chat: {
-						std::string message;
-						packet >> message;
-						short to = displayMessageCount - 1;
-						for (short i = 0; i < to; i++) {
-							displayMessages[i] = displayMessages[i + 1];
-						}
-						displayMessages[to] = sf::String(message);
-						break;
-					}
-					case Packets::PingInfo:
-						packet >> lastPing;
-						break;
-					case Packets::Name: {
-						uint32_t id;
-						packet >> id;
-						for (Entity* e : updateGroup) {
-							if (e->id == id) [[unlikely]] {
-								packet >> (*(Triangle**)&e)->name;
-								break;
-							}
-						}
-						break;
-					}
-					case Packets::PlanetCollision: {
-						uint32_t id;
-						packet >> id;
-						for (Entity* e : updateGroup) {
-							if (e->id == id) [[unlikely]] {
-								Attractor* at = (Attractor*)e;
-								packet >> at->mass >> at->radius;
-								at->shape->setRadius(at->radius);
-								at->shape->setOrigin(at->radius, at->radius);
-								break;
-							}
-						}
-						break;
-					}
-					default:
-						printf("Unknown packet %d received\n", type);
-						break;
-					}
+					clientParsePacket(packet);
 				} else if (status == sf::Socket::Disconnected) {
 					printf("Connection to server closed.\n");
 					connectToServer();
@@ -728,74 +637,7 @@ int main(int argc, char** argv) {
 					player->tcpSocket.setBlocking(true);
 					if (status == sf::Socket::Done) [[likely]]{
 						player->lastAck = globalTime;
-						uint16_t type;
-						packet >> type;
-						if(debug){
-							printf("Got packet %d from %s, size %llu\n", type, player->name().c_str(), packet.getDataSize());
-						}
-						switch(type) {
-						case Packets::Ping: {
-							player->ping = globalTime - player->lastPingSent;
-							sf::Packet pingInfoPacket;
-							pingInfoPacket << Packets::PingInfo << player->ping;
-							player->tcpSocket.send(pingInfoPacket);
-							break;
-						}
-						case Packets::Nickname: {
-							packet >> player->username;
-							if (player->username.empty() || (int)player->username.size() > usernameLimit) {
-								player->username = "impostor";
-							}
-
-							std::hash<std::string> hasher;
-							size_t hash = hasher(player->username);
-							unsigned char color[3] = {
-								(unsigned char) hash,
-								(unsigned char) (hash >> 8),
-								(unsigned char) (hash >> 16)
-							};
-
-							sf::Packet colorPacket;
-							colorPacket << Packets::ColorEntity << player->entity->id << color[0] << color[1] << color[2];
-							sf::Packet chatPacket;
-							std::string sendMessage;
-							sendMessage.append("<").append(player->name()).append("> has joined.");
-							chatPacket << Packets::Chat << sendMessage;
-							sf::Packet namePacket;
-							namePacket << Packets::Name << player->entity->id << player->username;
-							for (Player* p : playerGroup) {
-								p->tcpSocket.send(colorPacket);
-								p->tcpSocket.send(chatPacket);
-								p->tcpSocket.send(namePacket);
-							}
-							printf("%s has set their name.\n", player->name().c_str());
-							break;
-						}
-						case Packets::Controls:
-							packet >> *(unsigned char*) &(player->controls);
-							break;
-						case Packets::Chat: {
-							std::string message;
-							packet >> message;
-							if ((int)message.size() <= messageLimit && message.size() > 0) {
-								sf::Packet chatPacket;
-								std::string sendMessage = "";
-								sendMessage.append("[").append(player->name()).append("]: ").append(message.substr(1)); // i probably need to implement an alphanumerical regex here
-								std::cout << sendMessage << std::endl;
-								chatPacket << Packets::Chat << sendMessage;
-								for (Player* p : playerGroup) {
-									p->tcpSocket.send(chatPacket);
-								}
-							}
-							break;
-						}
-						case Packets::ResizeView:
-							packet >> player->viewW >> player->viewH;
-							break;
-						default:
-							printf("Illegal packet %d\n", type);
-							break;
-						}
+						serverParsePacket(packet, player);
 					} else if (status == sf::Socket::Disconnected) {
 						printf("Player %s has disconnected.\n", player->name().c_str());
 						i--;

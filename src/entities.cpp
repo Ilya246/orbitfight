@@ -2,6 +2,7 @@
 #include "entities.hpp"
 #include "globals.hpp"
 #include "math.hpp"
+#include "net.hpp"
 #include "types.hpp"
 
 #include <cmath>
@@ -163,11 +164,7 @@ void Entity::update2() {
 							sf::Packet chatPacket;
 							std::string sendMessage;
 							sendMessage.append("<").append(p->name()).append("> has been incinerated.");
-							std::cout << sendMessage << std::endl;
-							chatPacket << Packets::Chat << sendMessage;
-							for (Player* p : playerGroup) {
-								p->tcpSocket.send(chatPacket);
-							}
+							relayMessage(sendMessage);
 							setupShip(p->entity);
 							found = true;
 							break;
@@ -284,13 +281,13 @@ Triangle::Triangle() : Entity() {
 
 void Triangle::loadCreatePacket(sf::Packet& packet) {
 	packet << type() << id << x << y << velX << velY << rotation;
-	if(debug){
+	if (debug) {
 		printf("Sent id %d: %g %g %g %g\n", id, x, y, velX, velY);
 	}
 }
 void Triangle::unloadCreatePacket(sf::Packet& packet) {
 	packet >> id >> x >> y >> velX >> velY >> rotation;
-	if(debug){
+	if (debug) {
 		printf("Received id %d: %g %g %g %g\n", id, x, y, velX, velY);
 	}
 }
@@ -506,13 +503,13 @@ Attractor::Attractor(bool ghost) {
 
 void Attractor::loadCreatePacket(sf::Packet& packet) {
 	packet << type() << radius << id << x << y << velX << velY << mass << star << blackhole << color[0] << color[1] << color[2];
-	if(debug){
+	if (debug) {
 		printf("Sent id %d: %g %g %g %g\n", id, x, y, velX, velY);
 	}
 }
 void Attractor::unloadCreatePacket(sf::Packet& packet) {
 	packet >> id >> x >> y >> velX >> velY >> mass >> star >> blackhole >> color[0] >> color[1] >> color[2];
-	if(debug){
+	if (debug) {
 		printf(", id %d: %g %g %g %g\n", id, x, y, velX, velY);
 	}
 }
@@ -584,13 +581,13 @@ Projectile::Projectile() : Entity() {
 
 void Projectile::loadCreatePacket(sf::Packet& packet) {
 	packet << type() << id << x << y << velX << velY;
-	if(debug){
+	if (debug) {
 		printf("Sent id %d: %g %g %g %g\n", id, x, y, velX, velY);
 	}
 }
 void Projectile::unloadCreatePacket(sf::Packet& packet) {
 	packet >> id >> x >> y >> velX >> velY;
-	if(debug){
+	if (debug) {
 		printf(", id %d: %g %g %g %g\n", id, x, y, velX, velY);
 	}
 }
@@ -618,11 +615,7 @@ void Projectile::collide(Entity* with, bool collideOther) {
 					sf::Packet chatPacket;
 					std::string sendMessage;
 					sendMessage.append("<").append(p->name()).append("> has been killed.");
-					std::cout << sendMessage << std::endl;
-					chatPacket << Packets::Chat << sendMessage;
-					for (Player* p : playerGroup) {
-						p->tcpSocket.send(chatPacket);
-					}
+					relayMessage(sendMessage);
 					setupShip(p->entity);
 				}
 			}
