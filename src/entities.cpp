@@ -600,6 +600,9 @@ void Projectile::collide(Entity* with, bool collideOther) {
 		printf("bullet collision: %u-%u ", id, with->id);
 	}
 	if (with->type() == Entities::Triangle) {
+		if (owner) {
+			owner->kills++;
+		}
 		if (debug) {
 			printf("of type triangle\n");
 		}
