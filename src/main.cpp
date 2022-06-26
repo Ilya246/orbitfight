@@ -160,6 +160,13 @@ int main(int argc, char** argv) {
 			}
 			obf::planets.push_back(planet);
 		}
+		if (doAI) {
+			for (int i = 0; i < aiCount; i++) {
+				setupShip(new AITriangle());
+			}
+		} else {
+			aiGens = 0;
+		}
 		printf("Generated system: %u stars, %u planets, %u moons\n", starsN, planets, totalMoons);
 	} else {
 		window = new sf::RenderWindow(sf::VideoMode(500, 500), "Orbitfight");
@@ -566,6 +573,80 @@ int main(int argc, char** argv) {
 			}
 		}
 
+		if (headless && aiGen < aiGens && tick > (aiGen + 1) * ticksPerGen) [[unlikely]] {
+			printf("Advancing AI generation from gen %u, ", aiGen);
+			aiGen++;
+			size_t to = updateGroup.size();
+			int maxKills = -1;
+			int alive = 0;
+			AITriangle* best = nullptr;
+			for (size_t i = 0; i < to; i++) {
+				if (updateGroup[i]->type() == Entities::Projectile && std::find(entityDeleteBuffer.begin(), entityDeleteBuffer.end(), updateGroup[i]) == entityDeleteBuffer.end()) {
+					entityDeleteBuffer.push_back(updateGroup[i]);
+				} else if (updateGroup[i]->ai) {
+					AITriangle* tri = (AITriangle*)updateGroup[i];
+					for (int i = 0; i < tri->kills; i++) {
+						new AITriangle(*tri);
+						alive++;
+					}
+					if (tri->kills > maxKills) {
+						maxKills = tri->kills;
+						best = tri;
+					}
+					alive++;
+					tri->kills = 0;
+				}
+			}
+			printf("most kills: %u\n", maxKills);
+			for (int i = alive; i < aiCount; i++) {
+				new AITriangle(*best);
+			}
+			for (Entity* e : updateGroup) {
+				if (e->ai) {
+					AITriangle* tri = (AITriangle*)e;
+					for (Neuron& neu : tri->inputs) {
+						if (chance(tri->disconnectChc) && !neu.connections.empty()) {
+							int i = (int)rand_f(0.f, neu.connections.size());
+							neu.connections[i] = neu.connections[neu.connections.size() - 1];
+							neu.connections.pop_back();
+						}
+						if (chance(tri->newConnectChc)) {
+							if (chance(8.0 / tri->hiddenLayerNeurons)) {
+								neu.connections.push_back({&tri->outputs[(int)rand_f(0.f, 8.f)], rand_f(tri->minStartWeight, tri->maxStartWeight)});
+							} else {
+								neu.connections.push_back({&tri->middle[(int)rand_f(0.f, tri->hiddenLayerNeurons)], rand_f(tri->minStartWeight, tri->maxStartWeight)});
+							}
+						}
+						for (connection& con : neu.connections) {
+							if (chance(tri->weightChangeChc)) {
+								con.weight *= chance(0.5f) ? rand_f(1.f, tri->maxWeightChange) : rand_f(1.f / tri->maxWeightChange, 1.f);
+							}
+						}
+					}
+					for (Neuron& neu : tri->middle) {
+						if (chance(tri->disconnectChc) && !neu.connections.empty()) {
+							int i = (int)rand_f(0.f, neu.connections.size());
+							neu.connections[i] = neu.connections[neu.connections.size() - 1];
+							neu.connections.pop_back();
+						}
+						if (chance(tri->newConnectChc)) {
+							if (chance(tri->hiddenLayerNeurons / 8.0)) {
+								neu.connections.push_back({&tri->middle[(int)rand_f(0.f, tri->hiddenLayerNeurons)], rand_f(tri->minStartWeight, tri->maxStartWeight)});
+							} else {
+								neu.connections.push_back({&tri->outputs[(int)rand_f(0.f, 8.f)], rand_f(tri->minStartWeight, tri->maxStartWeight)});
+							}
+						}
+						for (connection& con : neu.connections) {
+							if (chance(tri->weightChangeChc)) {
+								con.weight *= chance(0.5f) ? rand_f(1.f, tri->maxWeightChange) : rand_f(1.f / tri->maxWeightChange, 1.f);
+							}
+						}
+					}
+					setupShip(e);
+				}
+			}
+		}
+
 		for (size_t i = 0; i < updateGroup.size(); i++) {
 			updateGroup[i]->update();
 		}
@@ -837,9 +918,17 @@ int main(int argc, char** argv) {
 			}
 		}
 
-		delta = deltaClock.restart().asSeconds() * 60;
-		sf::sleep(sf::seconds(std::max((1.0 - delta) / 80.0, 0.0)));
-		globalTime = globalClock.getElapsedTime().asSeconds();
+		if (headless && aiGen < aiGens) {
+			delta = 1.0;
+			globalTime = tick / 60.0;
+			globalTimeOffset += tick / 60.0;
+			deltaClock.restart();
+		} else {
+			delta = deltaClock.restart().asSeconds() * 60;
+			sf::sleep(sf::seconds(std::max((1.0 - delta) / 80.0, 0.0)));
+			globalTime = globalTimeOffset + globalClock.getElapsedTime().asSeconds();
+		}
+		tick++;
 	}
 
 	return 0;

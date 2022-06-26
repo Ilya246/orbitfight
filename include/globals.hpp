@@ -46,14 +46,17 @@ inline double delta = 1.0 / 60.0,
 	G = 6.67e-11,
 	lastPing = 0.0, lastPredict = 0.0, lastSweep = 0.0,
 	predictingFor = 0.0,
-	drawShiftX, drawShiftY;
+	drawShiftX, drawShiftY,
+	globalTimeOffset = 0.0;
 inline const int displayMessageCount = 5;
 inline int usernameLimit = 24,
 messageLimit = 50,
 textCharacterSize = 18,
 nextID = 0,
-predictSteps = (int)(30.0 / predictDelta * 60.0);
-inline bool headless = false, autoConnect = false, debug = false,
+predictSteps = (int)(30.0 / predictDelta * 60.0),
+aiCount = 100, aiGen = 0, aiGens = 50, ticksPerGen = 15 * 60 * 60;
+inline long long tick = 0;
+inline bool headless = false, autoConnect = false, debug = false, doAI = false,
 inputWaiting = false,
 chatting = false, lockControls = false,
 simulating = false;
@@ -67,6 +70,8 @@ using namespace obf::Types;
 
 inline std::map<std::string, Var> vars {{"port", {Int, &port}},
 	{"predictSteps", {Int, &predictSteps}},
+	{"aiGens", {Int, &aiGens}},
+	{"aiCount", {Int, &aiCount}},
 	{"syncSpacing", {Double, &syncSpacing}},
 	{"collideRestitution", {Double, &collideRestitution}},
 	{"gravityStrength", {Double, &G}},
@@ -77,7 +82,8 @@ inline std::map<std::string, Var> vars {{"port", {Int, &port}},
 	{"name", {String, &name}},
 	{"serverAddress", {String, &serverAddress}},
 	{"autoConnect", {Bool, &autoConnect}},
-	{"DEBUG", {Bool, &debug}}};
+	{"DEBUG", {Bool, &debug}},
+	{"doAI", {Bool, &doAI}}};
 
 inline sf::String displayMessages[displayMessageCount];
 

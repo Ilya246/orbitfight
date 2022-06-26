@@ -457,6 +457,73 @@ uint8_t Triangle::type() {
 	return Entities::Triangle;
 }
 
+AITriangle::AITriangle() : Triangle() {
+	ai = true;
+	for (Neuron& neu : inputs) {
+		for (int i = 0; i < startingInpLinks; i++) {
+			neu.connections.push_back({&middle[(int)rand_f(0.f, hiddenLayerNeurons)], rand_f(minStartWeight, maxStartWeight)});
+		}
+	}
+	for (Neuron& neu : middle) {
+		for (int i = 0; i < startingMiddleLinks; i++) {
+			neu.connections.push_back({&middle[(int)rand_f(0.f, hiddenLayerNeurons)], rand_f(minStartWeight, maxStartWeight)});
+		}
+	}
+	for (Neuron& neu : middle) {
+		if (rand_f(0.f, 1.f) < startOutLinkChance) {
+			neu.connections.push_back({&outputs[(int)rand_f(0.f, 8.f)], rand_f(minStartWeight, maxStartWeight)});
+		}
+	}
+}
+AITriangle::AITriangle(const AITriangle& from) : Triangle() {
+	ai = true;
+	std::copy(std::begin(from.inputs), std::end(from.inputs), std::begin(inputs));
+	std::copy(std::begin(from.middle), std::end(from.middle), std::begin(middle));
+}
+
+void AITriangle::update() {
+	Triangle::update();
+	Entity* selection = nullptr;
+	for (Entity* e : updateGroup) {
+		if (e->id == (uint32_t)abs(outputs[7].value)) [[unlikely]] {
+			selection = e;
+			break;
+		}
+	}
+	if (!selection) {
+		selection = updateGroup[0];
+	}
+	inputs[0].value = x - selection->x;
+	inputs[1].value = y - selection->y;
+	inputs[2].value = velX - selection->velX;
+	inputs[3].value = velY - selection->velY;
+	inputs[4].value = selection->type();
+	for (Neuron& neu : outputs) {
+		neu.value = 0.f;
+	}
+	for (Neuron& neu : inputs) {
+		for (connection con : neu.connections) {
+			con.to->value += con.weight * tanh(neu.value);
+		}
+	}
+	for (Neuron& neu : middle) {
+		for (connection con : neu.connections) {
+			con.to->value += con.weight * neu.value;
+		}
+	}
+	for (Neuron& neu : middle) {
+		neu.value = tanh(neu.value);
+	}
+	controls.forward     = outputs[0].value > 0.5f;
+	controls.backward    = outputs[1].value > 0.5f;
+	controls.turnleft    = outputs[2].value > 0.5f;
+	controls.turnright   = outputs[3].value > 0.5f;
+	controls.boost       = outputs[4].value > 0.5f;
+	controls.hyperboost  = outputs[5].value > 0.5f;
+	controls.primaryfire = outputs[6].value > 0.5f;
+	control(controls);
+}
+
 Attractor::Attractor(double radius) : Entity() {
 	this->radius = radius;
 	this->mass = 1.0e18;
@@ -604,20 +671,24 @@ void Projectile::collide(Entity* with, bool collideOther) {
 			printf("of type triangle\n");
 		}
 		if (headless) {
-			for (Player* p : playerGroup) {
-				if (p->entity == with) [[unlikely]] {
-					sf::Packet chatPacket;
-					std::string sendMessage;
-					sendMessage.append("<").append(p->name()).append("> has been killed.");
-					std::cout << sendMessage << std::endl;
-					chatPacket << Packets::Chat << sendMessage;
-					for (Player* p : playerGroup) {
-						p->tcpSocket.send(chatPacket);
 			if (owner) {
 				owner->kills++;
 			}
+			if (with->ai) {
+				entityDeleteBuffer.push_back(with);
+			} else {
+				for (Player* p : playerGroup) {
+					if (p->entity == with) [[unlikely]] {
+						sf::Packet chatPacket;
+						std::string sendMessage;
+						sendMessage.append("<").append(p->name()).append("> has been killed.");
+						std::cout << sendMessage << std::endl;
+						chatPacket << Packets::Chat << sendMessage;
+						for (Player* p : playerGroup) {
+							p->tcpSocket.send(chatPacket);
+						}
+						setupShip(p->entity);
 					}
-					setupShip(p->entity);
 				}
 			}
 		}

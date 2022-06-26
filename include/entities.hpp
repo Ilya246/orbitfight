@@ -119,6 +119,36 @@ struct Triangle: public Entity {
 	float rotation = 0.f;
 };
 
+struct Neuron;
+
+struct connection {
+	Neuron* to;
+	float weight;
+};
+
+struct Neuron {
+	std::vector<connection> connections;
+	float value = 0.f;
+};
+
+struct AITriangle: public Triangle {
+	AITriangle();
+	AITriangle(const AITriangle&);
+
+	void update() override;
+
+	static constexpr int startingInpLinks = 6, startingMiddleLinks = 3, hiddenLayerNeurons = 40;
+	static constexpr float minStartWeight = -1.f, maxStartWeight = 1.f, startOutLinkChance = 0.4f,
+	newConnectChc = 0.05f, disconnectChc = 0.04f, weightChangeChc = 0.1f,
+	maxWeightChange = 2.0f;
+
+	Neuron inputs[5]; // x, y, vX, vY relative to selection, selection type
+	Neuron middle[hiddenLayerNeurons];
+	Neuron outputs[8]; // 7 controls and selection ID
+
+	movement controls;
+};
+
 struct Attractor: public Entity {
 	Attractor(double radius);
 	Attractor(double radius, double mass);
