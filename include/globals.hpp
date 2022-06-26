@@ -57,6 +57,7 @@ predictSteps = (int)(30.0 / predictDelta * 60.0);
 inline size_t trajectoryOffset = 0;
 inline bool headless = false, autoConnect = false, debug = false, autorestart = false,
 inputWaiting = false, chatting = false, lockControls = false,
+enableControlLock = false,
 simulating = false,
 autorestartRegenned = true;
 
@@ -78,11 +79,13 @@ inline std::map<std::string, Var> vars {{"port", {Int, &port}},
 	{"predictDelta", {Double, &predictDelta}},
 	{"predictSpacing", {Double, &predictSpacing}},
 	{"autorestartSpacing", {Double, &autorestartSpacing}},
+	{"autorestartNotifSpacing", {Double, &autorestartNotifSpacing}},
 	{"name", {String, &name}},
 	{"serverAddress", {String, &serverAddress}},
 	{"autoConnect", {Bool, &autoConnect}},
-	{"DEBUG", {Bool, &debug}},
-	{"autorestart", {Bool, &autorestart}}};
+	{"autorestart", {Bool, &autorestart}},
+	{"enableControlLock", {Bool, &enableControlLock}},
+	{"DEBUG", {Bool, &debug}}};
 
 inline sf::String displayMessages[displayMessageCount];
 

@@ -22,6 +22,7 @@ using namespace obf;
 
 void connectToServer() {
 	serverSocket = new sf::TcpSocket;
+	printf("See https://github.com/Ilya246/orbitfight/blob/master/SERVERS.md for 24/7 servers\n");
 	while (true) {
 		printf("Specify server port\n");
 		std::cin >> port;
@@ -217,6 +218,7 @@ int main(int argc, char** argv) {
 						for (Entity* e : updateGroup) {
 							delete e;
 						}
+						entityDeleteBuffer.clear();
 						generateSystem();
 					}
 					autorestartRegenned = true;
@@ -229,6 +231,11 @@ int main(int argc, char** argv) {
 							}
 						}
 						generateSystem();
+						for (Entity* e : updateGroup) {
+							if (e->type() != Entities::Triangle) {
+								e->syncCreation();
+							}
+						}
 						for (Player* p : playerGroup) {
 							setupShip(p->entity);
 						}
@@ -238,7 +245,7 @@ int main(int argc, char** argv) {
 						lastAutorestart = globalTime;
 					} else if (lastAutorestartNotif + autorestartNotifSpacing < globalTime) {
 						std::string sendMessage = "";
-						sendMessage.append("ANNOUNCEMENT: ").append(std::to_string((int)((autorestartSpacing - globalTime + lastAutorestart) / 60.0))).append("min until autorestart.");
+						sendMessage.append("ANNOUNCEMENT: ").append(std::to_string((int)(autorestartSpacing - globalTime + lastAutorestart))).append("s until autorestart.");
 						relayMessage(sendMessage);
 						lastAutorestartNotif = globalTime;
 					}
@@ -312,7 +319,7 @@ int main(int argc, char** argv) {
 				case sf::Event::KeyPressed: {
 					if (!chatting && event.key.code == sf::Keyboard::LShift && ownEntity) {
 						controls.hyperboost = !controls.hyperboost;
-					} else if (!chatting && event.key.code == sf::Keyboard::LAlt) {
+					} else if (!chatting && enableControlLock && event.key.code == sf::Keyboard::LAlt) {
 						lockControls = !lockControls;
 						sf::Packet controlsPacket;
 						controlsPacket << Packets::Controls << (lockControls ? (unsigned char) 0 : *(unsigned char*) &controls);
