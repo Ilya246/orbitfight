@@ -339,14 +339,21 @@ int main(int argc, char** argv) {
 			} else {
 				drawShiftX = 0, drawShiftY = 0;
 			}
+			trajectoryOffset = round((globalTime - lastPredict) / predictDelta * 60.0);
 			for (size_t i = 0; i < ghostTrajectories.size(); i++) {
 				std::vector<Point> traj = ghostTrajectories[i];
-				if (lastTrajectoryRef && traj.size() > 0) [[likely]] {
+				if (lastTrajectoryRef && traj.size() > trajectoryOffset) [[likely]] {
 					sf::Color trajColor = ghostTrajectoryColors[i];
-					sf::VertexArray lines(sf::LineStrip, traj.size());
-					for (size_t i = 0; i < traj.size(); i++){
-						lines[i].position = sf::Vector2f(lastTrajectoryRef->x + traj[i].x + drawShiftX, lastTrajectoryRef->y + traj[i].y + drawShiftY);
+					size_t to = traj.size() - trajectoryOffset;
+					sf::VertexArray lines(sf::LineStrip, to);
+					float lastAlpha = 255;
+					float decBy = (255.f - 64.f) / to;
+					for (size_t i = 0; i < to; i++) {
+						Point point = traj[i + trajectoryOffset];
+						lines[i].position = sf::Vector2f(lastTrajectoryRef->x + point.x + drawShiftX, lastTrajectoryRef->y + point.y + drawShiftY);
 						lines[i].color = trajColor;
+						lines[i].color.a = lastAlpha;
+						lastAlpha -= decBy;
 					}
 					window->draw(lines);
 				}
@@ -567,7 +574,10 @@ int main(int argc, char** argv) {
 		}
 
 		for (size_t i = 0; i < updateGroup.size(); i++) {
-			updateGroup[i]->update();
+			updateGroup[i]->update1();
+		}
+		for (size_t i = 0; i < updateGroup.size(); i++) {
+			updateGroup[i]->update2();
 		}
 
 		if (headless && lastSweep + projectileSweepSpacing < globalTime) {
@@ -618,8 +628,11 @@ int main(int argc, char** argv) {
 			for (int i = 0; i < predictSteps; i++) {
 				predictingFor = predictDelta * predictSteps;
 				globalTime += predictDelta / 60.0;
-				for (Entity* e : updateGroup) {
-					e->update();
+				for (size_t i = 0; i < updateGroup.size(); i++) {
+					updateGroup[i]->update1();
+				}
+				for (size_t i = 0; i < updateGroup.size(); i++) {
+					updateGroup[i]->update2();
 				}
 				if (!stars.empty()) [[likely]] {
 					double x = 0.0, y = 0.0;

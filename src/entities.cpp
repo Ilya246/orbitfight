@@ -127,9 +127,11 @@ void Entity::syncCreation() {
 }
 
 void Entity::control(movement& cont) {}
-void Entity::update() {
+void Entity::update1() {
 	x += velX * delta;
 	y += velY * delta;
+}
+void Entity::update2() {
 	if (globalTime - lastCollideScan > collideScanSpacing) [[unlikely]] {
 		size_t i = 0;
 		for (Entity* e : updateGroup) {
@@ -202,12 +204,18 @@ void Entity::update() {
 
 void Entity::draw() {
 	sf::Color trajColor(color[0], color[1], color[2]);
-	if (trajectory && lastTrajectoryRef && trajectory->size() > 0) [[likely]] {
+	if (trajectory && lastTrajectoryRef && trajectory->size() > trajectoryOffset) [[likely]] {
 		std::vector<Point> traj = *trajectory;
-		sf::VertexArray lines(sf::LineStrip, traj.size());
-		for (size_t i = 0; i < traj.size(); i++){
-			lines[i].position = sf::Vector2f(lastTrajectoryRef->x + traj[i].x + drawShiftX, lastTrajectoryRef->y + traj[i].y + drawShiftY);
+		size_t to = traj.size() - trajectoryOffset;
+		sf::VertexArray lines(sf::LineStrip, to);
+		float lastAlpha = 255;
+		float decBy = (255.f - 64.f) / (to);
+		for (size_t i = 0; i < to; i++){
+			Point point = traj[i + trajectoryOffset];
+			lines[i].position = sf::Vector2f(lastTrajectoryRef->x + point.x + drawShiftX, lastTrajectoryRef->y + point.y + drawShiftY);
 			lines[i].color = trajColor;
+			lines[i].color.a = (uint8_t)lastAlpha;
+			lastAlpha -= decBy;
 		}
 		window->draw(lines);
 	}
@@ -515,8 +523,8 @@ void Attractor::unloadSyncPacket(sf::Packet& packet) {
 	packet >> x >> y >> velX >> velY;
 }
 
-void Attractor::update() {
-	Entity::update();
+void Attractor::update2() {
+	Entity::update2();
 	for (Entity* e : updateGroup) {
 		if (e == this) [[unlikely]] {
 			continue;

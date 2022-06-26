@@ -53,6 +53,7 @@ messageLimit = 50,
 textCharacterSize = 18,
 nextID = 0,
 predictSteps = (int)(30.0 / predictDelta * 60.0);
+inline size_t trajectoryOffset = 0;
 inline bool headless = false, autoConnect = false, debug = false,
 inputWaiting = false,
 chatting = false, lockControls = false,
@@ -68,6 +69,7 @@ using namespace obf::Types;
 inline std::map<std::string, Var> vars {{"port", {Int, &port}},
 	{"predictSteps", {Int, &predictSteps}},
 	{"syncSpacing", {Double, &syncSpacing}},
+	{"friction", {Double, &friction}},
 	{"collideRestitution", {Double, &collideRestitution}},
 	{"gravityStrength", {Double, &G}},
 	{"blackholeChance", {Double, &blackholeChance}},

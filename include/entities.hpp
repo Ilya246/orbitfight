@@ -38,7 +38,8 @@ struct Entity {
 	virtual ~Entity() noexcept;
 
 	virtual void control(movement& cont);
-	virtual void update();
+	virtual void update1();
+	virtual void update2();
 	virtual void draw();
 
 	virtual void collide(Entity* with, bool collideOther);
@@ -123,7 +124,7 @@ struct Attractor: public Entity {
 	Attractor(double radius, double mass);
 	Attractor(bool ghost);
 
-	void update() override;
+	void update2() override;
 	void draw() override;
 
 	void loadCreatePacket(sf::Packet& packet) override;
