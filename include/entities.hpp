@@ -46,7 +46,7 @@ struct Entity {
 	std::vector<Entity*> near;
 	std::vector<Entity*> resNear;
 
-	virtual void syncCreation();
+	void syncCreation();
 
 	virtual void loadCreatePacket(sf::Packet& packet) = 0;
 	virtual void unloadCreatePacket(sf::Packet& packet) = 0;
@@ -84,8 +84,8 @@ struct Entity {
 	double x = 0.0, y = 0.0, velX = 0.0, velY = 0.0, radius = 0.0,
 	mass = 0.0,
 	lastCollideCheck = 0.0, lastCollideScan = 0.0,
-	resX, resY, resVelX, resVelY, resMass, resRadius, resCollideScan;
-	bool ghost = false;
+	resX = 0.0, resY = 0.0, resVelX = 0.0, resVelY = 0.0, resMass = 0.0, resRadius = 0.0, resCollideScan = 0.0;
+	bool ghost = false, ai = false;
 	Entity* simRelBody = nullptr;
 	unsigned char color[3]{255, 255, 255};
 	uint32_t id;
@@ -109,7 +109,8 @@ struct Triangle: public Entity {
 	uint8_t type() override;
 	double accel = 0.015, rotateSpeed = 2.0, boostCooldown = 12.0, boostStrength = 1.5, reload = 8.0, shootPower = 4.0, hyperboostStrength = 0.12, hyperboostTime = 20.0 * 60.0, hyperboostTurnMult = 0.02, afterburnStrength = 0.3, minAfterburn = hyperboostTime + 8.0 * 60.0,
 	lastBoosted = -boostCooldown, lastShot = -reload, hyperboostCharge = 0.0,
-	resLastBoosted, resLastShot, resHyperboostCharge, resRotation;
+	resLastBoosted = 0.0, resLastShot = 0.0, resHyperboostCharge = 0.0, resRotation = 0.0;
+	int kills = 0;
 
 	bool burning = false, resBurning;
 	std::string name = "";
@@ -151,6 +152,8 @@ struct Projectile: public Entity {
 	void unloadSyncPacket(sf::Packet& packet) override;
 
 	uint8_t type() override;
+
+	Triangle* owner = nullptr;
 
 	std::unique_ptr<sf::CircleShape> shape;
 };

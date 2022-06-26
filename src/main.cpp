@@ -569,6 +569,7 @@ int main(int argc, char** argv) {
 		for (size_t i = 0; i < updateGroup.size(); i++) {
 			updateGroup[i]->update();
 		}
+
 		if (headless && lastSweep + projectileSweepSpacing < globalTime) {
 			for (Entity* e : updateGroup) {
 				if (e->type() != Entities::Projectile) {
@@ -581,7 +582,7 @@ int main(int argc, char** argv) {
 					}
 					closest = std::min(closest, dst2(e->x - p->entity->x, e->y - p->entity->y));
 				}
-				if (closest > sweepThreshold) {
+				if (closest > sweepThreshold && std::find(entityDeleteBuffer.begin(), entityDeleteBuffer.end(), e) == entityDeleteBuffer.end()) {
 					entityDeleteBuffer.push_back(e);
 				}
 			}

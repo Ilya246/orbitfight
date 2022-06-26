@@ -19,8 +19,8 @@ bool operator ==(movement& mov1, movement& mov2) {
 }
 
 void setupShip(Entity* ship) {
-	Attractor* planet = planets[(int)rand_f(0, planets.size() - 1)];
-	double spawnDst = planet->radius + rand_f(600.f, 1500.f);
+	Attractor* planet = planets[(int)rand_f(0, planets.size())];
+	double spawnDst = planet->radius + rand_f(2000.f, 6000.f);
 	float spawnAngle = rand_f(-PI, PI);
 	ship->setPosition(planet->x + spawnDst * std::cos(spawnAngle), planet->y + spawnDst * std::sin(spawnAngle));
 	double vel = sqrt(G * planet->mass / spawnDst);
@@ -86,6 +86,9 @@ Entity::~Entity() noexcept {
 			if (e->simRelBody == this) [[unlikely]] {
 				e->simRelBody = nullptr;
 			}
+			if (e->type() == Entities::Projectile && ((Projectile*)e)->owner == this) {
+				((Projectile*)e)->owner = nullptr;
+			}
 		}
 	}
 
@@ -142,7 +145,7 @@ void Entity::update() {
 			}
 		}
 		if (i < near.size()) {
-			near.erase(near.begin() + i + 1, near.begin() + near.size());
+			near.erase(near.begin() + i, near.begin() + near.size());
 		}
 		lastCollideScan = globalTime;
 	}
@@ -189,6 +192,7 @@ void Entity::update() {
 					}
 				}
 			}
+			break;
 		}
 	}
 }
@@ -379,6 +383,7 @@ void Triangle::control(movement& cont) {
 			}
 			proj->setPosition(x + (radius + proj->radius * 2.0) * xMul, y - (radius + proj->radius * 2.0) * yMul);
 			proj->setVelocity(velX + shootPower * xMul, velY - shootPower * yMul);
+			proj->owner = this;
 			addVelocity(-shootPower * xMul * proj->mass / mass, -shootPower * yMul * proj->mass / mass);
 			if (headless) {
 				proj->syncCreation();
@@ -608,6 +613,9 @@ void Projectile::collide(Entity* with, bool collideOther) {
 					chatPacket << Packets::Chat << sendMessage;
 					for (Player* p : playerGroup) {
 						p->tcpSocket.send(chatPacket);
+			if (owner) {
+				owner->kills++;
+			}
 					}
 					setupShip(p->entity);
 				}
@@ -615,6 +623,9 @@ void Projectile::collide(Entity* with, bool collideOther) {
 		}
 		if (headless || simulating) {
 			entityDeleteBuffer.push_back(this);
+		}
+		if (simulating) {
+			entityDeleteBuffer.push_back(with);
 		}
 	} else if (with->type() == Entities::Attractor) {
 		if (debug) {

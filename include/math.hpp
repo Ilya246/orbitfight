@@ -16,6 +16,7 @@ constexpr double CC = C * C;
 double dst2(double, double);
 double dst(double, double);
 float rand_f(float, float);
+bool chance(float);
 template <typename T>
 T deltaAngle(T a, T b) {
 	T diff = fmod(b - a, 360.0);

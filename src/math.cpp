@@ -17,6 +17,9 @@ double dst(double x, double y) {
 float rand_f(float from, float to) {
 	return std::uniform_real_distribution(from, to)(rand_g);
 }
+bool chance(float number) {
+	return std::uniform_real_distribution(0.f, 1.f)(rand_g) < number;
+}
 float lerpRotation(float a, float b, float c) {
 	return a + c * deltaAngle(a, b);
 }
