@@ -339,17 +339,16 @@ int main(int argc, char** argv) {
 			} else {
 				drawShiftX = 0, drawShiftY = 0;
 			}
-			trajectoryOffset = round((globalTime - lastPredict) / predictDelta * 60.0);
+			trajectoryOffset = floor((globalTime - lastPredict) / predictDelta * 60.0);
 			for (size_t i = 0; i < ghostTrajectories.size(); i++) {
 				std::vector<Point> traj = ghostTrajectories[i];
-				if (lastTrajectoryRef && traj.size() > trajectoryOffset) [[likely]] {
+				if (lastTrajectoryRef && traj.size() > 0) [[likely]] {
 					sf::Color trajColor = ghostTrajectoryColors[i];
-					size_t to = traj.size() - trajectoryOffset;
-					sf::VertexArray lines(sf::LineStrip, to);
+					sf::VertexArray lines(sf::LineStrip, traj.size());
 					float lastAlpha = 255;
-					float decBy = (255.f - 64.f) / to;
-					for (size_t i = 0; i < to; i++) {
-						Point point = traj[i + trajectoryOffset];
+					float decBy = (255.f - 64.f) / traj.size();
+					for (size_t i = 0; i < traj.size(); i++) {
+						Point point = traj[i];
 						lines[i].position = sf::Vector2f(lastTrajectoryRef->x + point.x + drawShiftX, lastTrajectoryRef->y + point.y + drawShiftY);
 						lines[i].color = trajColor;
 						lines[i].color.a = lastAlpha;
