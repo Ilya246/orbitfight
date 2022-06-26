@@ -595,6 +595,7 @@ int main(int argc, char** argv) {
 		if (!headless && globalTime - lastPredict > predictSpacing && trajectoryRef) [[unlikely]] {
 			double resdelta = delta;
 			double resTime = globalTime;
+			std::vector<Entity*> retUpdateGroup(updateGroup);
 			delta = predictDelta;
 			simulating = true;
 			ghostTrajectories.clear();
@@ -602,18 +603,18 @@ int main(int argc, char** argv) {
 			bool controlsActive = *(unsigned char*) &controls != 0;
 			Triangle* ghost = nullptr;
 			if (ownEntity && controlsActive) {
-				ghost = new Triangle(true);
+				ghost = new Triangle();
 				ghost->x = ownEntity->x;
 				ghost->y = ownEntity->y;
 				ghost->velX = ownEntity->velX;
 				ghost->velY = ownEntity->velY;
-				ghostTrajectoryColors.push_back(sf::Color(ownEntity->color[0] * 0.7, ownEntity->color[1] * 0.7, ownEntity->color[2] * 0.7));
+				std::copy(std::begin(ownEntity->color), std::end(ownEntity->color), std::begin(ghost->color));
+				simCleanupBuffer.push_back(ghost);
 			}
 			for (Entity* e : updateGroup) {
 				e->simSetup();
 				e->trajectory->clear();
 			}
-			std::vector<Entity*> retUpdateGroup(updateGroup);
 			for (int i = 0; i < predictSteps; i++) {
 				predictingFor = predictDelta * predictSteps;
 				globalTime += predictDelta / 60.0;
@@ -656,30 +657,12 @@ int main(int argc, char** argv) {
 				entityDeleteBuffer.clear();
 			}
 			for (Entity* en : simCleanupBuffer) {
-				for (size_t i = 0; i < updateGroup.size(); i++) {
-					Entity* e = updateGroup[i];
-					if (e == en) [[unlikely]] {
-						ghostTrajectories.push_back(*en->trajectory);
-						ghostTrajectoryColors.push_back(sf::Color(en->color[0], en->color[1], en->color[2]));
-						updateGroup[i] = updateGroup[updateGroup.size() - 1];
-						updateGroup.pop_back();
-					} else {
-						for (size_t i = 0; i < e->near.size(); i++){
-							if (e->near[i] == en) [[unlikely]] {
-								e->near[i] = e->near[e->near.size() - 1];
-								e->near.pop_back();
-								break;
-							}
-						}
-					}
-				}
+				ghostTrajectories.push_back(*en->trajectory);
+				ghostTrajectoryColors.push_back(sf::Color(en->color[0] * 0.7, en->color[1] * 0.7, en->color[2] * 0.7));
+				entityDeleteBuffer.push_back(en);
 			}
 			simCleanupBuffer.clear();
 			updateGroup = retUpdateGroup;
-			if (ghost) {
-				ghostTrajectories.push_back(*ghost->trajectory);
-				delete ghost;
-			}
 			for (Entity* e : updateGroup) {
 				e->simReset();
 			}

@@ -93,7 +93,6 @@ struct Entity {
 
 struct Triangle: public Entity {
 	Triangle();
-	Triangle(bool ghost);
 
 	void control(movement& cont) override;
 	void draw() override;

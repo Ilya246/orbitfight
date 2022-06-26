@@ -63,6 +63,7 @@ Entity::Entity() {
 	updateGroup.push_back(this);
 	if (!headless) {
 		trajectory = std::make_unique<std::vector<Point>>();
+		ghost = simulating;
 	}
 }
 
@@ -150,7 +151,7 @@ void Entity::update() {
 		lastCollideScan = globalTime;
 	}
 	for (Entity* e : near) {
-		if (dst2(x - e->x, y - e->y) <= (radius + e->radius) * (radius + e->radius)) [[unlikely]] {
+		if (dst2(x - e->x, y - e->y) <= (radius + e->radius) * (radius + e->radius) && !(ghost && e->ghost)) [[unlikely]] {
 			collide(e, true);
 			if (type() == Entities::Attractor) {
 				if (((Attractor*)this)->star && e->type() == Entities::Triangle) [[unlikely]] {
@@ -262,7 +263,7 @@ void Entity::simReset() {
 Triangle::Triangle() : Entity() {
 	mass = 5000.0;
 	radius = 16.0;
-	if (!headless) {
+	if (!headless && !simulating) {
 		shape = std::make_unique<sf::CircleShape>(radius, 3);
 		shape->setOrigin(radius, radius);
 		forwards = std::make_unique<sf::CircleShape>(2.f, 6);
@@ -271,11 +272,6 @@ Triangle::Triangle() : Entity() {
 		icon->setOrigin(3.f, 3.f);
 		icon->setFillColor(sf::Color(255, 255, 255));
 	}
-}
-Triangle::Triangle(bool ghost) : Entity() {
-	mass = 5000.0;
-	radius = 16.0;
-	this->ghost = true;
 }
 
 void Triangle::loadCreatePacket(sf::Packet& packet) {
@@ -568,7 +564,7 @@ Projectile::Projectile() : Entity() {
 	this->color[0] = 180;
 	this->color[1] = 0;
 	this->color[2] = 0;
-	if (!headless) {
+	if (!headless && !simulating) {
 		shape = std::make_unique<sf::CircleShape>(radius, 10);
 		shape->setOrigin(radius, radius);
 		icon = std::make_unique<sf::CircleShape>(2.f, 4);
@@ -618,12 +614,12 @@ void Projectile::collide(Entity* with, bool collideOther) {
 					chatPacket << Packets::Chat << sendMessage;
 					for (Player* p : playerGroup) {
 						p->tcpSocket.send(chatPacket);
-			if (owner) {
-				owner->kills++;
-			}
 					}
 					setupShip(p->entity);
 				}
+			}
+			if (owner) {
+				owner->kills++;
 			}
 		}
 		if (headless || simulating) {
