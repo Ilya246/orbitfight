@@ -173,11 +173,10 @@ void Entity::update() {
 					if (!found && (headless || simulating)) {
 						entityDeleteBuffer.push_back(e);
 					}
+					break;
 				} else if (e->type() == Entities::Attractor) [[unlikely]] {
-					if (debug) {
-						printf("Planetary collision: %u, %u\n", id, e->id);
-					}
-					if (mass > e->mass && (headless || simulating)) {
+					if (mass >= e->mass && (headless || simulating)) {
+						printf("Planetary collision: %u absorbed %u\n", id, e->id);
 						double radiusMul = sqrt((mass + e->mass) / mass);
 						mass += e->mass;
 						radius *= radiusMul;
@@ -190,9 +189,12 @@ void Entity::update() {
 						}
 						entityDeleteBuffer.push_back(e);
 					}
+					break;
 				}
 			}
-			break;
+			if (e->type() == Entities::Projectile || type() == Entities::Projectile) {
+				break;
+			}
 		}
 	}
 }
