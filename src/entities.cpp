@@ -28,6 +28,80 @@ void setupShip(Entity* ship) {
 	ship->setVelocity(planet->velX + vel * std::cos(spawnAngle + PI / 2.0), planet->velY + vel * std::sin(spawnAngle + PI / 2.0));
 }
 
+void generateSystem() {
+	int starsN = 1;
+	while (rand_f(0.f, 1.f) < extraStarChance) {
+		starsN += 1;
+	}
+	double angleSpacing = TAU / starsN, angle = 0.0;
+	double starsMass = starMass * starsN, dist = (starsN - 1) * starR * 2.0;
+	for (int i = 0; i < starsN; i++) {
+		Attractor* star = nullptr;
+		double posX = std::cos(angle) * dist, posY = std::sin(angle) * dist;
+		if (rand_f(0.f, 1.f) < blackholeChance) {
+			star = new Attractor(2.0 * G * starMass / (CC), starMass * 1.0001);
+			star->setColor(0, 0, 0);
+			star->blackhole = true;
+		} else {
+			star = new Attractor(starR, starMass);
+			star->setColor(255, 229, 97);
+		}
+		star->setPosition(posX, posY);
+		star->star = true;
+		stars.push_back(star);
+		angle += angleSpacing;
+	}
+	if (starsN > 1) {
+		double aX = 0.0, aY = 0.0;
+		for (int i = 1; i < starsN; i++) {
+			double xdiff = stars[i]->x - stars[0]->x, ydiff = stars[i]->y - stars[0]->y,
+			factor = stars[i]->mass * G / pow(xdiff * xdiff + ydiff * ydiff, 1.5);
+			aX += factor * xdiff;
+			aY += factor * ydiff;
+		}
+		double vel = sqrt(dst(aX, aY) * dist);
+		angle = 0.0;
+		for (int i = 0; i < starsN; i++) {
+			stars[i]->addVelocity(vel * std::cos(angle + PI / 2.0), -vel * std::sin(angle + PI / 2.0));
+			angle += angleSpacing;
+		}
+	}
+	float minrange = 120000.0 + starsN * starR * 2.0;
+	float maxrange = 4000000.0 + starsN * starR * 30.0;
+	int planets = (int)rand_f(5.f, 10.f);
+	int totalMoons = 0;
+	for (int i = 0; i < planets; i++) {
+		double spawnDst = rand_f(minrange, maxrange);
+		double factor = sqrt(spawnDst) / (600.0 + starsN * 100.0);
+		float spawnAngle = rand_f(-PI, PI);
+		float radius = rand_f(600.f, 6000.f * factor);
+		double density = 8e9 / pow(radius, 1.0 / 3.0);
+		Attractor* planet = new Attractor(radius, radius * radius * density);
+		planet->setPosition(spawnDst * std::cos(spawnAngle), spawnDst * std::sin(spawnAngle));
+		double vel = sqrt(G * starsMass / spawnDst);
+		planet->addVelocity(vel * std::cos(spawnAngle + PI / 2.0), -vel * std::sin(spawnAngle + PI / 2.0));
+		planet->setColor((int)rand_f(64.f, 255.f), (int)rand_f(64.f, 255.f), (int)rand_f(64.f, 255.f));
+		if (radius >= 4000.f) {
+			int moons = (int)(rand_f(0.f, 4.f) * radius * radius / (13000.0 * 13000.0));
+			totalMoons += moons;
+			for (int it = 0; it < moons; it++) {
+				double mSpawnDst = planet->radius + rand_f(6000.f, 80000.f) * factor;
+				float spawnAngle = rand_f(-PI, PI);
+				float radius = rand_f(120.f, planet->radius / 6.f);
+				double density = 8e9 / pow(radius, 1.0 / 3.0);
+				Attractor* moon = new Attractor(radius, radius * radius * density);
+				moon->setPosition(planet->x + mSpawnDst * std::cos(spawnAngle), planet->y + mSpawnDst * std::sin(spawnAngle));
+				double vel = sqrt(G * planet->mass / mSpawnDst);
+				moon->addVelocity(planet->velX + vel * std::cos(spawnAngle + PI / 2.0), -planet->velY - vel * std::sin(spawnAngle + PI / 2.0));
+				moon->setColor((int)rand_f(64.f, 255.f), (int)rand_f(64.f, 255.f), (int)rand_f(64.f, 255.f));
+				obf::planets.push_back(moon);
+			}
+		}
+		obf::planets.push_back(planet);
+	}
+	printf("Generated system: %u stars, %u planets, %u moons\n", starsN, planets, totalMoons);
+}
+
 std::string Player::name() {
 	if (username.size()) return username;
 
@@ -250,8 +324,8 @@ void Entity::collide(Entity* with, bool collideOther) {
 	}
 	double vel = dst(dVx, dVy);
 	double inX = std::cos(inHeading), inY = std::sin(inHeading);
-	velX -= vel * inX * factor + friction * dVx * delta;
-	velY += vel * inY * factor + friction * dVy * delta;
+	velX -= vel * inX * factor + massFactor * friction * delta * dVx;
+	velY += vel * inY * factor + massFactor * friction * delta * dVy;
 	x = (x + (with->x - (radius + with->radius) * inX) * massFactor) / (1.0 + massFactor);
 	y = (y + (with->y + (radius + with->radius) * inY) * massFactor) / (1.0 + massFactor);
 	if (collideOther) {
@@ -281,7 +355,7 @@ void Entity::simReset() {
 }
 
 Triangle::Triangle() : Entity() {
-	mass = 5000.0;
+	mass = 20000.0;
 	radius = 16.0;
 	if (!headless && !simulating) {
 		shape = std::make_unique<sf::CircleShape>(radius, 3);
@@ -580,7 +654,7 @@ uint8_t Attractor::type() {
 
 Projectile::Projectile() : Entity() {
 	this->radius = 6;
-	this->mass = 500.0;
+	this->mass = 2000.0;
 	this->color[0] = 180;
 	this->color[1] = 0;
 	this->color[2] = 0;

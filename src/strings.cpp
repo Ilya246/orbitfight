@@ -1,4 +1,5 @@
 #include "globals.hpp"
+#include "net.hpp"
 #include "types.hpp"
 
 #include <fstream>
@@ -26,6 +27,21 @@ void splitString(string_view str, vector<string_view> &vec, char delim) {
 	}
 	if (last < str.size()) {
 		vec.push_back(str.substr(last, str.size() - last));
+	}
+}
+
+void stripSpecialChars(string& str) {
+	int offset = 0;
+	for (size_t i = 0; i < str.size(); i++) {
+		if (str[i] < 32) {
+			offset--;
+		}
+		if (offset > 0) {
+			str[i - offset] = str[i];
+		}
+	}
+	if (offset > 0) {
+		str.erase(str.size() - offset);
 	}
 }
 
@@ -172,6 +188,8 @@ void parseCommand (const string_view& command) {
 		printf("config <line> - parse argument like a config file line\n");
 		printf("say <message> - as a server, say argument into ingame chat\n");
 		printf("lookup <id> - print info about entity ID in argument\n");
+		printf("reset - regenerate the star system\n");
+		printf("players - list currently online players\n");
 		return;
 	} else if (args[0] == "config") {
 		if (args.size() < 2) {
@@ -231,6 +249,35 @@ void parseCommand (const string_view& command) {
 			}
 		}
 		printf("No entity ID %llu found.\n", id);
+		return;
+	} else if (args[0] == "reset") {
+		delta = 0.0;
+		for (Entity* e :updateGroup) {
+			if (e->type() != Entities::Triangle) {
+				delete e;
+			}
+		}
+		generateSystem();
+		for (Entity* e : updateGroup) {
+			if (e->type() != Entities::Triangle) {
+				e->syncCreation();
+			}
+		}
+		for (Player* p : playerGroup) {
+			setupShip(p->entity);
+		}
+		std::string sendMessage = "ANNOUNCEMENT: The system has been regenerated.";
+		relayMessage(sendMessage);
+		if (autorestart) {
+			lastAutorestartNotif = -autorestartNotifSpacing;
+			lastAutorestart = globalTime;
+		}
+		return;
+	} else if (args[0] == "players") {
+		printf("%llu players:\n", playerGroup.size());
+		for (Player* p : playerGroup) {
+			cout << "	<" << p->name() << ">" << endl;
+		}
 		return;
 	}
 	printf("Unknown command.\n");

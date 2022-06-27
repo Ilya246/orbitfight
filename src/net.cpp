@@ -2,6 +2,7 @@
 #include "entities.hpp"
 #include "globals.hpp"
 #include "net.hpp"
+#include "strings.hpp"
 #include "types.hpp"
 
 #include <SFML/Network.hpp>
@@ -166,6 +167,7 @@ void serverParsePacket(sf::Packet& packet, Player* player) {
     }
     case Packets::Nickname: {
         packet >> player->username;
+        stripSpecialChars(player->username);
         if (player->username.empty() || (int)player->username.size() > usernameLimit) {
             player->username = "impostor";
         }
@@ -198,9 +200,10 @@ void serverParsePacket(sf::Packet& packet, Player* player) {
         std::string message;
         packet >> message;
         if ((int)message.size() <= messageLimit && message.size() > 0) {
+            stripSpecialChars(message);
             sf::Packet chatPacket;
             std::string sendMessage = "";
-            sendMessage.append("[").append(player->name()).append("]: ").append(message.substr(1)); // i probably need to implement an alphanumerical regex here
+            sendMessage.append("[").append(player->name()).append("]: ").append(message); // i probably need to implement an alphanumeric regex here
             relayMessage(sendMessage);
         }
         break;

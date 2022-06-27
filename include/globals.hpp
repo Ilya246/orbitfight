@@ -49,7 +49,7 @@ inline double delta = 1.0 / 60.0,
 	lastPing = 0.0, lastPredict = 0.0, lastSweep = 0.0, lastAutorestartNotif = -autorestartNotifSpacing, lastAutorestart = 0.0,
 	predictingFor = 0.0,
 	drawShiftX, drawShiftY;
-inline const int displayMessageCount = 5;
+inline const int displayMessageCount = 7;
 inline int usernameLimit = 24,
 messageLimit = 50,
 textCharacterSize = 18,

@@ -15,6 +15,8 @@ struct Entity;
 
 void setupShip(Entity* ship);
 
+void generateSystem();
+
 struct movement {
 	int forward: 1 = 0;
 	int backward: 1 = 0;
