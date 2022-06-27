@@ -132,11 +132,16 @@ int main(int argc, char** argv) {
 		printf("No config file detected, creating config %s and documentation file %s.\n", configFile.c_str(), configDocFile.c_str());
 		std::ofstream out;
 		out.open(configDocFile);
+		out << "port: Used both as the port to host on and to specify port for autoConnect (short uint)" << std::endl;
+		out << "predictSteps: How many steps of [predictDelta] ticks to simulate for trajectory prediction (int)" << std::endl;
+		out << "NOTE: any clients will have to have the same physics-related configs as the server for them to work properly" << std::endl;
+		out << "friction: friction of touching bodies (double)" << std::endl;
+		out << "collideRestitution: how bouncy collisions are (double)" << std::endl;
+		out << "gravityStrength: how strong gravity is (double)" << std::endl;
 		out << "syncSpacing: As a server, how often should clients be synced (double)" << std::endl;
-		out << "autoConnect: As a client, whether to automatically connect to a server (bool)" << std::endl;
 		out << "serverAddress: Used with autoConnect as the address to connect to (string)" << std::endl;
-		out << "port: Used both as the port to host on and to specify port for autoConnect (short)" << std::endl;
 		out << "name: Your ingame name as a client (string)" << std::endl;
+		out << "autoConnect: As a client, whether to automatically connect to a server (bool)" << std::endl;
 		out << "DEBUG: whether to enable debug mode, prints extra info to console (bool)" << std::endl;
 	}
 

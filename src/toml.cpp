@@ -63,24 +63,46 @@ stopParsing:
 	const auto &it = obf::vars.find(key);
 	if (it != obf::vars.end()) {
 		Var variable = it->second;
+		if (value.empty()) {
+			switch (variable.type) {
+				case obf::Types::Short_u:
+					printf("%u\n", *(uint16_t*)variable.value);
+					break;
+				case obf::Types::Int:
+					printf("%d\n", *(int*)variable.value);
+					break;
+				case obf::Types::Double:
+					printf("%g\n", *(double*)variable.value);
+					break;
+				case obf::Types::Bool:
+					printf("%u\n", *(bool*)variable.value);
+					break;
+				case obf::Types::String:
+					printf("%s\n", (*(string*)variable.value).c_str());
+					break;
+				default:
+					return 6;
+			}
+			return 2;
+		}
 		switch (variable.type) {
 			case obf::Types::Short_u: {
 				if (!regex_match(value, int_regex)) {
-					return 2;
+					return 3;
 				}
 				*(uint16_t*)variable.value = (uint16_t)stoi(value);
 				break;
 			}
 			case obf::Types::Int: {
 				if (!regex_match(value, int_regex)) {
-					return 2;
+					return 3;
 				}
 				*(int*)variable.value = stoi(value);
 				break;
 			}
 			case obf::Types::Double: {
 				if (!regex_match(value, double_regex)) {
-					return 3;
+					return 4;
 				}
 				*(double*)variable.value = stod(value);
 				break;
@@ -88,7 +110,7 @@ stopParsing:
 			case obf::Types::Bool: {
 				bool temp = regex_match(value, boolt_regex);
 				if (!temp && !regex_match(value, boolf_regex)) {
-					return 4;
+					return 5;
 				}
 				*(bool*)variable.value = temp;
 				break;
@@ -98,9 +120,11 @@ stopParsing:
 				break;
 			}
 			default: {
-				return 5;
+				return 6;
 			}
 		}
+	} else {
+		return 1;
 	}
 	return 0;
 }
@@ -120,16 +144,16 @@ int parseTomlFile(const string& filename) {
 		case 1:
 			printf("Invalid key at %s:%u.\n", filename.c_str(), lineN);
 			break;
-		case 2:
+		case 3:
 			printf("Invalid value at %s:%u. Must be integer.\n", filename.c_str(), lineN);
 			break;
-		case 3:
+		case 4:
 			printf("Invalid value at %s:%u. Must be a real number.\n", filename.c_str(), lineN);
 			break;
-		case 4:
+		case 5:
 			printf("Invalid value at %s:%u. Must be true|false.\n", filename.c_str(), lineN);
 			break;
-		case 5:
+		case 6:
 			printf("Invalid type specified for variable at %s:%u.\n", filename.c_str(), lineN);
 			break;
 		default:
@@ -150,21 +174,25 @@ void parseCommand (const string_view& command) {
 		printf("lookup - print info about entity ID in argument\n");
 		return;
 	} else if (args[0] == "config") {
+		if (command.size() < 7) {
+			printf("Invalid argument.\n");
+			return;
+		}
 		int retcode = parseToml(string(command.substr(7)));
 		switch (retcode) {
 			case 1:
 				printf("Invalid key.\n");
 				break;
-			case 2:
+			case 3:
 				printf("Invalid value. Must be integer.\n");
 				break;
-			case 3:
+			case 4:
 				printf("Invalid value. Must be a real number.\n");
 				break;
-			case 4:
+			case 5:
 				printf("Invalid value. Must be true|false.\n");
 				break;
-			case 5:
+			case 6:
 				printf("Invalid type specified for variable.\n");
 				break;
 			default:
@@ -172,6 +200,10 @@ void parseCommand (const string_view& command) {
 		}
 		return;
 	} else if (args[0] == "say") {
+		if (command.size() < 4) {
+			printf("Invalid argument.");
+			return;
+		}
 		sf::Packet chatPacket;
 		std::string sendMessage;
 		sendMessage.append("Server: ").append(command.substr(4));
