@@ -59,7 +59,7 @@ inline bool headless = false, autoConnect = false, debug = false, autorestart = 
 inputWaiting = false, chatting = false, lockControls = false,
 enableControlLock = false,
 simulating = false,
-autorestartRegenned = true;
+autorestartRegenned = true, fullclearing = false;
 
 struct Var {
 	uint8_t type;

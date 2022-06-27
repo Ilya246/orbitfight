@@ -229,10 +229,15 @@ int main(int argc, char** argv) {
 					lastAutorestartNotif = -autorestartNotifSpacing;
 					lastAutorestart = globalTime;
 					if (!autorestartRegenned) {
+						fullclearing = true;
 						for (Entity* e : updateGroup) {
 							delete e;
 						}
+						updateGroup.clear();
+						planets.clear();
+						stars.clear();
 						entityDeleteBuffer.clear();
+						fullclearing = false;
 						generateSystem();
 					}
 					autorestartRegenned = true;

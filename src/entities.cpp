@@ -72,24 +72,37 @@ Entity::~Entity() noexcept {
 	if (debug) {
 		printf("Deleting entity id %u\n", this->id);
 	}
-	for (size_t i = 0; i < updateGroup.size(); i++) {
-		Entity* e = updateGroup[i];
-		if (e == this) [[unlikely]] {
-			updateGroup[i] = updateGroup[updateGroup.size() - 1];
-			updateGroup.pop_back();
-		} else {
-			for (size_t i = 0; i < e->near.size(); i++){
-				if (e->near[i] == this) [[unlikely]] {
-					e->near[i] = e->near[e->near.size() - 1];
-					e->near.pop_back();
-					break;
+	if (!fullclearing) {
+		for (size_t i = 0; i < updateGroup.size(); i++) {
+			Entity* e = updateGroup[i];
+			if (e == this) [[unlikely]] {
+				updateGroup[i] = updateGroup[updateGroup.size() - 1];
+				updateGroup.pop_back();
+			} else {
+				for (size_t i = 0; i < e->near.size(); i++){
+					if (e->near[i] == this) [[unlikely]] {
+						e->near[i] = e->near[e->near.size() - 1];
+						e->near.pop_back();
+						break;
+					}
+				}
+				if (e->simRelBody == this) [[unlikely]] {
+					e->simRelBody = nullptr;
+				}
+				if (e->type() == Entities::Projectile && ((Projectile*)e)->owner == this) {
+					((Projectile*)e)->owner = nullptr;
 				}
 			}
-			if (e->simRelBody == this) [[unlikely]] {
-				e->simRelBody = nullptr;
-			}
-			if (e->type() == Entities::Projectile && ((Projectile*)e)->owner == this) {
-				((Projectile*)e)->owner = nullptr;
+		}
+	}
+
+	if (!fullclearing) {
+		for (size_t i = 0; i < stars.size(); i++) {
+			Entity* e = stars[i];
+			if (e == this) [[unlikely]] {
+				stars[i] = stars[stars.size() - 1];
+				stars.pop_back();
+				break;
 			}
 		}
 	}
@@ -100,12 +113,14 @@ Entity::~Entity() noexcept {
 			despawnPacket << Packets::DeleteEntity << this->id;
 			p->tcpSocket.send(despawnPacket);
 		}
-		for (size_t i = 0; i < planets.size(); i++) {
-			Entity* e = planets[i];
-			if (e == this) [[unlikely]] {
-				planets[i] = planets[planets.size() - 1];
-				planets.pop_back();
-				break;
+		if (!fullclearing) {
+			for (size_t i = 0; i < planets.size(); i++) {
+				Entity* e = planets[i];
+				if (e == this) [[unlikely]] {
+					planets[i] = planets[planets.size() - 1];
+					planets.pop_back();
+					break;
+				}
 			}
 		}
 	} else {

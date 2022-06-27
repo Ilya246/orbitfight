@@ -169,16 +169,16 @@ void parseCommand (const string_view& command) {
 	splitString(command, args, ' ');
 	if (args[0] == "help") {
 		printf("help - print this\n");
-		printf("config - parse argument like a config file line\n");
-		printf("say - say argument into ingame chat\n");
-		printf("lookup - print info about entity ID in argument\n");
+		printf("config <line> - parse argument like a config file line\n");
+		printf("say <message> - as a server, say argument into ingame chat\n");
+		printf("lookup <id> - print info about entity ID in argument\n");
 		return;
 	} else if (args[0] == "config") {
-		if (command.size() < 7) {
+		if (args.size() < 2) {
 			printf("Invalid argument.\n");
 			return;
 		}
-		int retcode = parseToml(string(command.substr(7)));
+		int retcode = parseToml(string(args[1]));
 		switch (retcode) {
 			case 1:
 				printf("Invalid key.\n");
@@ -214,7 +214,11 @@ void parseCommand (const string_view& command) {
 		cout << sendMessage << endl;
 		return;
 	} else if (args[0] == "lookup") {
-		string id_s(command.substr(7));
+		if (args.size() < 2) {
+			printf("Invalid argument.");
+			return;
+		}
+		string id_s = string(args[1]);
 		if (!regex_match(id_s, int_regex)) {
 			printf("Invalid ID.\n");
 			return;

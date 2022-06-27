@@ -112,6 +112,7 @@ void clientParsePacket(sf::Packet& packet) {
         for (short i = 0; i < to; i++) {
             displayMessages[i] = displayMessages[i + 1];
         }
+        printf("%s\n", message.c_str());
         displayMessages[to] = sf::String(message);
         break;
     }
