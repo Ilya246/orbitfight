@@ -700,8 +700,8 @@ int main(int argc, char** argv) {
 			}
 		}
 
-		delta = deltaClock.restart().asSeconds() * 60;
-		sf::sleep(sf::seconds(std::max((1.0 - delta) / 80.0, 0.0)));
+		delta = deltaClock.restart().asSeconds() * 60.0;
+		sf::sleep(sf::seconds(std::max((1.0 / targetFramerate - delta / 60.0), 0.0)));
 		globalTime = globalClock.getElapsedTime().asSeconds();
 	}
 

@@ -45,6 +45,7 @@ inline double delta = 1.0 / 60.0,
 	predictSpacing = 0.2, predictDelta = 6.0,
 	autorestartSpacing = 30.0 * 60.0 + 1, autorestartNotifSpacing = 5.0 * 60.0,
 	G = 6.67e-11,
+	targetFramerate = 90.0,
 	lastPing = 0.0, lastPredict = 0.0, lastSweep = 0.0, lastAutorestartNotif = -autorestartNotifSpacing, lastAutorestart = 0.0,
 	predictingFor = 0.0,
 	drawShiftX, drawShiftY;
@@ -70,6 +71,7 @@ using namespace obf::Types;
 
 inline std::map<std::string, Var> vars {{"port", {Int, &port}},
 	{"predictSteps", {Int, &predictSteps}},
+	{"targetFramerate", {Double, &targetFramerate}},
 	{"syncSpacing", {Double, &syncSpacing}},
 	{"friction", {Double, &friction}},
 	{"collideRestitution", {Double, &collideRestitution}},
