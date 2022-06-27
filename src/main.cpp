@@ -132,17 +132,26 @@ int main(int argc, char** argv) {
 		printf("No config file detected, creating config %s and documentation file %s.\n", configFile.c_str(), configDocFile.c_str());
 		std::ofstream out;
 		out.open(configDocFile);
+		out << "NOTE: configs changed using the console will not be saved" << std::endl;
+		out << "predictSteps: As a client, how many steps of [predictDelta] ticks to simulate for trajectory prediction (int)" << std::endl;
 		out << "port: Used both as the port to host on and to specify port for autoConnect (short uint)" << std::endl;
-		out << "predictSteps: How many steps of [predictDelta] ticks to simulate for trajectory prediction (int)" << std::endl;
+		out << "predictDelta: As a client, how many ticks to advance every prediction simulation step (double)" << std::endl;
+		out << "predictSteps: As a client, how many seconds to wait between trajectory prediction simulations (double)" << std::endl;
 		out << "NOTE: any clients will have to have the same physics-related configs as the server for them to work properly" << std::endl;
-		out << "friction: friction of touching bodies (double)" << std::endl;
-		out << "collideRestitution: how bouncy collisions are (double)" << std::endl;
-		out << "gravityStrength: how strong gravity is (double)" << std::endl;
+		out << "friction: Friction of touching bodies (double)" << std::endl;
+		out << "collideRestitution: How bouncy collisions are (double)" << std::endl;
+		out << "gravityStrength: How strong gravity is (double)" << std::endl;
 		out << "syncSpacing: As a server, how often should clients be synced (double)" << std::endl;
+		out << "blackholeChance: As a server, what fraction of stars should instead be black holes (double)" << std::endl;
+		out << "extraStarChance: As a server, the chance for an additional star to generate after the previous (double)" << std::endl;
+		out << "autorestartSpacing: As a server, if autorestart is enabled, how many seconds to wait between autorestarts (double)" << std::endl;
+		out << "autorestartNotifSpacing: As a server, if autorestart is enabled, how many seconds to wait between chat autorestart notifications (double)" << std::endl;
 		out << "serverAddress: Used with autoConnect as the address to connect to (string)" << std::endl;
 		out << "name: Your ingame name as a client (string)" << std::endl;
+		out << "autorestart: As a server, whether to periodically regenerate the solar system (bool)" << std::endl;
 		out << "autoConnect: As a client, whether to automatically connect to a server (bool)" << std::endl;
-		out << "DEBUG: whether to enable debug mode, prints extra info to console (bool)" << std::endl;
+		out << "enableControlLock: As a client, whether to enable using LAlt to lock controls (bool)" << std::endl;
+		out << "DEBUG: Whether to enable debug mode, prints extra info to console (bool)" << std::endl;
 	}
 
 	std::ofstream out;
