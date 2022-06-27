@@ -406,7 +406,7 @@ int main(int argc, char** argv) {
 			chat.setString(chatString);
 			chat.setCharacterSize(textCharacterSize);
 			chat.setFillColor(sf::Color::White);
-			chat.move(2, g_camera.h - (textCharacterSize + 4) * 6);
+			chat.move(2, g_camera.h - (textCharacterSize + 4) * (displayMessageCount + 1));
 			window->draw(chat);
 			g_camera.bindWorld();
 			window->display();
