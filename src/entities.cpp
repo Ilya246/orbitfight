@@ -220,6 +220,7 @@ void Entity::control(movement& cont) {}
 void Entity::update1() {
 	x += velX * delta;
 	y += velY * delta;
+	rotation += rotateVel * delta;
 }
 void Entity::update2() {
 	if (globalTime - lastCollideScan > collideScanSpacing) [[unlikely]] {
@@ -338,6 +339,8 @@ void Entity::simSetup() {
 	resY = y;
 	resVelX = velX;
 	resVelY = velY;
+	resRotation = rotation;
+	resRotateVel = rotateVel;
 	resMass = mass;
 	resRadius = radius;
 	resNear = near;
@@ -348,6 +351,8 @@ void Entity::simReset() {
 	y = resY;
 	velX = resVelX;
 	velY = resVelY;
+	rotation = resRotation;
+	rotateVel = resRotateVel;
 	mass = resMass;
 	radius = resRadius;
 	near = resNear;
@@ -393,7 +398,6 @@ void Triangle::simSetup() {
 	resLastShot = lastShot;
 	resHyperboostCharge = hyperboostCharge;
 	resBurning = burning;
-	resRotation = rotation;
 }
 void Triangle::simReset() {
 	Entity::simReset();
@@ -401,7 +405,6 @@ void Triangle::simReset() {
 	lastShot = resLastShot;
 	hyperboostCharge = resHyperboostCharge;
 	burning = resBurning;
-	rotation = resRotation;
 }
 
 void Triangle::control(movement& cont) {
@@ -420,9 +423,16 @@ void Triangle::control(movement& cont) {
 			return;
 		}
 		if (cont.turnleft) {
-			rotation += rotateSpeed * delta * hyperboostTurnMult;
+			rotateVel += hyperboostRotateSpeed * delta;
 		} else if (cont.turnright) {
-			rotation -= rotateSpeed * delta * hyperboostTurnMult;
+			rotateVel -= hyperboostRotateSpeed * delta;
+		} else {
+			if (rotateVel > 0.0) {
+				rotateVel = std::max(0.0, rotateVel - hyperboostRotateSpeed * delta * rotateSlowSpeedMult);
+			}
+			if (rotateVel < 0.0) {
+				rotateVel = std::min(0.0, rotateVel + hyperboostRotateSpeed * delta * rotateSlowSpeedMult);
+			}
 		}
 		if (hyperboostCharge > hyperboostTime) {
 			addVelocity(hyperboostStrength * xMul * delta, hyperboostStrength * yMul * delta);
@@ -455,9 +465,16 @@ void Triangle::control(movement& cont) {
 		forwards->setRotation(90.f - rotation);
 	}
 	if (cont.turnleft) {
-		rotation += rotateSpeed * delta;
+		rotateVel += rotateSpeed * delta;
 	} else if (cont.turnright) {
-		rotation -= rotateSpeed * delta;
+		rotateVel -= rotateSpeed * delta;
+	} else {
+		if (rotateVel > 0.0) {
+			rotateVel = std::max(0.0, rotateVel - rotateSpeed * delta * rotateSlowSpeedMult);
+		}
+		if (rotateVel < 0.0) {
+			rotateVel = std::min(0.0, rotateVel + rotateSpeed * delta * rotateSlowSpeedMult);
+		}
 	}
 	if (cont.boost && lastBoosted + boostCooldown < globalTime) {
 		addVelocity(boostStrength * xMul, boostStrength * yMul);
@@ -491,58 +508,56 @@ void Triangle::draw() {
 	shape->setRotation(90.f - rotation);
 	shape->setFillColor(sf::Color(color[0], color[1], color[2]));
 	window->draw(*shape);
-	if(ownEntity) [[likely]] {
-		g_camera.bindUI();
-		float rotationRad = rotation * degToRad;
-		double uiX = g_camera.w * 0.5 + (x - ownEntity->x) / g_camera.scale, uiY = g_camera.h * 0.5 + (y - ownEntity->y) / g_camera.scale;
-		forwards->setPosition(uiX + 14.0 * cos(rotationRad), uiY - 14.0 * sin(rotationRad));
-		if (ownEntity == this) {
-			float reloadProgress = ((lastShot - globalTime) / reload + 1.0) * 40.f,
-			boostProgress = ((lastBoosted - globalTime) / boostCooldown + 1.0) * 40.f;
-			if (reloadProgress > 0.0) {
-				sf::RectangleShape reloadBar(sf::Vector2f(reloadProgress, 4.f));
-				reloadBar.setFillColor(sf::Color(255, 64, 64));
-				reloadBar.setPosition(g_camera.w * 0.5f - reloadProgress / 2.f, g_camera.h * 0.5f + 40.f);
-				window->draw(reloadBar);
+	g_camera.bindUI();
+	float rotationRad = rotation * degToRad;
+	double uiX = g_camera.w * 0.5 + (x - ownX) / g_camera.scale, uiY = g_camera.h * 0.5 + (y - ownY) / g_camera.scale;
+	forwards->setPosition(uiX + 14.0 * cos(rotationRad), uiY - 14.0 * sin(rotationRad));
+	if (ownEntity == this) {
+		float reloadProgress = ((lastShot - globalTime) / reload + 1.0) * 40.f,
+		boostProgress = ((lastBoosted - globalTime) / boostCooldown + 1.0) * 40.f;
+		if (reloadProgress > 0.0) {
+			sf::RectangleShape reloadBar(sf::Vector2f(reloadProgress, 4.f));
+			reloadBar.setFillColor(sf::Color(255, 64, 64));
+			reloadBar.setPosition(g_camera.w * 0.5f - reloadProgress / 2.f, g_camera.h * 0.5f + 40.f);
+			window->draw(reloadBar);
+		}
+		if (boostProgress > 0.0) {
+			sf::RectangleShape boostReloadBar(sf::Vector2f(boostProgress, 4.f));
+			boostReloadBar.setFillColor(sf::Color(64, 255, 64));
+			boostReloadBar.setPosition(g_camera.w * 0.5f - boostProgress / 2.f, g_camera.h * 0.5f - 40.f);
+			window->draw(boostReloadBar);
+		}
+		if (hyperboostCharge > 0.0) {
+			float hyperboostProgress = (1.0 - hyperboostCharge / hyperboostTime) * 40.f;
+			if (hyperboostProgress > 0.0) {
+				sf::RectangleShape hyperboostBar(sf::Vector2f(hyperboostProgress, 4.f));
+				hyperboostBar.setFillColor(sf::Color(64, 64, 255));
+				hyperboostBar.setPosition(g_camera.w * 0.5f - hyperboostProgress / 2.f, g_camera.h * 0.5f + 36.f);
+				window->draw(hyperboostBar);
 			}
-			if (boostProgress > 0.0) {
-				sf::RectangleShape boostReloadBar(sf::Vector2f(boostProgress, 4.f));
-				boostReloadBar.setFillColor(sf::Color(64, 255, 64));
-				boostReloadBar.setPosition(g_camera.w * 0.5f - boostProgress / 2.f, g_camera.h * 0.5f - 40.f);
-				window->draw(boostReloadBar);
-			}
-			if (hyperboostCharge > 0.0) {
-				float hyperboostProgress = (1.0 - hyperboostCharge / hyperboostTime) * 40.f;
-				if (hyperboostProgress > 0.0) {
-					sf::RectangleShape hyperboostBar(sf::Vector2f(hyperboostProgress, 4.f));
-					hyperboostBar.setFillColor(sf::Color(64, 64, 255));
-					hyperboostBar.setPosition(g_camera.w * 0.5f - hyperboostProgress / 2.f, g_camera.h * 0.5f + 36.f);
-					window->draw(hyperboostBar);
-				}
-				if (hyperboostProgress < 0.0) {
-					sf::RectangleShape hyperboostBar(sf::Vector2f(-hyperboostProgress, 4.f));
-					hyperboostBar.setFillColor(sf::Color(255, 255, 64));
-					hyperboostBar.setPosition(g_camera.w * 0.5f + hyperboostProgress / 2.f, g_camera.h * 0.5f + 36.f);
-					window->draw(hyperboostBar);
-				}
+			if (hyperboostProgress < 0.0) {
+				sf::RectangleShape hyperboostBar(sf::Vector2f(-hyperboostProgress, 4.f));
+				hyperboostBar.setFillColor(sf::Color(255, 255, 64));
+				hyperboostBar.setPosition(g_camera.w * 0.5f + hyperboostProgress / 2.f, g_camera.h * 0.5f + 36.f);
+				window->draw(hyperboostBar);
 			}
 		}
-		window->draw(*forwards);
-		if (!name.empty()) {
-			sf::Text nameText;
-			nameText.setFont(*font);
-			nameText.setString(name);
-			nameText.setCharacterSize(8);
-			nameText.setFillColor(sf::Color::White);
-			nameText.setPosition(uiX - nameText.getLocalBounds().width / 2.0, uiY - 28.0);
-			window->draw(nameText);
-		}
-		if (g_camera.scale * 2.0 > radius) {
-			icon->setPosition(uiX, uiY);
-			window->draw(*icon);
-		}
-		g_camera.bindWorld();
 	}
+	window->draw(*forwards);
+	if (!name.empty()) {
+		sf::Text nameText;
+		nameText.setFont(*font);
+		nameText.setString(name);
+		nameText.setCharacterSize(8);
+		nameText.setFillColor(sf::Color::White);
+		nameText.setPosition(uiX - nameText.getLocalBounds().width / 2.0, uiY - 28.0);
+		window->draw(nameText);
+	}
+	if (g_camera.scale * 2.0 > radius) {
+		icon->setPosition(uiX, uiY);
+		window->draw(*icon);
+	}
+	g_camera.bindWorld();
 }
 
 uint8_t Triangle::type() {
@@ -634,7 +649,7 @@ void Attractor::draw() {
 	window->draw(*shape);
 	if (ownEntity) {
 		g_camera.bindUI();
-		double uiX = g_camera.w * 0.5 + (x - ownEntity->x) / g_camera.scale, uiY = g_camera.h * 0.5 + (y - ownEntity->y) / g_camera.scale;
+		double uiX = g_camera.w * 0.5 + (x - ownX) / g_camera.scale, uiY = g_camera.h * 0.5 + (y - ownY) / g_camera.scale;
 		if (g_camera.scale > radius) {
 			icon->setPosition(uiX, uiY);
 			icon->setFillColor(sf::Color(color[0], color[1], color[2]));
@@ -738,9 +753,9 @@ void Projectile::draw() {
 	shape->setPosition(x + drawShiftX, y + drawShiftY);
 	shape->setFillColor(sf::Color(color[0], color[1], color[2]));
 	window->draw(*shape);
-	if (g_camera.scale > radius && ownEntity) {
+	if (g_camera.scale > radius) {
 		g_camera.bindUI();
-		icon->setPosition(g_camera.w * 0.5 + (x - ownEntity->x) / g_camera.scale, g_camera.h * 0.5 + (y - ownEntity->y) / g_camera.scale);
+		icon->setPosition(g_camera.w * 0.5 + (x - ownX) / g_camera.scale, g_camera.h * 0.5 + (y - ownY) / g_camera.scale);
 		window->draw(*icon);
 		g_camera.bindWorld();
 	}

@@ -278,17 +278,17 @@ int main(int argc, char** argv) {
 						sf::Packet controlsPacket;
 						controlsPacket << Packets::Controls << (lockControls ? (unsigned char) 0 : *(unsigned char*) &controls);
 						serverSocket->send(controlsPacket);
-					} else if (event.key.code == sf::Keyboard::Tab && ownEntity) {
+					} else if (event.key.code == sf::Keyboard::Tab) {
 						double minDst = DBL_MAX;
 						Entity* closestEntity = nullptr;
 						for (Entity* e : updateGroup) {
-							double dst = dst2(e->x - ownEntity->x - (mousePos.x - g_camera.w * 0.5) * g_camera.scale, e->y - ownEntity->y - (mousePos.y - g_camera.h * 0.5) * g_camera.scale) - e->radius * e->radius;
+							double dst = dst2(e->x - ownX - (mousePos.x - g_camera.w * 0.5) * g_camera.scale, e->y - ownY - (mousePos.y - g_camera.h * 0.5) * g_camera.scale) - e->radius * e->radius;
 							if (dst < minDst) {
 								minDst = dst;
 								closestEntity = e;
 							}
 						}
-						if (dst2(systemCenter->x - ownEntity->x - (mousePos.x - g_camera.w * 0.5) * g_camera.scale, systemCenter->y - ownEntity->y - (mousePos.y - g_camera.h * 0.5) * g_camera.scale) < minDst) {
+						if (dst2(systemCenter->x - ownX - (mousePos.x - g_camera.w * 0.5) * g_camera.scale, systemCenter->y - ownY - (mousePos.y - g_camera.h * 0.5) * g_camera.scale) < minDst) {
 							closestEntity = systemCenter;
 						}
 						if (closestEntity == trajectoryRef) {
@@ -334,14 +334,14 @@ int main(int argc, char** argv) {
 			}
 
 			window->clear(sf::Color(16, 0, 32));
-			g_camera.bindWorld();
 			if (ownEntity) [[likely]] {
-				drawShiftX = -ownEntity->x, drawShiftY = -ownEntity->y;
-				g_camera.pos.x = 0;
-				g_camera.pos.y = 0;
-			} else {
-				drawShiftX = 0, drawShiftY = 0;
+				ownX = ownEntity->x;
+				ownY = ownEntity->y;
+				drawShiftX = -ownX, drawShiftY = -ownY;
 			}
+			g_camera.bindWorld();
+			g_camera.pos.x = 0;
+			g_camera.pos.y = 0;
 			trajectoryOffset = floor((globalTime - lastPredict) / predictDelta * 60.0);
 			for (size_t i = 0; i < ghostTrajectories.size(); i++) {
 				std::vector<Point> traj = ghostTrajectories[i];
@@ -373,33 +373,33 @@ int main(int argc, char** argv) {
 			for (size_t i = 0; i < updateGroup.size(); i++) {
 				updateGroup[i]->draw();
 			}
+			if (ownEntity && !lockControls) {
+				ownEntity->control(controls);
+			}
 			g_camera.bindUI();
-			if (ownEntity) {
-				if (!lockControls) {
-					ownEntity->control(controls);
-				}
 
-				std::string info = "";
-				info.append("FPS: ").append(std::to_string(60.0 / delta))
-				.append("\nPing: ").append(std::to_string((int)(lastPing * 1000.0))).append("ms");
-				if (lastTrajectoryRef) {
-					info.append("\nrX: ").append(std::to_string((int)(ownEntity->x - lastTrajectoryRef->x)))
-					.append(", rY: ").append(std::to_string((int)(ownEntity->y - lastTrajectoryRef->y)))
-					.append("\nrVx: ").append(std::to_string((int)((ownEntity->velX - lastTrajectoryRef->velX) * 60.0)))
+			std::string info = "";
+			info.append("FPS: ").append(std::to_string(60.0 / delta))
+			.append("\nPing: ").append(std::to_string((int)(lastPing * 1000.0))).append("ms");
+			if (lastTrajectoryRef) {
+				info.append("\nrX: ").append(std::to_string((int)(ownX - lastTrajectoryRef->x)))
+				.append(", rY: ").append(std::to_string((int)(ownY - lastTrajectoryRef->y)));
+				if (ownEntity) [[likely]] {
+					info.append("\nrVx: ").append(std::to_string((int)((ownEntity->velX - lastTrajectoryRef->velX) * 60.0)))
 					.append(", rVy: ").append(std::to_string((int)((ownEntity->velY - lastTrajectoryRef->velY) * 60.0)));
 				}
-				posInfo->setString(info);
-				window->draw(*posInfo);
-				if (lastTrajectoryRef) {
-					float radius = std::max(5.f, (float)(lastTrajectoryRef->radius / g_camera.scale));
-					sf::CircleShape selection(radius, 4);
-					selection.setOrigin(radius, radius);
-					selection.setPosition(g_camera.w * 0.5 + (lastTrajectoryRef->x - ownEntity->x) / g_camera.scale, g_camera.h * 0.5 + (lastTrajectoryRef->y - ownEntity->y) / g_camera.scale);
-					selection.setFillColor(sf::Color(0, 0, 0, 0));
-					selection.setOutlineColor(sf::Color(255, 255, 64));
-					selection.setOutlineThickness(1.f);
-					window->draw(selection);
-				}
+			}
+			posInfo->setString(info);
+			window->draw(*posInfo);
+			if (lastTrajectoryRef) {
+				float radius = std::max(5.f, (float)(lastTrajectoryRef->radius / g_camera.scale));
+				sf::CircleShape selection(radius, 4);
+				selection.setOrigin(radius, radius);
+				selection.setPosition(g_camera.w * 0.5 + (lastTrajectoryRef->x - ownX) / g_camera.scale, g_camera.h * 0.5 + (lastTrajectoryRef->y - ownY) / g_camera.scale);
+				selection.setFillColor(sf::Color(0, 0, 0, 0));
+				selection.setOutlineColor(sf::Color(255, 255, 64));
+				selection.setOutlineThickness(1.f);
+				window->draw(selection);
 			}
 			std::string chatString;
 			for (std::string message : displayMessages) {

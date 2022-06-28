@@ -50,7 +50,8 @@ inline double delta = 1.0 / 60.0,
 	targetFramerate = 90.0,
 	lastPing = 0.0, lastPredict = 0.0, lastSweep = 0.0, lastAutorestartNotif = -autorestartNotifSpacing, lastAutorestart = 0.0,
 	predictingFor = 0.0,
-	drawShiftX, drawShiftY;
+	drawShiftX = 0.0, drawShiftY = 0.0,
+	ownX = 0.0, ownY = 0.0;
 inline const int displayMessageCount = 7;
 inline int usernameLimit = 24,
 messageLimit = 50,

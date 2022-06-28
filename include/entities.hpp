@@ -84,10 +84,11 @@ struct Entity {
 
 	virtual uint8_t type() = 0;
 	Player* player = nullptr;
-	double x = 0.0, y = 0.0, velX = 0.0, velY = 0.0, radius = 0.0,
+	double x = 0.0, y = 0.0, velX = 0.0, velY = 0.0, rotation = 0.0, rotateVel = 0.0,
+	radius = 0.0,
 	mass = 0.0,
 	lastCollideCheck = 0.0, lastCollideScan = 0.0,
-	resX = 0.0, resY = 0.0, resVelX = 0.0, resVelY = 0.0, resMass = 0.0, resRadius = 0.0, resCollideScan = 0.0;
+	resX = 0.0, resY = 0.0, resVelX = 0.0, resVelY = 0.0, resRotation = 0.0, resRotateVel = 0.0, resMass = 0.0, resRadius = 0.0, resCollideScan = 0.0;
 	bool ghost = false, ai = false;
 	Entity* simRelBody = nullptr;
 	unsigned char color[3]{255, 255, 255};
@@ -109,16 +110,15 @@ struct Triangle: public Entity {
 	void simReset() override;
 
 	uint8_t type() override;
-	double accel = 0.015, rotateSpeed = 2.0, boostCooldown = 12.0, boostStrength = 1.5, reload = 8.0, shootPower = 4.0, hyperboostStrength = 0.12, hyperboostTime = 20.0 * 60.0, hyperboostTurnMult = 0.02, afterburnStrength = 0.3, minAfterburn = hyperboostTime + 8.0 * 60.0,
+	double accel = 0.015, rotateSpeed = 1.0 / 60.0, rotateSlowSpeedMult = 2.0, boostCooldown = 12.0, boostStrength = 1.5, reload = 8.0, shootPower = 4.0, hyperboostStrength = 0.12, hyperboostTime = 20.0 * 60.0, hyperboostRotateSpeed = rotateSpeed * 0.02, afterburnStrength = 0.3, minAfterburn = hyperboostTime + 8.0 * 60.0,
 	lastBoosted = -boostCooldown, lastShot = -reload, hyperboostCharge = 0.0,
-	resLastBoosted = 0.0, resLastShot = 0.0, resHyperboostCharge = 0.0, resRotation = 0.0;
+	resLastBoosted = 0.0, resLastShot = 0.0, resHyperboostCharge = 0.0;
 	int kills = 0;
 
 	bool burning = false, resBurning;
 	std::string name = "";
 
 	std::unique_ptr<sf::CircleShape> shape, forwards;
-	float rotation = 0.f;
 };
 
 struct Attractor: public Entity {
