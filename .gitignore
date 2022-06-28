@@ -1,4 +1,4 @@
-build.bat
+build*.bat
 build/*
 orbitfight
 *.txt

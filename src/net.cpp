@@ -125,7 +125,7 @@ void clientParsePacket(sf::Packet& packet) {
         packet >> id;
         for (Entity* e : updateGroup) {
             if (e->id == id) [[unlikely]] {
-                packet >> (*(Triangle**)&e)->name;
+                packet >> ((Triangle*)e)->name;
                 break;
             }
         }
