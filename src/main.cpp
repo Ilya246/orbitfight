@@ -110,8 +110,6 @@ int main(int argc, char** argv) {
 	} else {
 		window = new sf::RenderWindow(sf::VideoMode(500, 500), "Orbitfight");
 
-		systemCenter = new Attractor(true);
-
 		g_camera.scale = 1;
 		g_camera.resize();
 
@@ -120,6 +118,17 @@ int main(int argc, char** argv) {
 			puts("Failed to load font");
 			return 1;
 		}
+
+		posInfo = new sf::Text;
+		chat = new sf::Text;
+		posInfo->setFont(*font);
+		posInfo->setCharacterSize(textCharacterSize);
+		posInfo->setFillColor(sf::Color::White);
+		chat->setFont(*font);
+		chat->setCharacterSize(textCharacterSize);
+		chat->setFillColor(sf::Color::White);
+
+		systemCenter = new Attractor(true);
 
 		if (autoConnect && !serverAddress.empty() && port != 0) {
 			printf("Connecting automatically to %s:%u.\n", serverAddress.c_str(), port);
@@ -370,8 +379,6 @@ int main(int argc, char** argv) {
 					ownEntity->control(controls);
 				}
 
-				sf::Text coords;
-				coords.setFont(*font);
 				std::string info = "";
 				info.append("FPS: ").append(std::to_string(60.0 / delta))
 				.append("\nPing: ").append(std::to_string((int)(lastPing * 1000.0))).append("ms");
@@ -381,10 +388,8 @@ int main(int argc, char** argv) {
 					.append("\nrVx: ").append(std::to_string((int)((ownEntity->velX - lastTrajectoryRef->velX) * 60.0)))
 					.append(", rVy: ").append(std::to_string((int)((ownEntity->velY - lastTrajectoryRef->velY) * 60.0)));
 				}
-				coords.setString(info);
-				coords.setCharacterSize(textCharacterSize);
-				coords.setFillColor(sf::Color::White);
-				window->draw(coords);
+				posInfo->setString(info);
+				window->draw(*posInfo);
 				if (lastTrajectoryRef) {
 					float radius = std::max(5.f, (float)(lastTrajectoryRef->radius / g_camera.scale));
 					sf::CircleShape selection(radius, 4);
@@ -396,18 +401,14 @@ int main(int argc, char** argv) {
 					window->draw(selection);
 				}
 			}
-			sf::Text chat;
-			chat.setFont(*font);
 			std::string chatString;
 			for (std::string message : displayMessages) {
 				chatString.append(message).append("\n");
 			}
 			chatString.append(chatBuffer);
-			chat.setString(chatString);
-			chat.setCharacterSize(textCharacterSize);
-			chat.setFillColor(sf::Color::White);
-			chat.move(2, g_camera.h - (textCharacterSize + 4) * (displayMessageCount + 1));
-			window->draw(chat);
+			chat->setString(chatString);
+			chat->setPosition(2, g_camera.h - (textCharacterSize + 4) * (displayMessageCount + 1));
+			window->draw(*chat);
 			g_camera.bindWorld();
 			window->display();
 
