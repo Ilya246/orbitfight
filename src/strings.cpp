@@ -280,7 +280,7 @@ void parseCommand (const string_view& command) {
 		}
 		return;
 	} else if (args[0] == "showfps") {
-		printf("%f\n", 60.0 / delta);
+		printf("%llu\n", framerate);
 		return;
 	}
 	printf("Unknown command.\n");

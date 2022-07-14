@@ -379,7 +379,7 @@ int main(int argc, char** argv) {
 			g_camera.bindUI();
 
 			std::string info = "";
-			info.append("FPS: ").append(std::to_string(60.0 / delta))
+			info.append("FPS: ").append(std::to_string(framerate))
 			.append("\nPing: ").append(std::to_string((int)(lastPing * 1000.0))).append("ms");
 			if (lastTrajectoryRef) {
 				info.append("\nrX: ").append(std::to_string((int)(ownX - lastTrajectoryRef->x)))
@@ -628,6 +628,12 @@ int main(int argc, char** argv) {
 		}
 
 		delta = deltaClock.restart().asSeconds() * 60.0;
+		measureFrames++;
+		if (globalTime > lastShowFramerate + 1.0) {
+			lastShowFramerate = globalTime;
+			framerate = measureFrames;
+			measureFrames = 0;
+		}
 		sf::sleep(sf::seconds(std::max((1.0 / targetFramerate - delta / 60.0), 0.0)));
 		globalTime = globalClock.getElapsedTime().asSeconds();
 	}

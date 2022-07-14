@@ -49,6 +49,7 @@ inline double delta = 1.0 / 60.0,
 	G = 6.67e-11,
 	targetFramerate = 90.0,
 	lastPing = 0.0, lastPredict = 0.0, lastSweep = 0.0, lastAutorestartNotif = -autorestartNotifSpacing, lastAutorestart = 0.0,
+	lastShowFramerate = 0.0,
 	predictingFor = 0.0,
 	drawShiftX = 0.0, drawShiftY = 0.0,
 	ownX = 0.0, ownY = 0.0;
@@ -58,6 +59,7 @@ messageLimit = 50,
 textCharacterSize = 18,
 nextID = 0,
 predictSteps = (int)(30.0 / predictDelta * 60.0);
+inline long long measureFrames = 0, framerate = 0;
 inline size_t trajectoryOffset = 0;
 inline bool headless = false, autoConnect = false, debug = false, autorestart = false,
 inputWaiting = false, chatting = false, lockControls = false,
