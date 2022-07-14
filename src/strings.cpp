@@ -279,6 +279,9 @@ void parseCommand (const string_view& command) {
 			cout << "	<" << p->name() << ">" << endl;
 		}
 		return;
+	} else if (args[0] == "showfps") {
+		printf("%f\n", 60.0 / delta);
+		return;
 	}
 	printf("Unknown command.\n");
 }
