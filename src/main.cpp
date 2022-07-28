@@ -62,7 +62,7 @@ int main(int argc, char** argv) {
 		out << "predictSteps: As a client, how many steps of [predictDelta] ticks to simulate for trajectory prediction (int)" << std::endl;
 		out << "port: Used both as the port to host on and to specify port for autoConnect (short uint)" << std::endl;
 		out << "predictDelta: As a client, how many ticks to advance every prediction simulation step (double)" << std::endl;
-		out << "predictSteps: As a client, how many seconds to wait between trajectory prediction simulations (double)" << std::endl;
+		out << "predictSpacing: As a client, how many seconds to wait between trajectory prediction simulations (double)" << std::endl;
 		out << "NOTE: any clients will have to have the same physics-related configs as the server for them to work properly" << std::endl;
 		out << "friction: Friction of touching bodies (double)" << std::endl;
 		out << "collideRestitution: How bouncy collisions are (double)" << std::endl;
