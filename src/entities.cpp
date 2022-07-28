@@ -68,7 +68,7 @@ void generateSystem() {
 	}
 	float minrange = 120000.0 + starsN * starR * 2.0;
 	float maxrange = 4000000.0 + starsN * starR * 30.0;
-	int planets = (int)rand_f(5.f, 10.f);
+	int planets = (int)(rand_f(5.f, 10.f) * sqrt(starsN));
 	int totalMoons = 0;
 	for (int i = 0; i < planets; i++) {
 		double spawnDst = rand_f(minrange, maxrange);
