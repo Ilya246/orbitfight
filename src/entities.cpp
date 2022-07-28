@@ -266,7 +266,9 @@ void Entity::update2() {
 					break;
 				} else if (e->type() == Entities::Attractor) [[unlikely]] {
 					if (mass >= e->mass && (headless || simulating)) {
-						printf("Planetary collision: %u absorbed %u\n", id, e->id);
+						if (!simulating) {
+							printf("Planetary collision: %u absorbed %u\n", id, e->id);
+						}
 						double radiusMul = sqrt((mass + e->mass) / mass);
 						mass += e->mass;
 						radius *= radiusMul;
