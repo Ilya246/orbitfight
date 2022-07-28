@@ -183,7 +183,7 @@ int parseTomlFile(const string& filename) {
 void parseCommand (const string_view& command) {
 	vector<string_view> args;
 	splitString(command, args, ' ');
-	if (args.size == 0) {
+	if (args.size() == 0) {
 		printf("Invalid command.\n");
 		return;
 	}
