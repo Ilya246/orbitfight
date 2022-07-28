@@ -183,6 +183,10 @@ int parseTomlFile(const string& filename) {
 void parseCommand (const string_view& command) {
 	vector<string_view> args;
 	splitString(command, args, ' ');
+	if (args.size == 0) {
+		printf("Invalid command.\n");
+		return;
+	}
 	if (args[0] == "help") {
 		printf("help - print this\n");
 		printf("config <line> - parse argument like a config file line\n");
