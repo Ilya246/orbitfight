@@ -296,6 +296,7 @@ int main(int argc, char** argv) {
 							lastTrajectoryRef = nullptr;
 						} else {
 							trajectoryRef = closestEntity;
+							printf("Selected entity id %u as reference body\n", trajectoryRef->id);
 						}
 					} else if (event.key.code == sf::Keyboard::Return) {
 						if(chatting && (int)chatBuffer.getSize() > 0){
@@ -382,11 +383,9 @@ int main(int argc, char** argv) {
 			info.append("FPS: ").append(std::to_string(framerate))
 			.append("\nPing: ").append(std::to_string((int)(lastPing * 1000.0))).append("ms");
 			if (lastTrajectoryRef) {
-				info.append("\nrX: ").append(std::to_string((int)(ownX - lastTrajectoryRef->x)))
-				.append(", rY: ").append(std::to_string((int)(ownY - lastTrajectoryRef->y)));
+				info.append("\ndistance: ").append(std::to_string((int)(dst(ownX - lastTrajectoryRef->x, ownY - lastTrajectoryRef->y))));
 				if (ownEntity) [[likely]] {
-					info.append("\nrVx: ").append(std::to_string((int)((ownEntity->velX - lastTrajectoryRef->velX) * 60.0)))
-					.append(", rVy: ").append(std::to_string((int)((ownEntity->velY - lastTrajectoryRef->velY) * 60.0)));
+					info.append("\nrVel: ").append(std::to_string((int)(dst(ownEntity->velX - lastTrajectoryRef->velX, ownEntity->velY - lastTrajectoryRef->velY)) * 60.0));
 				}
 			}
 			posInfo->setString(info);
