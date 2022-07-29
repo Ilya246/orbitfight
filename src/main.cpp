@@ -385,7 +385,7 @@ int main(int argc, char** argv) {
 			if (lastTrajectoryRef) {
 				info.append("\ndistance: ").append(std::to_string((int)(dst(ownX - lastTrajectoryRef->x, ownY - lastTrajectoryRef->y))));
 				if (ownEntity) [[likely]] {
-					info.append("\nrVel: ").append(std::to_string((int)(dst(ownEntity->velX - lastTrajectoryRef->velX, ownEntity->velY - lastTrajectoryRef->velY)) * 60.0));
+					info.append("\nrVel: ").append(std::to_string((int)(dst(ownEntity->velX - lastTrajectoryRef->velX, ownEntity->velY - lastTrajectoryRef->velY) * 60.0)));
 				}
 			}
 			posInfo->setString(info);
