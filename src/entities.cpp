@@ -294,13 +294,12 @@ void Entity::update2() {
 void Entity::draw() {
 	sf::Color trajColor(color[0], color[1], color[2]);
 	if (trajectory && lastTrajectoryRef && trajectory->size() > trajectoryOffset) [[likely]] {
-		std::vector<Point> traj = *trajectory;
-		size_t to = traj.size() - trajectoryOffset;
+		size_t to = trajectory->size() - trajectoryOffset;
 		sf::VertexArray lines(sf::LineStrip, to);
 		float lastAlpha = 255;
 		float decBy = (255.f - 64.f) / (to);
 		for (size_t i = 0; i < to; i++){
-			Point point = traj[i + trajectoryOffset];
+			Point point = (*trajectory)[i + trajectoryOffset];
 			lines[i].position = sf::Vector2f(lastTrajectoryRef->x + point.x + drawShiftX, lastTrajectoryRef->y + point.y + drawShiftY);
 			lines[i].color = trajColor;
 			lines[i].color.a = (uint8_t)lastAlpha;
@@ -428,13 +427,12 @@ void Triangle::control(movement& cont) {
 			rotateVel += hyperboostRotateSpeed * delta;
 		} else if (cont.turnright) {
 			rotateVel -= hyperboostRotateSpeed * delta;
-		} else {
-			if (rotateVel > 0.0) {
-				rotateVel = std::max(0.0, rotateVel - hyperboostRotateSpeed * delta * rotateSlowSpeedMult);
-			}
-			if (rotateVel < 0.0) {
-				rotateVel = std::min(0.0, rotateVel + hyperboostRotateSpeed * delta * rotateSlowSpeedMult);
-			}
+		}
+		if (rotateVel > 0.0) {
+			rotateVel = std::max(0.0, rotateVel - hyperboostRotateSpeed * delta * rotateSlowSpeedMult);
+		}
+		if (rotateVel < 0.0) {
+			rotateVel = std::min(0.0, rotateVel + hyperboostRotateSpeed * delta * rotateSlowSpeedMult);
 		}
 		if (hyperboostCharge > hyperboostTime) {
 			addVelocity(hyperboostStrength * xMul * delta, hyperboostStrength * yMul * delta);
@@ -470,13 +468,12 @@ void Triangle::control(movement& cont) {
 		rotateVel += rotateSpeed * delta;
 	} else if (cont.turnright) {
 		rotateVel -= rotateSpeed * delta;
-	} else {
-		if (rotateVel > 0.0) {
-			rotateVel = std::max(0.0, rotateVel - rotateSpeed * delta * rotateSlowSpeedMult);
-		}
-		if (rotateVel < 0.0) {
-			rotateVel = std::min(0.0, rotateVel + rotateSpeed * delta * rotateSlowSpeedMult);
-		}
+	}
+	if (rotateVel > 0.0) {
+		rotateVel = std::max(0.0, rotateVel - rotateSpeed * delta * rotateSlowSpeedMult);
+	}
+	if (rotateVel < 0.0) {
+		rotateVel = std::min(0.0, rotateVel + rotateSpeed * delta * rotateSlowSpeedMult);
 	}
 	if (cont.boost && lastBoosted + boostCooldown < globalTime) {
 		addVelocity(boostStrength * xMul, boostStrength * yMul);

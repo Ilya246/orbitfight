@@ -383,9 +383,9 @@ int main(int argc, char** argv) {
 			info.append("FPS: ").append(std::to_string(framerate))
 			.append("\nPing: ").append(std::to_string((int)(lastPing * 1000.0))).append("ms");
 			if (lastTrajectoryRef) {
-				info.append("\ndistance: ").append(std::to_string((int)(dst(ownX - lastTrajectoryRef->x, ownY - lastTrajectoryRef->y))));
+				info.append("\nDistance: ").append(std::to_string((int)(dst(ownX - lastTrajectoryRef->x, ownY - lastTrajectoryRef->y))));
 				if (ownEntity) [[likely]] {
-					info.append("\nrVel: ").append(std::to_string((int)(dst(ownEntity->velX - lastTrajectoryRef->velX, ownEntity->velY - lastTrajectoryRef->velY) * 60.0)));
+					info.append("\nVelocity: ").append(std::to_string((int)(dst(ownEntity->velX - lastTrajectoryRef->velX, ownEntity->velY - lastTrajectoryRef->velY) * 60.0)));
 				}
 			}
 			posInfo->setString(info);

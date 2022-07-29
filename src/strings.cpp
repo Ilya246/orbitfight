@@ -194,6 +194,7 @@ void parseCommand (const string_view& command) {
 		printf("lookup <id> - print info about entity ID in argument\n");
 		printf("reset - regenerate the star system\n");
 		printf("players - list currently online players\n");
+		printf("showfps - print current framerate\n");
 		return;
 	} else if (args[0] == "config") {
 		if (args.size() < 2) {
