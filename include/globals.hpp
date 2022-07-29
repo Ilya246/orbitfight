@@ -33,7 +33,7 @@ inline std::future<void> inputReader;
 inline std::string serverAddress = "", name = "",
 inputBuffer = "";
 inline sf::String chatBuffer = "";
-inline unsigned short port = 0;
+inline unsigned short port = 7817;
 inline movement lastControls, controls;
 inline double delta = 1.0 / 60.0,
 	globalTime = 0.0,

@@ -17,6 +17,7 @@
 #include <functional>
 #include <future>
 #include <iostream>
+#include <regex>
 
 using namespace obf;
 
@@ -24,14 +25,22 @@ void connectToServer() {
 	serverSocket = new sf::TcpSocket;
 	printf("See https://github.com/Ilya246/orbitfight/blob/master/SERVERS.md for 24/7 servers\n");
 	while (true) {
-		printf("Specify server port\n");
-		std::cin >> port;
-		printf("Specify server address\n");
-		std::cin >> serverAddress;
+		printf("Specify server address:port: ");
+		getline(std::cin, serverAddress);
+		std::vector<std::string> addressPort;
+		splitString(serverAddress, addressPort, ':');
+		std::string address = addressPort[0];
+		if (addressPort.size() == 2) {
+			if (std::regex_match(addressPort[1], int_regex)) {
+				port = stoi(addressPort[1]);
+			} else {
+				printf("Specified server port (%s) is not an integer.\n", addressPort[1].c_str());
+			}
+		}
 		if (serverSocket->connect(serverAddress, port) != sf::Socket::Done) {
-			printf("Could not connect to %s:%u.\n", serverAddress.c_str(), port);
+			printf("Could not connect to %s:%u.\n", address.c_str(), port);
 		} else {
-			printf("Connected to %s:%u.\n", serverAddress.c_str(), port);
+			printf("Connected to %s:%u.\n", address.c_str(), port);
 			sf::Packet nicknamePacket;
 			nicknamePacket << Packets::Nickname << name;
 			serverSocket->send(nicknamePacket);
@@ -60,7 +69,7 @@ int main(int argc, char** argv) {
 		out.open(configDocFile);
 		out << "NOTE: configs changed using the console will not be saved" << std::endl;
 		out << "predictSteps: As a client, how many steps of [predictDelta] ticks to simulate for trajectory prediction (int)" << std::endl;
-		out << "port: Used both as the port to host on and to specify port for autoConnect (short uint)" << std::endl;
+		out << "port: Used both as the port to host on and to specify port for autoConnect if server address does not contain port (short uint)" << std::endl;
 		out << "predictDelta: As a client, how many ticks to advance every prediction simulation step (double)" << std::endl;
 		out << "predictSpacing: As a client, how many seconds to wait between trajectory prediction simulations (double)" << std::endl;
 		out << "NOTE: any clients will have to have the same physics-related configs as the server for them to work properly" << std::endl;
@@ -91,7 +100,7 @@ int main(int argc, char** argv) {
 	} else {
 		if (name.empty()) {
 			printf("Specify a username.\n");
-			std::cin >> name;
+			getline(std::cin, name);
 			out << "\nname = " << name << std::endl;
 		}
 	}
@@ -130,14 +139,24 @@ int main(int argc, char** argv) {
 
 		systemCenter = new Attractor(true);
 
-		if (autoConnect && !serverAddress.empty() && port != 0) {
-			printf("Connecting automatically to %s:%u.\n", serverAddress.c_str(), port);
+		if (autoConnect && !serverAddress.empty()) {
+			std::vector<std::string> addressPort;
+			splitString(serverAddress, addressPort, ':');
+			std::string address = addressPort[0];
+			if (addressPort.size() == 2) {
+				if (std::regex_match(addressPort[1], int_regex)) {
+					port = stoi(addressPort[1]);
+				} else {
+					printf("Specified server port (%s) is not an integer.\n", addressPort[1].c_str());
+				}
+			}
+			printf("Connecting automatically to %s:%u.\n", address.c_str(), port);
 			serverSocket = new sf::TcpSocket;
-			if (serverSocket->connect(serverAddress, port) != sf::Socket::Done) [[unlikely]] {
-				printf("Could not connect to %s:%u.\n", serverAddress.c_str(), port);
+			if (serverSocket->connect(address, port) != sf::Socket::Done) [[unlikely]] {
+				printf("Could not connect to %s:%u.\n", address.c_str(), port);
 				connectToServer();
 			} else {
-				printf("Connected to %s:%u.\n", serverAddress.c_str(), port);
+				printf("Connected to %s:%u.\n", address.c_str(), port);
 				sf::Packet nicknamePacket;
 				nicknamePacket << Packets::Nickname << name;
 				serverSocket->send(nicknamePacket);
@@ -151,8 +170,7 @@ int main(int argc, char** argv) {
 		if (headless) {
 			if(!inputWaiting){
 				if(!inputBuffer.empty()){
-					std::string_view view(inputBuffer);
-					parseCommand(view);
+					parseCommand(inputBuffer);
 					inputBuffer.clear();
 				}
 				inputReader = std::async(std::launch::async, inputListen);

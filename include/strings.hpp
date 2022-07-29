@@ -1,11 +1,21 @@
 #pragma once
 
+#include <regex>
+#include <vector>
+
+using namespace std;
+
 namespace obf {
-void stripSpecialChars(std::string&);
+inline regex int_regex = regex("[0-9]*"),
+	double_regex = regex("[0-9]*(\\.[0-9]*)?"),
+	boolt_regex = regex("([tT][rR][uU][eE])|1"), boolf_regex = regex("([fF][aA][lL][sS][eE])|0");
 
-int parseToml(const std::string&);
-int parseTomlFile(const std::string&);
+void splitString(const string&, vector<string>&, char);
+void stripSpecialChars(string&);
 
-void parseCommand(const std::string_view&);
+int parseToml(const string&);
+int parseTomlFile(const string&);
+
+void parseCommand(const string&);
 
 }

@@ -1,5 +1,6 @@
 #include "globals.hpp"
 #include "net.hpp"
+#include "strings.hpp"
 #include "types.hpp"
 
 #include <fstream>
@@ -11,11 +12,7 @@ using namespace std;
 
 namespace obf {
 
-static const regex int_regex = regex("[0-9]*"),
-	double_regex = regex("[0-9]*(\\.[0-9]*)?"),
-	boolt_regex = regex("([tT][rR][uU][eE])|1"), boolf_regex = regex("([fF][aA][lL][sS][eE])|0");
-
-void splitString(string_view str, vector<string_view> &vec, char delim) {
+void splitString(const string& str, vector<string>& vec, char delim) {
 	size_t last = 0;
 	for (size_t i = 0; i < str.size(); i++) {
 		if (str[i] == delim) {
@@ -180,8 +177,8 @@ int parseTomlFile(const string& filename) {
 	return 0;
 }
 
-void parseCommand (const string_view& command) {
-	vector<string_view> args;
+void parseCommand (const string& command) {
+	vector<string> args;
 	splitString(command, args, ' ');
 	if (args.size() == 0) {
 		printf("Invalid command.\n");
