@@ -137,7 +137,6 @@ Entity::Entity() {
 	nextID++;
 	updateGroup.push_back(this);
 	if (!headless) {
-		trajectory = std::make_unique<std::vector<Point>>();
 		ghost = simulating;
 	}
 }
@@ -293,13 +292,13 @@ void Entity::update2() {
 
 void Entity::draw() {
 	sf::Color trajColor(color[0], color[1], color[2]);
-	if (trajectory && lastTrajectoryRef && trajectory->size() > trajectoryOffset) [[likely]] {
-		size_t to = trajectory->size() - trajectoryOffset;
+	if (lastTrajectoryRef && trajectory.size() > trajectoryOffset) [[likely]] {
+		size_t to = trajectory.size() - trajectoryOffset;
 		sf::VertexArray lines(sf::LineStrip, to);
 		float lastAlpha = 255;
 		float decBy = (255.f - 64.f) / (to);
 		for (size_t i = 0; i < to; i++){
-			Point point = (*trajectory)[i + trajectoryOffset];
+			Point point = trajectory[i + trajectoryOffset];
 			lines[i].position = sf::Vector2f(lastTrajectoryRef->x + point.x + drawShiftX, lastTrajectoryRef->y + point.y + drawShiftY);
 			lines[i].color = trajColor;
 			lines[i].color.a = (uint8_t)lastAlpha;

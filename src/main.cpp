@@ -367,7 +367,7 @@ int main(int argc, char** argv) {
 			g_camera.pos.y = 0;
 			trajectoryOffset = floor((globalTime - lastPredict) / predictDelta * 60.0);
 			for (size_t i = 0; i < ghostTrajectories.size(); i++) {
-				std::vector<Point> traj = ghostTrajectories[i];
+				std::vector<Point>& traj = ghostTrajectories[i];
 				if (lastTrajectoryRef && traj.size() > 0) [[likely]] {
 					sf::Color trajColor = ghostTrajectoryColors[i];
 					sf::VertexArray lines(sf::LineStrip, traj.size());
@@ -511,7 +511,7 @@ int main(int argc, char** argv) {
 			}
 			for (Entity* e : updateGroup) {
 				e->simSetup();
-				e->trajectory->clear();
+				e->trajectory.clear();
 			}
 			for (int i = 0; i < predictSteps; i++) {
 				predictingFor = predictDelta * predictSteps;
@@ -533,7 +533,7 @@ int main(int argc, char** argv) {
 					systemCenter->setPosition(x, y);
 				}
 				for (Entity* e : updateGroup) {
-					e->trajectory->push_back({e->x - trajectoryRef->x, e->y - trajectoryRef->y});
+					e->trajectory.push_back({e->x - trajectoryRef->x, e->y - trajectoryRef->y});
 				}
 				if (ownEntity) {
 					ownEntity->control(controls);
@@ -558,7 +558,7 @@ int main(int argc, char** argv) {
 				entityDeleteBuffer.clear();
 			}
 			for (Entity* en : simCleanupBuffer) {
-				ghostTrajectories.push_back(*en->trajectory);
+				ghostTrajectories.push_back(en->trajectory);
 				ghostTrajectoryColors.push_back(sf::Color(en->color[0] * 0.7, en->color[1] * 0.7, en->color[2] * 0.7));
 				entityDeleteBuffer.push_back(en);
 			}
