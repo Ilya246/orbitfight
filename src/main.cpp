@@ -392,8 +392,13 @@ int main(int argc, char** argv) {
 			for (size_t i = 0; i < updateGroup.size(); i++) {
 				updateGroup[i]->draw();
 			}
-			if (ownEntity && !lockControls) {
-				ownEntity->control(controls);
+			if (ownEntity) {
+				if (lockControls) {
+					unsigned char zero = 0;
+					ownEntity->control(*(movement*)&zero);
+				} else {
+					ownEntity->control(controls);
+				}
 			}
 			g_camera.bindUI();
 
