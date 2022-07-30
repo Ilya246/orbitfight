@@ -13,6 +13,10 @@ inline regex int_regex = regex("[0-9]*"),
 void splitString(const string&, vector<string>&, char);
 void stripSpecialChars(string&);
 
+void displayMessage(const string&, bool);
+void displayMessage(const string&);
+void printPreferred(const string&);
+
 int parseToml(const string&);
 int parseTomlFile(const string&);
 

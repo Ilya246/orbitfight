@@ -282,10 +282,14 @@ int main(int argc, char** argv) {
 				}
 				case sf::Event::MouseWheelScrolled: {
 					double factor = 1.0 + 0.1 * ((event.mouseWheelScroll.delta < 0) * 2 - 1);
-					g_camera.zoom(factor);
-					sf::Packet resize;
-					resize << Packets::ResizeView << (double)g_camera.w * g_camera.scale << (double)g_camera.h * g_camera.scale;
-					serverSocket->send(resize);
+					if (chatting) {
+						messageCursorPos = factor > 1.0 ? min(storedMessageCount - displayMessageCount, messageCursorPos + 1) : max(0, messageCursorPos - 1);
+					} else {
+						g_camera.zoom(factor);
+						sf::Packet resize;
+						resize << Packets::ResizeView << (double)g_camera.w * g_camera.scale << (double)g_camera.h * g_camera.scale;
+						serverSocket->send(resize);
+					}
 					break;
 				}
 				case sf::Event::KeyPressed: {
@@ -423,8 +427,9 @@ int main(int argc, char** argv) {
 				selection.setOutlineThickness(1.f);
 				window->draw(selection);
 			}
-			std::string chatString;
-			for (std::string message : displayMessages) {
+			std::string chatString = "";
+			for (int i = messageCursorPos; i < messageCursorPos + displayMessageCount; i++) {
+				std::string message = storedMessages[i];
 				chatString.append(message).append("\n");
 			}
 			chatString.append(chatBuffer);

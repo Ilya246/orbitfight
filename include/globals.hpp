@@ -53,12 +53,13 @@ inline double delta = 1.0 / 60.0,
 	predictingFor = 0.0,
 	drawShiftX = 0.0, drawShiftY = 0.0,
 	ownX = 0.0, ownY = 0.0;
-inline const int displayMessageCount = 7;
+inline const int displayMessageCount = 7, storedMessageCount = 40;
 inline int usernameLimit = 24,
 messageLimit = 50,
 textCharacterSize = 18,
 nextID = 0,
-predictSteps = (int)(30.0 / predictDelta * 60.0);
+predictSteps = (int)(30.0 / predictDelta * 60.0),
+messageCursorPos = storedMessageCount - displayMessageCount;
 inline long long measureFrames = 0, framerate = 0;
 inline size_t trajectoryOffset = 0;
 inline bool headless = false, autoConnect = false, debug = false, autorestart = false,
@@ -94,7 +95,7 @@ inline std::map<std::string, Var> vars {{"port", {Int, &port}},
 	{"enableControlLock", {Bool, &enableControlLock}},
 	{"DEBUG", {Bool, &debug}}};
 
-inline sf::String displayMessages[displayMessageCount];
+inline sf::String storedMessages[storedMessageCount];
 
 inline std::vector<Attractor*> stars;
 inline Entity* trajectoryRef = nullptr;

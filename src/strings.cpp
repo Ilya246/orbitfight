@@ -11,6 +11,7 @@
 using namespace std;
 
 namespace obf {
+static char out[128];
 
 void splitString(const string& str, vector<string>& vec, char delim) {
 	size_t last = 0;
@@ -39,6 +40,41 @@ void stripSpecialChars(string& str) {
 	}
 	if (offset > 0) {
 		str.erase(str.size() - offset);
+	}
+}
+
+void displayMessage(const string& message, bool print) {
+	int to = storedMessageCount - 1;
+	for (int i = 0; i < storedMessageCount; i++) {
+		storedMessages[i] = storedMessages[i + 1];
+	}
+	if (print) {
+		printf("%s\n", message.c_str());
+	}
+	storedMessages[to] = sf::String(message);
+}
+void displayMessage(const string& message) {
+	displayMessage(message, true);
+}
+void printPreferred(const string& s) {
+	cout << s;
+	if (!headless) {
+		string buf;
+		buf.reserve(s.size());
+		for (char c : s) {
+			if (c == '\n') {
+				if (buf.size() == 0) {
+					continue;
+				}
+				displayMessage(buf, false);
+				buf.clear();
+			} else {
+				buf += c;
+			}
+		}
+		if (buf.size() != 0) {
+			displayMessage(buf, false);
+		}
 	}
 }
 
@@ -79,23 +115,25 @@ stopParsing:
 		if (value.empty()) {
 			switch (variable.type) {
 				case obf::Types::Short_u:
-					printf("%u\n", *(uint16_t*)variable.value);
+					printPreferred(std::to_string(*(uint16_t*)variable.value));
 					break;
 				case obf::Types::Int:
-					printf("%d\n", *(int*)variable.value);
+					printPreferred(std::to_string(*(int*)variable.value));
 					break;
 				case obf::Types::Double:
-					printf("%g\n", *(double*)variable.value);
+					sprintf(out, "%g", *(double*)variable.value);
+					printPreferred(string(out));
 					break;
 				case obf::Types::Bool:
-					printf("%u\n", *(bool*)variable.value);
+					printPreferred(to_string(*(bool*)variable.value));
 					break;
 				case obf::Types::String:
-					printf("%s\n", (*(string*)variable.value).c_str());
+					printPreferred(*(string*)variable.value);
 					break;
 				default:
 					return 6;
 			}
+			printf("\n");
 			return 2;
 		}
 		switch (variable.type) {
@@ -185,43 +223,49 @@ void parseCommand (const string& command) {
 		return;
 	}
 	if (args[0] == "help") {
-		printf("help - print this\n");
-		printf("config <line> - parse argument like a config file line\n");
-		printf("say <message> - as a server, say argument into ingame chat\n");
-		printf("lookup <id> - print info about entity ID in argument\n");
-		printf("reset - regenerate the star system\n");
-		printf("players - list currently online players\n");
-		printf("showfps - print current framerate\n");
+		printPreferred("help - print this\n"
+		"config <line> - parse argument like a config file line\n"
+		"lookup <id> - print info about entity ID in argument\n"
+		"showfps - print current framerate\n");
+		if (headless) {
+			printPreferred("reset - regenerate the star system\n"
+			"players - list currently online players\n"
+			"say <message> - say argument into ingame chat\n");
+		}
 		return;
 	} else if (args[0] == "config") {
 		if (args.size() < 2) {
-			printf("Invalid argument.\n");
+			printPreferred("Invalid argument.\n");
 			return;
 		}
 		int retcode = parseToml(string(args[1]));
 		switch (retcode) {
 			case 1:
-				printf("Invalid key.\n");
+				printPreferred("Invalid key.\n");
 				break;
 			case 3:
-				printf("Invalid value. Must be integer.\n");
+				printPreferred("Invalid value. Must be integer.\n");
 				break;
 			case 4:
-				printf("Invalid value. Must be a real number.\n");
+				printPreferred("Invalid value. Must be a real number.\n");
 				break;
 			case 5:
-				printf("Invalid value. Must be true|false.\n");
+				printPreferred("Invalid value. Must be true|false.\n");
 				break;
 			case 6:
-				printf("Invalid type specified for variable.\n");
+				printPreferred("Invalid type specified for variable.\n");
 				break;
 			default:
 				break;
 		}
 		return;
 	} else if (args[0] == "say") {
+		if (!headless) {
+			displayMessage("This command only works if you're the server.");
+			return;
+		}
 		if (command.size() < 4) {
-			printf("Invalid argument.");
+			printf("Invalid argument.\n");
 			return;
 		}
 		sf::Packet chatPacket;
@@ -235,24 +279,29 @@ void parseCommand (const string& command) {
 		return;
 	} else if (args[0] == "lookup") {
 		if (args.size() < 2) {
-			printf("Invalid argument.");
+			printPreferred("Invalid argument.\n");
 			return;
 		}
 		string id_s = string(args[1]);
 		if (!regex_match(id_s, int_regex)) {
-			printf("Invalid ID.\n");
+			printPreferred("Invalid ID.\n");
 			return;
 		}
 		size_t id = stoi(id_s);
 		for (Entity* e : updateGroup) {
 			if (e->id == id) {
-				printf("Mass %g, radius %g, relative to star 0: x %g, y %g, vX %g, vY %g\n", e->mass, e->radius, e->x - stars[0]->x, e->y - stars[0]->y, e->velX - stars[0]->velX, e->velY - stars[0]->velY);
+				sprintf(out, "Mass %g, radius %g, relative to star 0: x %g, y %g, vX %g, vY %g\n", e->mass, e->radius, e->x - stars[0]->x, e->y - stars[0]->y, e->velX - stars[0]->velX, e->velY - stars[0]->velY);
+				printPreferred(string(out));
 				return;
 			}
 		}
-		printf("No entity ID %llu found.\n", id);
+		printPreferred("No entity ID "+to_string(id)+" found.\n");
 		return;
 	} else if (args[0] == "reset") {
+		if (!headless) {
+			displayMessage("This command only works if you're the server.");
+			return;
+		}
 		delta = 0.0;
 		for (Entity* e :updateGroup) {
 			if (e->type() != Entities::Triangle) {
@@ -276,16 +325,20 @@ void parseCommand (const string& command) {
 		}
 		return;
 	} else if (args[0] == "players") {
+		if (!headless) {
+			displayMessage("This command only works if you're the server.");
+			return;
+		}
 		printf("%llu players:\n", playerGroup.size());
 		for (Player* p : playerGroup) {
 			cout << "	<" << p->name() << ">" << endl;
 		}
 		return;
 	} else if (args[0] == "showfps") {
-		printf("%llu\n", framerate);
+		printPreferred(to_string(framerate)+"\n");
 		return;
 	}
-	printf("Unknown command.\n");
+	printPreferred("Unknown command.\n");
 }
 
 }

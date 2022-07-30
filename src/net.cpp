@@ -118,12 +118,7 @@ void clientParsePacket(sf::Packet& packet) {
     case Packets::Chat: {
         std::string message;
         packet >> message;
-        short to = displayMessageCount - 1;
-        for (short i = 0; i < to; i++) {
-            displayMessages[i] = displayMessages[i + 1];
-        }
-        printf("%s\n", message.c_str());
-        displayMessages[to] = sf::String(message);
+        displayMessage(message);
         break;
     }
     case Packets::PingInfo:
