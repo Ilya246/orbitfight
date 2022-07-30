@@ -634,6 +634,9 @@ int main(int argc, char** argv) {
 						e->loadSyncPacket(packet);
 						player->tcpSocket.send(packet);
 					}
+					sf::Packet syncDone;
+					syncDone << Packets::SyncDone;
+					player->tcpSocket.send(syncDone);
 					player->lastSynced = globalTime;
 					if (fullsync) {
 						player->lastFullsynced = globalTime;

@@ -390,7 +390,7 @@ void Triangle::loadSyncPacket(sf::Packet& packet) {
 	packet << id << x << y << velX << velY << rotation;
 }
 void Triangle::unloadSyncPacket(sf::Packet& packet) {
-	packet >> x >> y >> velX >> velY >> rotation;
+	packet >> syncX >> syncY >> syncVelX >> syncVelY >> rotation;
 }
 
 void Triangle::simSetup() {
@@ -620,7 +620,7 @@ void Attractor::loadSyncPacket(sf::Packet& packet) {
 	packet << id << x << y << velX << velY;
 }
 void Attractor::unloadSyncPacket(sf::Packet& packet) {
-	packet >> x >> y >> velX >> velY;
+	packet >> syncX >> syncY >> syncVelX >> syncVelY;
 }
 
 void Attractor::update2() {
@@ -698,7 +698,7 @@ void Projectile::loadSyncPacket(sf::Packet& packet) {
 	packet << id << x << y << velX << velY;
 }
 void Projectile::unloadSyncPacket(sf::Packet& packet) {
-	packet >> x >> y >> velX >> velY;
+	packet >> syncX >> syncY >> syncVelX >> syncVelY;
 }
 
 void Projectile::collide(Entity* with, bool collideOther) {

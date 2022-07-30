@@ -73,6 +73,15 @@ void clientParsePacket(sf::Packet& packet) {
         }
         break;
     }
+    case Packets::SyncDone: {
+        for (Entity* e: updateGroup) {
+            e->x = e->syncX;
+            e->y = e->syncY;
+            e->velX = e->syncVelX;
+            e->velY = e->syncVelY;
+        }
+        break;
+    }
     case Packets::AssignEntity: {
         uint32_t entityID;
         packet >> entityID;
