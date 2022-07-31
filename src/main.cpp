@@ -29,6 +29,10 @@ void connectToServer() {
 		getline(std::cin, serverAddress);
 		std::vector<std::string> addressPort;
 		splitString(serverAddress, addressPort, ':');
+		if (addressPort.size() == 0) {
+			printf("Invalid input.\n");
+			continue;
+		}
 		std::string address = addressPort[0];
 		if (addressPort.size() == 2) {
 			if (std::regex_match(addressPort[1], int_regex)) {
