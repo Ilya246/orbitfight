@@ -25,7 +25,7 @@ void connectToServer() {
 	serverSocket = new sf::TcpSocket;
 	printf("See https://github.com/Ilya246/orbitfight/blob/master/SERVERS.md for 24/7 servers\n");
 	while (true) {
-		printf("Specify server address:port: ");
+		printf("Specify server address:port:\n");
 		getline(std::cin, serverAddress);
 		std::vector<std::string> addressPort;
 		splitString(serverAddress, addressPort, ':');
@@ -37,7 +37,7 @@ void connectToServer() {
 				printf("Specified server port (%s) is not an integer.\n", addressPort[1].c_str());
 			}
 		}
-		if (serverSocket->connect(serverAddress, port) != sf::Socket::Done) {
+		if (serverSocket->connect(address, port) != sf::Socket::Done) {
 			printf("Could not connect to %s:%u.\n", address.c_str(), port);
 		} else {
 			printf("Connected to %s:%u.\n", address.c_str(), port);
@@ -154,6 +154,7 @@ int main(int argc, char** argv) {
 			serverSocket = new sf::TcpSocket;
 			if (serverSocket->connect(address, port) != sf::Socket::Done) [[unlikely]] {
 				printf("Could not connect to %s:%u.\n", address.c_str(), port);
+				delete serverSocket;
 				connectToServer();
 			} else {
 				printf("Connected to %s:%u.\n", address.c_str(), port);
