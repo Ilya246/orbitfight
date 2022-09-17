@@ -349,12 +349,12 @@ void Entity::simReset() {
 	lastCollideScan = resCollideScan;
 }
 
-Quad Quad::getChild(uint8_t at) {
+Quad& Quad::getChild(uint8_t at) {
 	if (children[at] == 0) {
 		if (quadsConstructed >= quadsAllocated) {
 			int previouslyAllocated = quadsAllocated;
 			quadsAllocated = (int)(quadsAllocated * extraQuadAllocation);
-			Quad* newQuadtree = (Quad*)malloc(quadsAllocated);
+			Quad* newQuadtree = (Quad*)malloc(quadsAllocated * sizeof(Quad));
 			memcpy(newQuadtree, quadtree, previouslyAllocated * sizeof(Quad));
 			delete quadtree;
 			quadtree = newQuadtree;
@@ -376,7 +376,7 @@ void Quad::put(Entity* e) {
 	if (used) {
 		getChild((e->x > x + size * 0.5) + 2 * (e->y > y + size * 0.5)).put(e);
 		if (entity) {
-			getChild((entity->x > x + size * 0.5) + 2 * (entity->y > y + size * 0.5)).put(e);
+			getChild((entity->x > x + size * 0.5) + 2 * (entity->y > y + size * 0.5)).put(entity);
 			entity = nullptr;
 		}
 	} else {

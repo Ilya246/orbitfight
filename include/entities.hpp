@@ -99,7 +99,7 @@ struct Entity {
 
 struct Quad {
 	void put(Entity* e);
-	Quad getChild(uint8_t at);
+	Quad& getChild(uint8_t at);
 
 	uint16_t children[4] = {0, 0, 0, 0};
 	Entity* entity = nullptr;
