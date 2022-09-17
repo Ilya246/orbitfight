@@ -81,8 +81,8 @@ int main(int argc, char** argv) {
 		out << "collideRestitution: How bouncy collisions are (double)" << std::endl;
 		out << "gravityStrength: How strong gravity is (double)" << std::endl;
 		out << "syncSpacing: As a server, how often should clients be synced (double)" << std::endl;
-		out << "blackholeChance: As a server, what fraction of stars should instead be black holes (double)" << std::endl;
-		out << "extraStarChance: As a server, the chance for an additional star to generate after the previous (double)" << std::endl;
+		out << "gen_blackholeChance: As a server, what fraction of stars should instead be black holes (double)" << std::endl;
+		out << "gen_extraStarChance: As a server, the chance for an additional star to generate after the previous (double)" << std::endl;
 		out << "autorestartSpacing: As a server, if autorestart is enabled, how many seconds to wait between autorestarts (double)" << std::endl;
 		out << "autorestartNotifSpacing: As a server, if autorestart is enabled, how many seconds to wait between chat autorestart notifications (double)" << std::endl;
 		out << "serverAddress: Used with autoConnect as the address to connect to (string)" << std::endl;

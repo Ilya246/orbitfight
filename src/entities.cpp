@@ -28,22 +28,43 @@ void setupShip(Entity* ship) {
 	ship->setVelocity(planet->velX + vel * std::cos(spawnAngle + PI / 2.0), planet->velY + vel * std::sin(spawnAngle + PI / 2.0));
 }
 
+int generateOrbitingPlanets(int amount, double x, double y, double velx, double vely, double parentmass, double minradius, double maxradius, double spawnDst) {
+	int totalMoons = 0;
+	double maxFactor = sqrt(pow(gen_minNextRadius * gen_maxNextRadius, amount * 0.5) * spawnDst);
+	for (int i = 0; i < amount; i++) {
+		spawnDst *= rand_f(gen_minNextRadius, gen_maxNextRadius);
+		double factor = sqrt(spawnDst) / maxFactor; // makes planets further outward generate larger
+		float spawnAngle = rand_f(-PI, PI);
+		float radius = rand_f(minradius, maxradius * factor);
+		double density = gen_baseDensity / pow(radius, 1.0 / 3.0); // makes smaller planets denser
+		Attractor* planet = new Attractor(radius, radius * radius * density);
+		planet->setPosition(x + spawnDst * std::cos(spawnAngle), y + spawnDst * std::sin(spawnAngle));
+		double vel = sqrt(G * parentmass / spawnDst);
+		planet->addVelocity(velx + vel * std::cos(spawnAngle + PI / 2.0), -vely - vel * std::sin(spawnAngle + PI / 2.0));
+		planet->setColor((int)rand_f(64.f, 255.f), (int)rand_f(64.f, 255.f), (int)rand_f(64.f, 255.f));
+		int moons = (int)(rand_f(0.f, 1.f) * radius * radius / (gen_moonFactor * gen_moonFactor));
+		obf::planets.push_back(planet);
+		totalMoons += moons + generateOrbitingPlanets(moons, planet->x, planet->y, planet->velX, planet->velY, planet->mass, gen_minMoonRadius, planet->radius * gen_maxMoonRadiusFrac, planet->radius * (1.0 + rand_f(gen_minMoonDistance, gen_minMoonDistance + pow(gen_maxMoonDistance, std::min(1.0, 0.5 / (planet->radius / gen_maxPlanetRadius))))));
+	}
+	return totalMoons;
+}
+
 void generateSystem() {
 	int starsN = 1;
-	while (rand_f(0.f, 1.f) < extraStarChance) {
+	while (rand_f(0.f, 1.f) < gen_extraStarChance) {
 		starsN += 1;
 	}
 	double angleSpacing = TAU / starsN, angle = 0.0;
-	double starsMass = starMass * starsN, dist = (starsN - 1) * starR * 2.0;
+	double starsMass = gen_starMass * starsN, dist = (starsN - 1) * gen_starRadius * 2.0;
 	for (int i = 0; i < starsN; i++) {
 		Attractor* star = nullptr;
 		double posX = std::cos(angle) * dist, posY = std::sin(angle) * dist;
-		if (rand_f(0.f, 1.f) < blackholeChance) {
-			star = new Attractor(2.0 * G * starMass / (CC), starMass * 1.0001);
+		if (rand_f(0.f, 1.f) < gen_blackholeChance) {
+			star = new Attractor(2.0 * G * gen_starMass / (CC), gen_starMass * 1.0001);
 			star->setColor(0, 0, 0);
 			star->blackhole = true;
 		} else {
-			star = new Attractor(starR, starMass);
+			star = new Attractor(gen_starRadius, gen_starMass);
 			star->setColor(255, 229, 97);
 		}
 		star->setPosition(posX, posY);
@@ -66,40 +87,9 @@ void generateSystem() {
 			angle += angleSpacing;
 		}
 	}
-	float minrange = 120000.0 + starsN * starR * 2.0;
-	float maxrange = 4000000.0 + starsN * starR * 30.0;
-	int planets = (int)(rand_f(5.f, 10.f) * sqrt(starsN));
-	int totalMoons = 0;
-	for (int i = 0; i < planets; i++) {
-		double spawnDst = rand_f(minrange, maxrange);
-		double factor = sqrt(spawnDst) / (600.0 + starsN * 100.0);
-		float spawnAngle = rand_f(-PI, PI);
-		float radius = rand_f(600.f, 6000.f * factor);
-		double density = 8e9 / pow(radius, 1.0 / 3.0);
-		Attractor* planet = new Attractor(radius, radius * radius * density);
-		planet->setPosition(spawnDst * std::cos(spawnAngle), spawnDst * std::sin(spawnAngle));
-		double vel = sqrt(G * starsMass / spawnDst);
-		planet->addVelocity(vel * std::cos(spawnAngle + PI / 2.0), -vel * std::sin(spawnAngle + PI / 2.0));
-		planet->setColor((int)rand_f(64.f, 255.f), (int)rand_f(64.f, 255.f), (int)rand_f(64.f, 255.f));
-		if (radius >= 4000.f) {
-			int moons = (int)(rand_f(0.f, 4.f) * radius * radius / (13000.0 * 13000.0));
-			totalMoons += moons;
-			for (int it = 0; it < moons; it++) {
-				double mSpawnDst = planet->radius + rand_f(6000.f, 80000.f) * factor;
-				float spawnAngle = rand_f(-PI, PI);
-				float radius = rand_f(120.f, planet->radius / 6.f);
-				double density = 8e9 / pow(radius, 1.0 / 3.0);
-				Attractor* moon = new Attractor(radius, radius * radius * density);
-				moon->setPosition(planet->x + mSpawnDst * std::cos(spawnAngle), planet->y + mSpawnDst * std::sin(spawnAngle));
-				double vel = sqrt(G * planet->mass / mSpawnDst);
-				moon->addVelocity(planet->velX + vel * std::cos(spawnAngle + PI / 2.0), -planet->velY - vel * std::sin(spawnAngle + PI / 2.0));
-				moon->setColor((int)rand_f(64.f, 255.f), (int)rand_f(64.f, 255.f), (int)rand_f(64.f, 255.f));
-				obf::planets.push_back(moon);
-			}
-		}
-		obf::planets.push_back(planet);
-	}
-	printf("Generated system: %u stars, %u planets, %u moons\n", starsN, planets, totalMoons);
+	double spawnDst = 120000.0 + starsN * gen_starRadius * 2.0 * rand_f(1.f, 1.5f);
+	int planets = (int)(rand_f(gen_baseMinPlanets, gen_baseMaxPlanets) * sqrt(starsN));
+	printf("Generated system: %u stars, %u planets, %u moons\n", starsN, planets, generateOrbitingPlanets(planets, 0.0, 0.0, 0.0, 0.0, starsMass, gen_minPlanetRadius, gen_maxPlanetRadius, spawnDst));
 }
 
 std::string Player::name() {
