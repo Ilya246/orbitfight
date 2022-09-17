@@ -48,6 +48,7 @@ inline double delta = 1.0 / 60.0,
 	gen_minMoonRadius = 120.0, gen_maxMoonRadiusFrac = 1.0 / 6.0,
 	syncCullThreshold = 0.6, syncCullOffset = 100000.0, sweepThreshold = 4e6 * 4e6,
 	predictSpacing = 0.2, predictDelta = 6.0,
+	extraQuadAllocation = 1.2, quadtreeShrinkThreshold = 0.4,
 	autorestartSpacing = 30.0 * 60.0 + 1, autorestartNotifSpacing = 5.0 * 60.0,
 	G = 6.67e-11,
 	targetFramerate = 90.0,
@@ -64,7 +65,9 @@ nextID = 0,
 predictSteps = (int)(30.0 / predictDelta * 60.0),
 gen_baseMinPlanets = 5,
 gen_baseMaxPlanets = 10,
-messageCursorPos = storedMessageCount - displayMessageCount;
+messageCursorPos = storedMessageCount - displayMessageCount,
+quadsConstructed = 60,
+quadsAllocated = (int)(quadsConstructed * extraQuadAllocation);
 inline long long measureFrames = 0, framerate = 0;
 inline size_t trajectoryOffset = 0;
 inline bool headless = false, autoConnect = false, debug = false, autorestart = false,
@@ -72,6 +75,8 @@ inputWaiting = false, chatting = false, lockControls = false,
 enableControlLock = false,
 simulating = false,
 autorestartRegenned = true, fullclearing = false;
+
+inline obf::Quad* quadtree = (Quad*)malloc((size_t)(sizeof(Quad) * quadsAllocated));
 
 struct Var {
 	uint8_t type;

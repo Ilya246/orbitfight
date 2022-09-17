@@ -466,11 +466,26 @@ int main(int argc, char** argv) {
 			}
 		}
 
-		for (size_t i = 0; i < updateGroup.size(); i++) {
-			updateGroup[i]->update1();
+		double x1 = +INFINITY, y1 = +INFINITY, x2 = -INFINITY, y2 = -INFINITY;
+		for (Entity* e : updateGroup) {
+			x1 = std::min(e->x, x1);
+			y1 = std::min(e->y, y1);
+			x2 = std::max(e->x, x2);
+			y2 = std::max(e->y, y2);
 		}
-		for (size_t i = 0; i < updateGroup.size(); i++) {
-			updateGroup[i]->update2();
+		quadtree[0] = Quad();
+		quadtree[0].x = x1;
+		quadtree[0].y = y1;
+		quadtree[0].size = std::max(x2 - x1, y2 - y1);
+		quadsConstructed = 1;
+		for (Entity* e : updateGroup) {
+			quadtree[0].put(e);
+		}
+		for (Entity* e : updateGroup) {
+			e->update1();
+		}
+		for (Entity* e : updateGroup) {
+			e->update2();
 		}
 
 		if (headless && lastSweep + projectileSweepSpacing < globalTime) {
