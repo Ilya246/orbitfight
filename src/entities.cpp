@@ -244,8 +244,8 @@ void Entity::collide(Entity* with, bool collideOther) {
 	double inX = std::cos(inHeading), inY = std::sin(inHeading);
 	velX -= vel * inX * factor + massFactor * friction * delta * dVx;
 	velY += vel * inY * factor + massFactor * friction * delta * dVy;
-	// x = (x + (with->x - (radius + with->radius) * inX) * massFactor) / (1.0 + massFactor);
-	// y = (y + (with->y + (radius + with->radius) * inY) * massFactor) / (1.0 + massFactor);
+	x = (x + (with->x - (radius + with->radius) * inX) * massFactor) / (1.0 + massFactor);
+	y = (y + (with->y + (radius + with->radius) * inY) * massFactor) / (1.0 + massFactor);
 	if (collideOther) {
 		with->collide(this, false);
 	}
@@ -462,13 +462,13 @@ Triangle::Triangle() : Entity() {
 }
 
 void Triangle::loadCreatePacket(sf::Packet& packet) {
-	packet << type() << id << x << y << velX << velY << rotation;
+	packet << type() << id << x << y << velX << velY << rotation << name;
 	if (debug) {
 		printf("Sent id %d: %g %g %g %g\n", id, x, y, velX, velY);
 	}
 }
 void Triangle::unloadCreatePacket(sf::Packet& packet) {
-	packet >> id >> x >> y >> velX >> velY >> rotation;
+	packet >> id >> x >> y >> velX >> velY >> rotation >> name;
 	if (debug) {
 		printf("Received id %d: %g %g %g %g\n", id, x, y, velX, velY);
 	}
