@@ -335,7 +335,7 @@ void Quad::collideAttract(Entity* e, bool doGravity, bool checkCollide) {
 			double dist = dst(xdiff, ydiff);
 			double factor = delta * G / (dist * dist * dist);
 			double factorthis = factor * entity->mass;
-			e->addVelocity(xdiff * factorthis, -ydiff * factorthis);
+			e->addVelocity(xdiff * factorthis, ydiff * factorthis);
 			double factorother = -factor * e->mass;
 			entity->addVelocity(xdiff * factorother, ydiff * factorother);
 			entity->attracted.push_back(e->id);
