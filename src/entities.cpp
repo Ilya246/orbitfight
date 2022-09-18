@@ -228,7 +228,7 @@ void Entity::draw() {
 }
 
 void Entity::collide(Entity* with, bool collideOther) {
-	if (debug && dst2(with->velX - velX, with->velY - velY) > 0.1) [[unlikely]] {
+	if (debug && !simulating && dst2(with->velX - velX, with->velY - velY) > 0.1) [[unlikely]] {
 		printf("collision: %u-%u\n", id, with->id);
 	}
 	double dVx = velX - with->velX, dVy = with->velY - velY;
@@ -335,16 +335,16 @@ void Quad::collideAttract(Entity* e, bool doGravity, bool checkCollide) {
 			double dist = dst(xdiff, ydiff);
 			double factor = delta * G / (dist * dist * dist);
 			double factorthis = factor * entity->mass;
-			e->addVelocity(xdiff * factorthis, ydiff * factorthis);
+			e->addVelocity(xdiff * factorthis, -ydiff * factorthis);
 			double factorother = -factor * e->mass;
 			entity->addVelocity(xdiff * factorother, ydiff * factorother);
 			entity->attracted.push_back(e->id);
-			return;
 		}
+		return;
 	}
 	if (doGravity) {
 		double halfsize = size * 0.5, midx = x + halfsize, midy = y + halfsize;
-		if (invsize * abs(e->x - midx) + abs(e->y - midy) > gravityAccuracy) {
+		if (invsize * (abs(e->x - midx) + abs(e->y - midy)) > gravityAccuracy) {
 			double xdiff = midx - e->x, ydiff = midy - e->y;
 			double dist = dst(xdiff, ydiff);
 			double factor = delta * mass * G / (dist * dist * dist);
