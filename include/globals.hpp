@@ -24,7 +24,7 @@ inline std::vector<Entity*> updateGroup;
 inline std::vector<Player*> playerGroup;
 inline std::vector<Entity*> entityDeleteBuffer;
 inline std::vector<Entity*> simCleanupBuffer;
-inline std::vector<Attractor*> planets;
+inline std::vector<CelestialBody*> planets;
 inline std::vector<std::vector<Point>> ghostTrajectories;
 inline std::vector<sf::Color> ghostTrajectoryColors;
 inline sf::Vector2i mousePos;
@@ -51,6 +51,7 @@ inline double delta = 1.0 / 60.0,
 	extraQuadAllocation = 2.0, quadReallocateThreshold = 0.6, quadtreeShrinkThreshold = 0.2,
 	autorestartSpacing = 30.0 * 60.0 + 1, autorestartNotifSpacing = 5.0 * 60.0,
 	G = 6.67e-11,
+	gravityAccuracy = 10,
 	targetFramerate = 90.0,
 	lastPing = 0.0, lastPredict = 0.0, lastSweep = 0.0, lastAutorestartNotif = -autorestartNotifSpacing, lastAutorestart = 0.0,
 	lastShowFramerate = 0.0,
@@ -109,6 +110,8 @@ inline std::map<std::string, Var> vars {
 
 	{"sweepThreshold", {Double, &sweepThreshold}},
 
+	{"gravityAccuracy", {Double, &gravityAccuracy}},
+
 	{"friction", {Double, &friction}},
 	{"collideRestitution", {Double, &collideRestitution}},
 	{"gravityStrength", {Double, &G}},
@@ -130,7 +133,7 @@ inline std::map<std::string, Var> vars {
 
 inline sf::String storedMessages[storedMessageCount];
 
-inline std::vector<Attractor*> stars;
+inline std::vector<CelestialBody*> stars;
 inline Entity* trajectoryRef = nullptr;
 inline Entity* lastTrajectoryRef = nullptr;
 inline Entity* systemCenter = nullptr;

@@ -22,7 +22,7 @@ constexpr uint16_t Ping = 0,
 namespace obf::Entities {
 
 constexpr uint8_t Triangle = 1,
- 	Attractor = 2,
+ 	CelestialBody = 2,
 	Projectile = 3;
 }
 

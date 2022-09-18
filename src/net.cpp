@@ -38,13 +38,13 @@ void clientParsePacket(sf::Packet& packet) {
             e->unloadCreatePacket(packet);
             break;
         }
-        case Entities::Attractor: {
+        case Entities::CelestialBody: {
             double radius;
             packet >> radius;
             if (debug) {
                 printf(", radius %g", radius);
             }
-            Attractor* e = new Attractor(radius);
+            CelestialBody* e = new CelestialBody(radius);
             e->unloadCreatePacket(packet);
             if (e->star) {
                 stars.push_back(e);
@@ -145,7 +145,7 @@ void clientParsePacket(sf::Packet& packet) {
         packet >> id;
         for (Entity* e : updateGroup) {
             if (e->id == id) [[unlikely]] {
-                Attractor* at = (Attractor*)e;
+                CelestialBody* at = (CelestialBody*)e;
                 packet >> at->mass >> at->radius;
                 at->shape->setRadius(at->radius);
                 at->shape->setOrigin(at->radius, at->radius);

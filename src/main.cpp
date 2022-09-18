@@ -141,7 +141,7 @@ int main(int argc, char** argv) {
 		chat->setCharacterSize(textCharacterSize);
 		chat->setFillColor(sf::Color::White);
 
-		systemCenter = new Attractor(true);
+		systemCenter = new CelestialBody(true);
 
 		if (autoConnect && !serverAddress.empty()) {
 			std::vector<std::string> addressPort;
@@ -391,7 +391,7 @@ int main(int argc, char** argv) {
 			}
 			if (!stars.empty()) {
 				double x = 0.0, y = 0.0;
-				for (Attractor* star : stars) {
+				for (CelestialBody* star : stars) {
 					x += star->x;
 					y += star->y;
 				}
@@ -470,45 +470,7 @@ int main(int argc, char** argv) {
 			}
 		}
 
-		double x1 = +INFINITY, y1 = +INFINITY, x2 = -INFINITY, y2 = -INFINITY;
-		for (Entity* e : updateGroup) {
-			x1 = std::min(e->x, x1);
-			y1 = std::min(e->y, y1);
-			x2 = std::max(e->x, x2);
-			y2 = std::max(e->y, y2);
-		}
-		quadtree[0] = Quad();
-		quadtree[0].x = x1;
-		quadtree[0].y = y1;
-		quadtree[0].size = std::max(x2 - x1, y2 - y1);
-		quadsConstructed = 1;
-		for (size_t i = 0; i < updateGroup.size(); i++) {
-			try {
-				quadtree[0].put(updateGroup[i]);
-			} catch (const std::bad_alloc& except) {
-				delete quadtree;
-				quadsAllocated = (int)(quadsAllocated * extraQuadAllocation);
-				quadtree = (Quad*)malloc(quadsAllocated * sizeof(Quad));
-				quadtree[0] = Quad();
-				quadsConstructed = 1;
-				i = 0;
-				if (debug) [[unlikely]] {
-					printf("Ran out of memory for quadtree, new size: %u\n", quadsAllocated);
-				}
-			}
-			if (quadsConstructed > quadsAllocated * quadReallocateThreshold) [[unlikely]] {
-				if (debug) [[unlikely]] {
-					printf("Expanding quadtree... ");
-				}
-				reallocateQuadtree();
-			}
-		}
-		if (quadsConstructed < quadsAllocated * quadtreeShrinkThreshold) [[unlikely]] {
-			if (debug) [[unlikely]] {
-				printf("Shrinking quadtree... ");
-			}
-			reallocateQuadtree();
-		}
+		buildQuadtree();
 		for (Entity* e : updateGroup) {
 			e->update1();
 		}
@@ -564,6 +526,7 @@ int main(int argc, char** argv) {
 			for (int i = 0; i < predictSteps; i++) {
 				predictingFor = predictDelta * predictSteps;
 				globalTime += predictDelta / 60.0;
+				buildQuadtree();
 				for (size_t i = 0; i < updateGroup.size(); i++) {
 					updateGroup[i]->update1();
 				}
@@ -572,7 +535,7 @@ int main(int argc, char** argv) {
 				}
 				if (!stars.empty()) [[likely]] {
 					double x = 0.0, y = 0.0;
-					for (Attractor* star : stars) {
+					for (CelestialBody* star : stars) {
 						x += star->x;
 						y += star->y;
 					}

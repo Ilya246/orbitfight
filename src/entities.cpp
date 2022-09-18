@@ -21,7 +21,7 @@ bool operator ==(movement& mov1, movement& mov2) {
 }
 
 void setupShip(Entity* ship) {
-	Attractor* planet = planets[(int)rand_f(0, planets.size())];
+	CelestialBody* planet = planets[(int)rand_f(0, planets.size())];
 	double spawnDst = planet->radius + rand_f(2000.f, 6000.f);
 	float spawnAngle = rand_f(-PI, PI);
 	ship->setPosition(planet->x + spawnDst * std::cos(spawnAngle), planet->y + spawnDst * std::sin(spawnAngle));
@@ -38,10 +38,10 @@ int generateOrbitingPlanets(int amount, double x, double y, double velx, double 
 		float spawnAngle = rand_f(-PI, PI);
 		float radius = rand_f(minradius, maxradius * factor);
 		double density = gen_baseDensity / pow(radius, 1.0 / 3.0); // makes smaller planets denser
-		Attractor* planet = new Attractor(radius, radius * radius * density);
+		CelestialBody* planet = new CelestialBody(radius, radius * radius * density);
 		planet->setPosition(x + spawnDst * std::cos(spawnAngle), y + spawnDst * std::sin(spawnAngle));
 		double vel = sqrt(G * parentmass / spawnDst);
-		planet->addVelocity(velx + vel * std::cos(spawnAngle + PI / 2.0), -vely - vel * std::sin(spawnAngle + PI / 2.0));
+		planet->addVelocity(velx + vel * std::cos(spawnAngle + PI / 2.0), vely + vel * std::sin(spawnAngle + PI / 2.0));
 		planet->setColor((int)rand_f(64.f, 255.f), (int)rand_f(64.f, 255.f), (int)rand_f(64.f, 255.f));
 		int moons = (int)(rand_f(0.f, 1.f) * radius * radius / (gen_moonFactor * gen_moonFactor));
 		obf::planets.push_back(planet);
@@ -58,14 +58,14 @@ void generateSystem() {
 	double angleSpacing = TAU / starsN, angle = 0.0;
 	double starsMass = gen_starMass * starsN, dist = (starsN - 1) * gen_starRadius * 2.0;
 	for (int i = 0; i < starsN; i++) {
-		Attractor* star = nullptr;
+		CelestialBody* star = nullptr;
 		double posX = std::cos(angle) * dist, posY = std::sin(angle) * dist;
 		if (rand_f(0.f, 1.f) < gen_blackholeChance) {
-			star = new Attractor(2.0 * G * gen_starMass / (CC), gen_starMass * 1.0001);
+			star = new CelestialBody(2.0 * G * gen_starMass / (CC), gen_starMass * 1.0001);
 			star->setColor(0, 0, 0);
 			star->blackhole = true;
 		} else {
-			star = new Attractor(gen_starRadius, gen_starMass);
+			star = new CelestialBody(gen_starRadius, gen_starMass);
 			star->setColor(255, 229, 97);
 		}
 		star->setPosition(posX, posY);
@@ -84,7 +84,7 @@ void generateSystem() {
 		double vel = sqrt(dst(aX, aY) * dist);
 		angle = 0.0;
 		for (int i = 0; i < starsN; i++) {
-			stars[i]->addVelocity(vel * std::cos(angle + PI / 2.0), -vel * std::sin(angle + PI / 2.0));
+			stars[i]->addVelocity(vel * std::cos(angle + PI / 2.0), vel * std::sin(angle + PI / 2.0));
 			angle += angleSpacing;
 		}
 	}
@@ -211,8 +211,11 @@ void Entity::update1() {
 	x += velX * delta;
 	y += velY * delta;
 	rotation += rotateVel * delta;
+	collided.clear();
+	attracted.clear();
 }
 void Entity::update2() {
+	quadtree[0].collideAttract(this);
 	if (globalTime - lastCollideScan > collideScanSpacing) [[unlikely]] {
 		size_t i = 0;
 		for (Entity* e : updateGroup) {
@@ -236,8 +239,8 @@ void Entity::update2() {
 	for (Entity* e : near) {
 		if (dst2(x - e->x, y - e->y) <= (radius + e->radius) * (radius + e->radius) && !(ghost && e->ghost)) [[unlikely]] {
 			collide(e, true);
-			if (type() == Entities::Attractor) {
-				if (((Attractor*)this)->star && e->type() == Entities::Triangle) [[unlikely]] {
+			if (type() == Entities::CelestialBody) {
+				if (((CelestialBody*)this)->star && e->type() == Entities::Triangle) [[unlikely]] {
 					bool found = false;
 					for (Player* p : playerGroup) {
 						if (p->entity == e) [[unlikely]] {
@@ -254,7 +257,7 @@ void Entity::update2() {
 						entityDeleteBuffer.push_back(e);
 					}
 					break;
-				} else if (e->type() == Entities::Attractor) [[unlikely]] {
+				} else if (e->type() == Entities::CelestialBody) [[unlikely]] {
 					if (mass >= e->mass && (headless || simulating)) {
 						if (!simulating) {
 							printf("Planetary collision: %u absorbed %u\n", id, e->id);
@@ -350,17 +353,6 @@ void Entity::simReset() {
 	lastCollideScan = resCollideScan;
 }
 
-void reallocateQuadtree() {
-	quadsAllocated = (int)(quadsConstructed * extraQuadAllocation);
-	Quad* newQuadtree = (Quad*)malloc(quadsAllocated * sizeof(Quad));
-	memcpy(newQuadtree, quadtree, quadsConstructed * sizeof(Quad));
-	delete quadtree;
-	quadtree = newQuadtree;
-	if (debug) [[unlikely]] {
-		printf("Reallocated quadtree, new size: %u\n", quadsAllocated);
-	}
-}
-
 Quad& Quad::getChild(uint8_t at) {
 	if (children[at] == 0) {
 		if (quadsConstructed == quadsAllocated) [[unlikely]] {
@@ -372,6 +364,7 @@ Quad& Quad::getChild(uint8_t at) {
 		child.x = at == 1 || at == 3 ? x + halfsize : x;
 		child.y = at > 1 ? y + halfsize : y;
 		child.size = halfsize;
+		child.invsize = invsize * 2;
 		children[at] = quadsConstructed;
 		quadsConstructed++;
 		return child;
@@ -391,7 +384,38 @@ void Quad::put(Entity* e) {
 		used = true;
 	}
 }
-
+void Quad::collideAttract(Entity* e) {
+	if (entity && entity != e) {
+		for (uint32_t id : e->attracted) {
+			if (id == entity->id) {
+				return;
+			}
+		}
+		double xdiff = entity->x - e->x, ydiff = entity->y - e->y;
+		double dist = dst(xdiff, ydiff);
+		double factor = delta * G / (dist * dist * dist);
+		double factorthis = factor * entity->mass;
+		e->addVelocity(xdiff * factorthis, ydiff * factorthis);
+		double factorother = -factor * e->mass;
+		entity->addVelocity(xdiff * factorother, ydiff * factorother);
+		entity->attracted.push_back(e->id);
+		return;
+	}
+	double halfsize = size * 0.5, midx = x + halfsize, midy = y + halfsize;
+	double distance = abs(e->x - midx) + abs(e->y - midy);
+	if (invsize * distance > gravityAccuracy) {
+		double xdiff = midx - e->x, ydiff = midy - e->y;
+		double dist = dst(xdiff, ydiff);
+		double factor = delta * mass * G / (dist * dist * dist);
+		e->addVelocity(xdiff * factor, ydiff * factor);
+		return;
+	}
+	for (uint16_t c : children) {
+		if (c != 0) {
+			quadtree[c].collideAttract(e);
+		}
+	}
+}
 void Quad::draw() {
 	sf::RectangleShape quad(sf::Vector2f(size / g_camera.scale, size / g_camera.scale));
 	quad.setPosition(g_camera.w * 0.5 + (x - ownX) / g_camera.scale, g_camera.h * 0.5 + (y - ownY) / g_camera.scale);
@@ -403,6 +427,59 @@ void Quad::draw() {
 		if (c != 0) {
 			quadtree[c].draw();
 		}
+	}
+}
+
+void reallocateQuadtree() {
+	quadsAllocated = (int)(quadsConstructed * extraQuadAllocation);
+	Quad* newQuadtree = (Quad*)malloc(quadsAllocated * sizeof(Quad));
+	memcpy(newQuadtree, quadtree, quadsConstructed * sizeof(Quad));
+	delete quadtree;
+	quadtree = newQuadtree;
+	if (debug) [[unlikely]] {
+		printf("Reallocated quadtree, new size: %u\n", quadsAllocated);
+	}
+}
+void buildQuadtree() {
+	double x1 = +INFINITY, y1 = +INFINITY, x2 = -INFINITY, y2 = -INFINITY;
+	for (Entity* e : updateGroup) {
+		x1 = std::min(e->x, x1);
+		y1 = std::min(e->y, y1);
+		x2 = std::max(e->x, x2);
+		y2 = std::max(e->y, y2);
+	}
+	quadtree[0] = Quad();
+	quadtree[0].x = x1;
+	quadtree[0].y = y1;
+	quadtree[0].size = std::max(x2 - x1, y2 - y1);
+	quadtree[0].invsize = 1.0 / quadtree[0].size;
+	quadsConstructed = 1;
+	for (size_t i = 0; i < updateGroup.size(); i++) {
+		try {
+			quadtree[0].put(updateGroup[i]);
+		} catch (const std::bad_alloc& except) {
+			delete quadtree;
+			quadsAllocated = (int)(quadsAllocated * extraQuadAllocation);
+			quadtree = (Quad*)malloc(quadsAllocated * sizeof(Quad));
+			quadtree[0] = Quad();
+			quadsConstructed = 1;
+			i = 0;
+			if (debug) [[unlikely]] {
+				printf("Ran out of memory for quadtree, new size: %u\n", quadsAllocated);
+			}
+		}
+		if (quadsConstructed > quadsAllocated * quadReallocateThreshold) [[unlikely]] {
+			if (debug) [[unlikely]] {
+				printf("Expanding quadtree... ");
+			}
+			reallocateQuadtree();
+		}
+	}
+	if (quadsConstructed < quadsAllocated * quadtreeShrinkThreshold) [[unlikely]] {
+		if (debug) [[unlikely]] {
+			printf("Shrinking quadtree... ");
+		}
+		reallocateQuadtree();
 	}
 }
 
@@ -456,7 +533,7 @@ void Triangle::simReset() {
 
 void Triangle::control(movement& cont) {
 	float rotationRad = rotation * degToRad;
-	double xMul = std::cos(rotationRad), yMul = std::sin(rotationRad);
+	double xMul = std::cos(rotationRad), yMul = -std::sin(rotationRad);
 	if (cont.hyperboost || burning) {
 		hyperboostCharge += delta * (burning ? -2 : 1);
 		hyperboostCharge = std::min(hyperboostCharge, 2.0 * hyperboostTime);
@@ -609,7 +686,7 @@ uint8_t Triangle::type() {
 	return Entities::Triangle;
 }
 
-Attractor::Attractor(double radius) : Entity() {
+CelestialBody::CelestialBody(double radius) : Entity() {
 	this->radius = radius;
 	this->mass = 1.0e18;
 	if (!headless) {
@@ -624,7 +701,7 @@ Attractor::Attractor(double radius) : Entity() {
 		warning->setOutlineThickness(1.f);
 	}
 }
-Attractor::Attractor(double radius, double mass) : Entity() {
+CelestialBody::CelestialBody(double radius, double mass) : Entity() {
 	this->radius = radius;
 	this->mass = mass;
 	if (!headless) {
@@ -639,7 +716,7 @@ Attractor::Attractor(double radius, double mass) : Entity() {
 		warning->setOutlineThickness(1.f);
 	}
 }
-Attractor::Attractor(bool ghost) {
+CelestialBody::CelestialBody(bool ghost) {
 	for (size_t i = 0; i < updateGroup.size(); i++) {
 		Entity* e = updateGroup[i];
 		if (e == this) [[unlikely]] {
@@ -650,44 +727,29 @@ Attractor::Attractor(bool ghost) {
 	}
 }
 
-void Attractor::loadCreatePacket(sf::Packet& packet) {
+void CelestialBody::loadCreatePacket(sf::Packet& packet) {
 	packet << type() << radius << id << x << y << velX << velY << mass << star << blackhole << color[0] << color[1] << color[2];
 	if (debug) {
 		printf("Sent id %d: %g %g %g %g\n", id, x, y, velX, velY);
 	}
 }
-void Attractor::unloadCreatePacket(sf::Packet& packet) {
+void CelestialBody::unloadCreatePacket(sf::Packet& packet) {
 	packet >> id >> x >> y >> velX >> velY >> mass >> star >> blackhole >> color[0] >> color[1] >> color[2];
 	if (debug) {
 		printf(", id %d: %g %g %g %g\n", id, x, y, velX, velY);
 	}
 }
-void Attractor::loadSyncPacket(sf::Packet& packet) {
+void CelestialBody::loadSyncPacket(sf::Packet& packet) {
 	packet << id << x << y << velX << velY;
 }
-void Attractor::unloadSyncPacket(sf::Packet& packet) {
+void CelestialBody::unloadSyncPacket(sf::Packet& packet) {
 	packet >> syncX >> syncY >> syncVelX >> syncVelY;
 }
 
-void Attractor::update2() {
+void CelestialBody::update2() {
 	Entity::update2();
-	for (Entity* e : updateGroup) {
-		if (e == this) [[unlikely]] {
-			continue;
-		}
-
-		double xdiff = e->x - x, ydiff = y - e->y;
-		double dist = dst(xdiff, ydiff);
-		double factor = delta * G / (dist * dist * dist);
-		double factorm = -factor * mass;
-		e->addVelocity(xdiff * factorm, ydiff * factorm);
-		if (e->type() != Entities::Attractor) {
-			double factortm = factor * e->mass;
-			addVelocity(xdiff * factortm, ydiff * factortm);
-		}
-	}
 }
-void Attractor::draw() {
+void CelestialBody::draw() {
 	Entity::draw();
 	shape->setPosition(x + drawShiftX, y + drawShiftY);
 	shape->setFillColor(sf::Color(color[0], color[1], color[2]));
@@ -708,8 +770,8 @@ void Attractor::draw() {
 	}
 }
 
-uint8_t Attractor::type() {
-	return Entities::Attractor;
+uint8_t CelestialBody::type() {
+	return Entities::CelestialBody;
 }
 
 Projectile::Projectile() : Entity() {
@@ -778,9 +840,9 @@ void Projectile::collide(Entity* with, bool collideOther) {
 		if (simulating) {
 			entityDeleteBuffer.push_back(with);
 		}
-	} else if (with->type() == Entities::Attractor) {
+	} else if (with->type() == Entities::CelestialBody) {
 		if (debug) {
-			printf("of type attractor\n");
+			printf("of type CelestialBody\n");
 		}
 		if (headless || simulating) {
 			entityDeleteBuffer.push_back(this);

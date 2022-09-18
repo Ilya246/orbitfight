@@ -19,6 +19,7 @@ void setupShip(Entity* ship);
 void generateSystem();
 
 void reallocateQuadtree();
+void buildQuadtree();
 
 struct movement {
 	int forward: 1 = 0;
@@ -52,6 +53,8 @@ struct Entity {
 	std::vector<Entity*> near;
 	std::vector<Entity*> resNear;
 
+	std::vector<uint32_t> attracted, collided;
+
 	void syncCreation();
 
 	virtual void loadCreatePacket(sf::Packet& packet) = 0;
@@ -72,7 +75,7 @@ struct Entity {
 	}
 	inline void addVelocity(double dx, double dy) {
 		velX += dx;
-		velY -= dy;
+		velY += dy;
 	}
 
 	inline void setColor(uint8_t r, uint8_t g, uint8_t b) {
@@ -100,6 +103,7 @@ struct Entity {
 };
 
 struct Quad {
+	void collideAttract(Entity* e);
 	void put(Entity* e);
 	Quad& getChild(uint8_t at);
 
@@ -107,7 +111,7 @@ struct Quad {
 
 	uint16_t children[4] = {0, 0, 0, 0};
 	Entity* entity = nullptr;
-	double size, x, y, mass = 0.0;
+	double size, invsize, x, y, mass = 0.0;
 	bool used = false;
 };
 
@@ -137,10 +141,10 @@ struct Triangle: public Entity {
 	std::unique_ptr<sf::CircleShape> shape, forwards;
 };
 
-struct Attractor: public Entity {
-	Attractor(double radius);
-	Attractor(double radius, double mass);
-	Attractor(bool ghost);
+struct CelestialBody: public Entity {
+	CelestialBody(double radius);
+	CelestialBody(double radius, double mass);
+	CelestialBody(bool ghost);
 
 	void update2() override;
 	void draw() override;
