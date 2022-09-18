@@ -22,7 +22,6 @@ inline sf::Font* font = nullptr;
 inline obf::Player* sparePlayer = new obf::Player;
 inline std::vector<Entity*> updateGroup;
 inline std::vector<Player*> playerGroup;
-inline std::vector<Entity*> entityDeleteBuffer;
 inline std::vector<Entity*> simCleanupBuffer;
 inline std::vector<CelestialBody*> planets;
 inline std::vector<std::vector<Point>> ghostTrajectories;
@@ -66,7 +65,7 @@ predictSteps = (int)(30.0 / predictDelta * 60.0),
 gen_baseMinPlanets = 5,
 gen_baseMaxPlanets = 10,
 messageCursorPos = storedMessageCount - displayMessageCount,
-quadsConstructed = 100,
+quadsConstructed = 100, minQuadtreeSize = 80,
 quadsAllocated = (int)(quadsConstructed * extraQuadAllocation);
 inline long long measureFrames = 0, framerate = 0;
 inline size_t trajectoryOffset = 0;

@@ -199,7 +199,6 @@ int main(int argc, char** argv) {
 						updateGroup.clear();
 						planets.clear();
 						stars.clear();
-						entityDeleteBuffer.clear();
 						fullclearing = false;
 						generateSystem();
 					}
@@ -495,16 +494,17 @@ int main(int argc, char** argv) {
 					}
 					closest = std::min(closest, dst2(e->x - p->entity->x, e->y - p->entity->y));
 				}
-				if (closest > sweepThreshold && std::find(entityDeleteBuffer.begin(), entityDeleteBuffer.end(), e) == entityDeleteBuffer.end()) {
-					entityDeleteBuffer.push_back(e);
+				if (closest > sweepThreshold) {
+					e->active = false;
 				}
 			}
 			lastSweep = globalTime;
 		}
-		for (Entity* e : entityDeleteBuffer) {
-			delete e;
+		for (Entity* e : updateGroup) {
+			if (!e->active) [[unlikely]] {
+				delete e;
+			}
 		}
-		entityDeleteBuffer.clear();
 		if (!headless && globalTime - lastPredict > predictSpacing && trajectoryRef) [[unlikely]] {
 			double resdelta = delta;
 			double resTime = globalTime;
@@ -555,21 +555,23 @@ int main(int argc, char** argv) {
 				if (ownEntity) {
 					ownEntity->control(controls);
 				}
-				for (Entity* en : entityDeleteBuffer) {
-					for (size_t i = 0; i < updateGroup.size(); i++) {
-						Entity* e = updateGroup[i];
-						if (e == en) [[unlikely]] {
-							updateGroup[i] = updateGroup[updateGroup.size() - 1];
-							updateGroup.pop_back();
+				for (Entity* en : updateGroup) {
+					if (!en->active) {
+						for (size_t i = 0; i < updateGroup.size(); i++) {
+							Entity* e = updateGroup[i];
+							if (e == en) [[unlikely]] {
+								updateGroup[i] = updateGroup[updateGroup.size() - 1];
+								updateGroup.pop_back();
+							}
 						}
+						en->active = true;
 					}
 				}
-				entityDeleteBuffer.clear();
 			}
 			for (Entity* en : simCleanupBuffer) {
 				ghostTrajectories.push_back(en->trajectory);
 				ghostTrajectoryColors.push_back(sf::Color(en->color[0] * 0.7, en->color[1] * 0.7, en->color[2] * 0.7));
-				entityDeleteBuffer.push_back(en);
+				en->active = false;
 			}
 			simCleanupBuffer.clear();
 			updateGroup = retUpdateGroup;

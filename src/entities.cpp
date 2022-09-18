@@ -121,7 +121,7 @@ Player::~Player() {
 	for (Player* p : playerGroup) {
 		p->tcpSocket.send(chatPacket);
 	}
-	entityDeleteBuffer.push_back(entity);
+	entity->active = false;
 }
 
 Entity::Entity() {
@@ -387,7 +387,7 @@ void Quad::draw() {
 }
 
 void reallocateQuadtree() {
-	quadsAllocated = (int)(quadsConstructed * extraQuadAllocation);
+	quadsAllocated = std::max(minQuadtreeSize, (int)(quadsConstructed * extraQuadAllocation));
 	Quad* newQuadtree = (Quad*)malloc(quadsAllocated * sizeof(Quad));
 	memcpy(newQuadtree, quadtree, quadsConstructed * sizeof(Quad));
 	delete quadtree;
@@ -421,7 +421,14 @@ void buildQuadtree() {
 			quadsConstructed = 1;
 			i = 0;
 			if (debug) [[unlikely]] {
-				printf("Ran out of memory for quadtree, new size: %u\n", quadsAllocated);
+				printf("Ran out of memory for quadtree, new size: %u\nPerforming investigation...", quadsAllocated);
+				for (Entity* e1 : updateGroup) {
+					for (Entity* e2 : updateGroup) {
+						if (e1->x == e2->x || e1->y == e2->y) [[unlikely]] {
+							printf("Found entities with equal coordinates: %g, %g and %g, %g\n", e1->x, e1->y, e2->x, e2->y);
+						}
+					}
+				}
 			}
 		}
 		if (quadsConstructed > quadsAllocated * quadReallocateThreshold) [[unlikely]] {
@@ -432,7 +439,7 @@ void buildQuadtree() {
 		}
 	}
 	quadtree[0].postBuild();
-	if (quadsConstructed < quadsAllocated * quadtreeShrinkThreshold) [[unlikely]] {
+	if (std::max((double)quadsConstructed, minQuadtreeSize / quadtreeShrinkThreshold) < quadsAllocated * quadtreeShrinkThreshold) [[unlikely]] {
 		if (debug) [[unlikely]] {
 			printf("Shrinking quadtree... ");
 		}
@@ -705,6 +712,9 @@ void CelestialBody::unloadSyncPacket(sf::Packet& packet) {
 
 void CelestialBody::collide(Entity* with, bool collideOther) {
 	Entity::collide(with, collideOther);
+	if (!with->active) [[unlikely]] {
+		return;
+	}
 	if (headless && star && with->type() == Entities::Triangle) [[unlikely]] {
 		bool found = false;
 		for (Player* p : playerGroup) {
@@ -719,7 +729,7 @@ void CelestialBody::collide(Entity* with, bool collideOther) {
 			}
 		}
 		if (!found && (headless || simulating)) {
-			entityDeleteBuffer.push_back(with);
+			with->active = false;
 		}
 	} else if (with->type() == Entities::CelestialBody) [[unlikely]] {
 		if (mass >= with->mass && (headless || simulating)) {
@@ -736,7 +746,7 @@ void CelestialBody::collide(Entity* with, bool collideOther) {
 					p->tcpSocket.send(collisionPacket);
 				}
 			}
-			entityDeleteBuffer.push_back(with);
+			with->active = false;
 		}
 	}
 }
@@ -827,15 +837,15 @@ void Projectile::collide(Entity* with, bool collideOther) {
 			}
 		}
 		if (headless || simulating) {
-			entityDeleteBuffer.push_back(this);
-			entityDeleteBuffer.push_back(with);
+			active = false;
+			with->active = false;
 		}
 	} else if (with->type() == Entities::CelestialBody) {
 		if (debug) {
 			printf("of type CelestialBody\n");
 		}
 		if (headless || simulating) {
-			entityDeleteBuffer.push_back(this);
+			active = false;
 		}
 	} else {
 		if (debug) {
