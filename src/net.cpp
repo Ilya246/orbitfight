@@ -16,7 +16,7 @@ namespace obf {
 void clientParsePacket(sf::Packet& packet) {
     uint16_t type;
     packet >> type;
-    if (debug) [[unlikely]] {
+    if (debug && type != Packets::SyncEntity) [[unlikely]] {
         printf("Got packet %d, size %llu\n", type, packet.getDataSize());
     }
     switch (type) {
