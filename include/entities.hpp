@@ -19,6 +19,8 @@ void setupShip(Entity* ship);
 
 void generateSystem();
 
+void fullClear();
+
 void reallocateQuadtree();
 void buildQuadtree();
 

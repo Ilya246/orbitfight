@@ -94,6 +94,17 @@ void generateSystem() {
 	printf("Generated system: %u stars, %u planets, %u moons\n", starsN, planets, generateOrbitingPlanets(planets, 0.0, 0.0, 0.0, 0.0, starsMass, gen_minPlanetRadius, gen_maxPlanetRadius, spawnDst));
 }
 
+void fullClear() {
+	fullclearing = true;
+	for (Entity* e : updateGroup) {
+		delete e;
+	}
+	updateGroup.clear();
+	planets.clear();
+	stars.clear();
+	fullclearing = false;
+}
+
 std::string Player::name() {
 	if (username.size()) return username;
 

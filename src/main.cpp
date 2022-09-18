@@ -192,14 +192,7 @@ int main(int argc, char** argv) {
 					lastAutorestartNotif = -autorestartNotifSpacing;
 					lastAutorestart = globalTime;
 					if (!autorestartRegenned) {
-						fullclearing = true;
-						for (Entity* e : updateGroup) {
-							delete e;
-						}
-						updateGroup.clear();
-						planets.clear();
-						stars.clear();
-						fullclearing = false;
+						fullClear();
 						generateSystem();
 					}
 					autorestartRegenned = true;
@@ -468,6 +461,7 @@ int main(int argc, char** argv) {
 					clientParsePacket(packet);
 				} else if (status == sf::Socket::Disconnected) {
 					printf("Connection to server closed.\n");
+					fullClear();
 					connectToServer();
 				}
 			}
