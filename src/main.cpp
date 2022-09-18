@@ -500,9 +500,9 @@ int main(int argc, char** argv) {
 			}
 			lastSweep = globalTime;
 		}
-		for (Entity* e : updateGroup) {
-			if (!e->active) [[unlikely]] {
-				delete e;
+		for (size_t i = 0; i < updateGroup.size(); i++) {
+			if (!updateGroup[i]->active) [[unlikely]] {
+				delete updateGroup[i];
 			}
 		}
 		if (!headless && globalTime - lastPredict > predictSpacing && trajectoryRef) [[unlikely]] {
