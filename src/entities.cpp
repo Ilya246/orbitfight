@@ -557,7 +557,7 @@ void Triangle::control(movement& cont) {
 				simCleanupBuffer.push_back(proj);
 			}
 			proj->setPosition(x + (radius + proj->radius * 2.0) * xMul, y - (radius + proj->radius * 2.0) * yMul);
-			proj->setVelocity(velX + shootPower * xMul, velY - shootPower * yMul);
+			proj->setVelocity(velX + shootPower * xMul, velY + shootPower * yMul);
 			proj->owner = this;
 			addVelocity(-shootPower * xMul * proj->mass / mass, -shootPower * yMul * proj->mass / mass);
 			if (headless) {
