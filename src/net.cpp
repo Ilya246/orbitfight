@@ -16,7 +16,7 @@ namespace obf {
 void clientParsePacket(sf::Packet& packet) {
     uint16_t type;
     packet >> type;
-    if(debug && type != Packets::SyncEntity){
+    if (debug) [[unlikely]] {
         printf("Got packet %d, size %llu\n", type, packet.getDataSize());
     }
     switch (type) {
@@ -29,7 +29,7 @@ void clientParsePacket(sf::Packet& packet) {
     case Packets::CreateEntity: {
         uint8_t entityType;
         packet >> entityType;
-        if(debug){
+        if (debug) [[unlikely]] {
             printf("Received entity of type %u\n", entityType);
         }
         switch (entityType) {
@@ -68,6 +68,7 @@ void clientParsePacket(sf::Packet& packet) {
         for (Entity* e : updateGroup) {
             if (e->id == entityID) [[unlikely]] {
                 e->unloadSyncPacket(packet);
+                e->synced = true;
                 break;
             }
         }
@@ -75,10 +76,14 @@ void clientParsePacket(sf::Packet& packet) {
     }
     case Packets::SyncDone: {
         for (Entity* e: updateGroup) {
+            if (!e->synced) {
+                continue;
+            }
             e->x = e->syncX;
             e->y = e->syncY;
             e->velX = e->syncVelX;
             e->velY = e->syncVelY;
+            e->synced = false;
         }
         break;
     }
@@ -173,7 +178,7 @@ void serverParsePacket(sf::Packet& packet, Player* player) {
         packet >> player->username;
         stripSpecialChars(player->username);
         if (player->username.empty() || (int)player->username.size() > usernameLimit) {
-            player->username = "impostor";
+            player->username = "unnamed";
         }
 
         std::hash<std::string> hasher;

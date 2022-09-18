@@ -250,11 +250,6 @@ int main(int argc, char** argv) {
 				sf::Packet entityAssign;
 				entityAssign << Packets::AssignEntity << sparePlayer->entity->id;
 				sparePlayer->tcpSocket.send(entityAssign);
-				for (Player* p: playerGroup) {
-					sf::Packet namePacket;
-					namePacket << Packets::Name << p->entity->id << p->username;
-					sparePlayer->tcpSocket.send(namePacket);
-				}
 				sparePlayer = new Player;
 			} else if (status != sf::Socket::NotReady) {
 				printf("An incoming connection has failed.\n");
@@ -282,6 +277,9 @@ int main(int argc, char** argv) {
 					g_camera.resize();
 					sf::Packet resize;
 					resize << Packets::ResizeView << (double)g_camera.w * g_camera.scale << (double)g_camera.h * g_camera.scale;
+					if (debug) [[unlikely]] {
+						printf("Resized view, new size: %g * %g\n", (double)g_camera.w * g_camera.scale, (double)g_camera.h * g_camera.scale);
+					}
 					serverSocket->send(resize);
 					break;
 				}
@@ -293,6 +291,9 @@ int main(int argc, char** argv) {
 						g_camera.zoom(factor);
 						sf::Packet resize;
 						resize << Packets::ResizeView << (double)g_camera.w * g_camera.scale << (double)g_camera.h * g_camera.scale;
+						if (debug) [[unlikely]] {
+							printf("Resized view, new size: %g * %g\n", (double)g_camera.w * g_camera.scale, (double)g_camera.h * g_camera.scale);
+						}
 						serverSocket->send(resize);
 					}
 					break;
@@ -623,7 +624,7 @@ int main(int argc, char** argv) {
 		if (headless) {
 			int to = playerGroup.size();
 			for (int i = 0; i < to; i++) {
-				Player* player = playerGroup.at(i);
+				Player* player = playerGroup[i];
 				if (globalTime - player->lastAck > 1.0 && globalTime - player->lastPingSent > 1.0) {
 					if (globalTime - player->lastAck > maxAckTime) {
 						printf("Player %s's connection has timed out.\n", player->name().c_str());
@@ -676,7 +677,7 @@ int main(int argc, char** argv) {
 				}
 
 				if (globalTime - player->lastSynced > syncSpacing) {
-					bool fullsync = player->lastFullsynced + fullsyncSpacing < globalTime;
+					bool fullsync = globalTime - player->lastFullsynced > fullsyncSpacing;
 					for (Entity* e : updateGroup) {
 						if (player->entity && !fullsync && (abs(e->y - player->entity->y) - syncCullOffset > player->viewH * syncCullThreshold || abs(e->x - player->entity->x) - syncCullOffset > player->viewW * syncCullThreshold)) {
 							continue;

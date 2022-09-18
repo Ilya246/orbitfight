@@ -93,7 +93,7 @@ struct Entity {
 	lastCollideCheck = 0.0, lastCollideScan = 0.0,
 	resX = 0.0, resY = 0.0, resVelX = 0.0, resVelY = 0.0, resRotation = 0.0, resRotateVel = 0.0, resMass = 0.0, resRadius = 0.0, resCollideScan = 0.0,
 	syncX = 0.0, syncY = 0.0, syncVelX = 0.0, syncVelY = 0.0;
-	bool ghost = false, ai = false;
+	bool ghost = false, ai = false, synced = false;
 	Entity* simRelBody = nullptr;
 	unsigned char color[3]{255, 255, 255};
 	uint32_t id;
@@ -132,7 +132,7 @@ struct Triangle: public Entity {
 	int kills = 0;
 
 	bool burning = false, resBurning;
-	std::string name = "";
+	std::string name = "unnamed";
 
 	std::unique_ptr<sf::CircleShape> shape, forwards;
 };
@@ -185,7 +185,7 @@ struct Player {
 
 	sf::TcpSocket tcpSocket;
 	std::vector<sf::Packet> tcpQueue;
-	std::string username = "", ip = "";
+	std::string username = "unnamed", ip = "";
 	double lastAck = 0.0, lastPingSent = 0.0, lastSynced = 0.0, lastFullsynced = 0.0, ping = 0.0,
 	viewW = 500.0, viewH = 500.0;
 	movement controls;
