@@ -159,7 +159,6 @@ Entity::~Entity() noexcept {
 			}
 		}
 	}
-
 	if (!fullclearing) {
 		for (size_t i = 0; i < stars.size(); i++) {
 			Entity* e = stars[i];
@@ -170,7 +169,6 @@ Entity::~Entity() noexcept {
 			}
 		}
 	}
-
 	if (headless) {
 		for (Player* p : playerGroup) {
 			sf::Packet despawnPacket;

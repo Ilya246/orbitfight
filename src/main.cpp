@@ -512,10 +512,10 @@ int main(int argc, char** argv) {
 			Triangle* ghost = nullptr;
 			if (ownEntity && controlsActive) {
 				ghost = new Triangle();
-				ghost->x = ownEntity->x;
-				ghost->y = ownEntity->y;
 				ghost->velX = ownEntity->velX;
 				ghost->velY = ownEntity->velY;
+				ghost->x = ownEntity->x + ownEntity->velX;
+				ghost->y = ownEntity->y + ownEntity->velY;
 				std::copy(std::begin(ownEntity->color), std::end(ownEntity->color), std::begin(ghost->color));
 				simCleanupBuffer.push_back(ghost);
 			}
@@ -527,11 +527,11 @@ int main(int argc, char** argv) {
 				predictingFor = predictDelta * predictSteps;
 				globalTime += predictDelta / 60.0;
 				buildQuadtree();
-				for (size_t i = 0; i < updateGroup.size(); i++) {
-					updateGroup[i]->update1();
+				for (Entity* e : updateGroup) {
+					e->update1();
 				}
-				for (size_t i = 0; i < updateGroup.size(); i++) {
-					updateGroup[i]->update2();
+				for (Entity* e : updateGroup) {
+					e->update2();
 				}
 				if (!stars.empty()) [[likely]] {
 					double x = 0.0, y = 0.0;
