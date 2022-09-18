@@ -503,6 +503,7 @@ int main(int argc, char** argv) {
 		for (size_t i = 0; i < updateGroup.size(); i++) {
 			if (!updateGroup[i]->active) [[unlikely]] {
 				delete updateGroup[i];
+				i--;
 			}
 		}
 		if (!headless && globalTime - lastPredict > predictSpacing && trajectoryRef) [[unlikely]] {
