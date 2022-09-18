@@ -18,6 +18,8 @@ void setupShip(Entity* ship);
 
 void generateSystem();
 
+void reallocateQuadtree();
+
 struct movement {
 	int forward: 1 = 0;
 	int backward: 1 = 0;

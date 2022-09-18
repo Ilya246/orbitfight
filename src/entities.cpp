@@ -6,6 +6,7 @@
 #include "types.hpp"
 
 #include <cmath>
+#include <exception>
 #include <iostream>
 #include <sstream>
 #include <vector>
@@ -349,15 +350,21 @@ void Entity::simReset() {
 	lastCollideScan = resCollideScan;
 }
 
+void reallocateQuadtree() {
+	quadsAllocated = (int)(quadsConstructed * extraQuadAllocation);
+	Quad* newQuadtree = (Quad*)malloc(quadsAllocated * sizeof(Quad));
+	memcpy(newQuadtree, quadtree, quadsConstructed * sizeof(Quad));
+	delete quadtree;
+	quadtree = newQuadtree;
+	if (debug) [[unlikely]] {
+		printf("Reallocated quadtree, new size: %u\n", quadsAllocated);
+	}
+}
+
 Quad& Quad::getChild(uint8_t at) {
 	if (children[at] == 0) {
-		if (quadsConstructed >= quadsAllocated) {
-			int previouslyAllocated = quadsAllocated;
-			quadsAllocated = (int)(quadsAllocated * extraQuadAllocation);
-			Quad* newQuadtree = (Quad*)malloc(quadsAllocated * sizeof(Quad));
-			memcpy(newQuadtree, quadtree, previouslyAllocated * sizeof(Quad));
-			delete quadtree;
-			quadtree = newQuadtree;
+		if (quadsConstructed == quadsAllocated) [[unlikely]] {
+			throw std::bad_alloc();
 		}
 		Quad& child = quadtree[quadsConstructed];
 		child = Quad();
@@ -390,7 +397,7 @@ void Quad::draw() {
 	quad.setPosition(g_camera.w * 0.5 + (x - ownX) / g_camera.scale, g_camera.h * 0.5 + (y - ownY) / g_camera.scale);
 	quad.setFillColor(sf::Color(0, 0, 0, 0));
 	quad.setOutlineColor(sf::Color(0, 0, 255, 255));
-	quad.setOutlineThickness(2);
+	quad.setOutlineThickness(1);
 	window->draw(quad);
 	for (uint16_t c : children) {
 		if (c != 0) {

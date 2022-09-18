@@ -441,7 +441,7 @@ int main(int argc, char** argv) {
 			chat->setString(chatString);
 			chat->setPosition(2, g_camera.h - (textCharacterSize + 4) * (displayMessageCount + 1));
 			window->draw(*chat);
-			if (debug) {
+			if (debug && quadtree[0].used) [[unlikely]] {
 				quadtree[0].draw();
 			}
 			g_camera.bindWorld();
@@ -481,8 +481,32 @@ int main(int argc, char** argv) {
 		quadtree[0].y = y1;
 		quadtree[0].size = std::max(x2 - x1, y2 - y1);
 		quadsConstructed = 1;
-		for (Entity* e : updateGroup) {
-			quadtree[0].put(e);
+		for (size_t i = 0; i < updateGroup.size(); i++) {
+			try {
+				quadtree[0].put(updateGroup[i]);
+			} catch (const std::bad_alloc& except) {
+				delete quadtree;
+				quadsAllocated = (int)(quadsAllocated * extraQuadAllocation);
+				quadtree = (Quad*)malloc(quadsAllocated * sizeof(Quad));
+				quadtree[0] = Quad();
+				quadsConstructed = 1;
+				i = 0;
+				if (debug) [[unlikely]] {
+					printf("Ran out of memory for quadtree, new size: %u\n", quadsAllocated);
+				}
+			}
+			if (quadsConstructed > quadsAllocated * quadReallocateThreshold) [[unlikely]] {
+				if (debug) [[unlikely]] {
+					printf("Expanding quadtree... ");
+				}
+				reallocateQuadtree();
+			}
+		}
+		if (quadsConstructed < quadsAllocated * quadtreeShrinkThreshold) [[unlikely]] {
+			if (debug) [[unlikely]] {
+				printf("Shrinking quadtree... ");
+			}
+			reallocateQuadtree();
 		}
 		for (Entity* e : updateGroup) {
 			e->update1();
