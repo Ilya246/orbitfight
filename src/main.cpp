@@ -512,10 +512,11 @@ int main(int argc, char** argv) {
 			Triangle* ghost = nullptr;
 			if (ownEntity && controlsActive) {
 				ghost = new Triangle();
+				ghost->x = ownEntity->x;
+				ghost->y = ownEntity->y;
 				ghost->velX = ownEntity->velX;
 				ghost->velY = ownEntity->velY;
-				ghost->x = ownEntity->x + ownEntity->velX;
-				ghost->y = ownEntity->y + ownEntity->velY;
+				ghost->parent_id = ownEntity->id;
 				std::copy(std::begin(ownEntity->color), std::end(ownEntity->color), std::begin(ghost->color));
 				simCleanupBuffer.push_back(ghost);
 			}
@@ -555,14 +556,6 @@ int main(int argc, char** argv) {
 						if (e == en) [[unlikely]] {
 							updateGroup[i] = updateGroup[updateGroup.size() - 1];
 							updateGroup.pop_back();
-						} else {
-							for (size_t i = 0; i < e->near.size(); i++){
-								if (e->near[i] == en) [[unlikely]] {
-									e->near[i] = e->near[e->near.size() - 1];
-									e->near.pop_back();
-									break;
-								}
-							}
 						}
 					}
 				}

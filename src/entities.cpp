@@ -143,13 +143,6 @@ Entity::~Entity() noexcept {
 				updateGroup[i] = updateGroup[updateGroup.size() - 1];
 				updateGroup.pop_back();
 			} else {
-				for (size_t i = 0; i < e->near.size(); i++){
-					if (e->near[i] == this) [[unlikely]] {
-						e->near[i] = e->near[e->near.size() - 1];
-						e->near.pop_back();
-						break;
-					}
-				}
 				if (e->simRelBody == this) [[unlikely]] {
 					e->simRelBody = nullptr;
 				}
@@ -213,73 +206,7 @@ void Entity::update1() {
 	attracted.clear();
 }
 void Entity::update2() {
-	quadtree[0].collideAttract(this);
-	if (globalTime - lastCollideScan > collideScanSpacing) [[unlikely]] {
-		size_t i = 0;
-		for (Entity* e : updateGroup) {
-			if (e == this || ((e->ghost || ghost) && type() == Entities::Triangle && e->type() == Entities::Triangle)) [[unlikely]] {
-				continue;
-			}
-			if ((dst2(abs(x - e->x), abs(y - e->y)) - (radius + e->radius) * (radius + e->radius)) / std::max(0.5, dst2(e->velX - velX, e->velY - velY)) < collideScanDistance2) {
-				if(i == near.size()) {
-					near.push_back(e);
-				} else {
-					near[i] = e;
-				}
-				i++;
-			}
-		}
-		if (i < near.size()) {
-			near.erase(near.begin() + i, near.begin() + near.size());
-		}
-		lastCollideScan = globalTime;
-	}
-	for (Entity* e : near) {
-		if (dst2(x - e->x, y - e->y) <= (radius + e->radius) * (radius + e->radius) && !(ghost && e->ghost)) [[unlikely]] {
-			collide(e, true);
-			if (type() == Entities::CelestialBody) {
-				if (((CelestialBody*)this)->star && e->type() == Entities::Triangle) [[unlikely]] {
-					bool found = false;
-					for (Player* p : playerGroup) {
-						if (p->entity == e) [[unlikely]] {
-							sf::Packet chatPacket;
-							std::string sendMessage;
-							sendMessage.append("<").append(p->name()).append("> has been incinerated.");
-							relayMessage(sendMessage);
-							setupShip(p->entity);
-							found = true;
-							break;
-						}
-					}
-					if (!found && (headless || simulating)) {
-						entityDeleteBuffer.push_back(e);
-					}
-					break;
-				} else if (e->type() == Entities::CelestialBody) [[unlikely]] {
-					if (mass >= e->mass && (headless || simulating)) {
-						if (!simulating) {
-							printf("Planetary collision: %u absorbed %u\n", id, e->id);
-						}
-						double radiusMul = sqrt((mass + e->mass) / mass);
-						mass += e->mass;
-						radius *= radiusMul;
-						if (headless) {
-							sf::Packet collisionPacket;
-							collisionPacket << Packets::PlanetCollision << id << mass << radius;
-							for (Player* p : playerGroup) {
-								p->tcpSocket.send(collisionPacket);
-							}
-						}
-						entityDeleteBuffer.push_back(e);
-					}
-					break;
-				}
-			}
-			if (e->type() == Entities::Projectile || type() == Entities::Projectile) {
-				break;
-			}
-		}
-	}
+	quadtree[0].collideAttract(this, true, true);
 }
 
 void Entity::draw() {
@@ -304,9 +231,6 @@ void Entity::collide(Entity* with, bool collideOther) {
 	if (debug && dst2(with->velX - velX, with->velY - velY) > 0.1) [[unlikely]] {
 		printf("collision: %u-%u\n", id, with->id);
 	}
-	if (with->type() == Entities::Projectile) {
-		return;
-	}
 	double dVx = velX - with->velX, dVy = with->velY - velY;
 	double inHeading = std::atan2(y - with->y, with->x - x);
 	double velHeading = std::atan2(dVy, dVx);
@@ -319,8 +243,8 @@ void Entity::collide(Entity* with, bool collideOther) {
 	double inX = std::cos(inHeading), inY = std::sin(inHeading);
 	velX -= vel * inX * factor + massFactor * friction * delta * dVx;
 	velY += vel * inY * factor + massFactor * friction * delta * dVy;
-	x = (x + (with->x - (radius + with->radius) * inX) * massFactor) / (1.0 + massFactor);
-	y = (y + (with->y + (radius + with->radius) * inY) * massFactor) / (1.0 + massFactor);
+	// x = (x + (with->x - (radius + with->radius) * inX) * massFactor) / (1.0 + massFactor);
+	// y = (y + (with->y + (radius + with->radius) * inY) * massFactor) / (1.0 + massFactor);
 	if (collideOther) {
 		with->collide(this, false);
 	}
@@ -335,8 +259,6 @@ void Entity::simSetup() {
 	resRotateVel = rotateVel;
 	resMass = mass;
 	resRadius = radius;
-	resNear = near;
-	resCollideScan = lastCollideScan;
 }
 void Entity::simReset() {
 	x = resX;
@@ -347,8 +269,6 @@ void Entity::simReset() {
 	rotateVel = resRotateVel;
 	mass = resMass;
 	radius = resRadius;
-	near = resNear;
-	lastCollideScan = resCollideScan;
 }
 
 Quad& Quad::getChild(uint8_t at) {
@@ -374,6 +294,10 @@ void Quad::put(Entity* e) {
 	if (used) {
 		getChild((e->x > x + size * 0.5) + 2 * (e->y > y + size * 0.5)).put(e);
 		if (entity) {
+			if (entity->ghost && entity->parent_id == e->id) [[unlikely]] {
+				entity = nullptr;
+				return;
+			}
 			getChild((entity->x > x + size * 0.5) + 2 * (entity->y > y + size * 0.5)).put(entity);
 			entity = nullptr;
 		}
@@ -382,35 +306,57 @@ void Quad::put(Entity* e) {
 		used = true;
 	}
 }
-void Quad::collideAttract(Entity* e) {
+void Quad::collideAttract(Entity* e, bool doGravity, bool checkCollide) {
+	checkCollide = checkCollide && e->x + e->radius > x && e->y + e->radius > y && e->x - e->radius < x + size && e->y - e->radius < y + size;
 	if (entity && entity != e) {
-		for (uint32_t id : e->attracted) {
-			if (id == entity->id) {
-				return;
+		if (e->parent_id == entity->id || entity->parent_id == e->id) [[unlikely]] {
+			return;
+		}
+		if (checkCollide) {
+			bool alreadyCollided = false;
+			for (uint32_t id : e->collided) {
+				if (id == entity->id) {
+					alreadyCollided = true;
+					break;
+				}
+			}
+			if (!alreadyCollided && dst2(e->x - entity->x, e->y - entity->y) <= (e->radius + entity->radius) * (e->radius + entity->radius)) {
+				e->collide(entity, true);
+				entity->collided.push_back(e->id);
 			}
 		}
-		double xdiff = entity->x - e->x, ydiff = entity->y - e->y;
-		double dist = dst(xdiff, ydiff);
-		double factor = delta * G / (dist * dist * dist);
-		double factorthis = factor * entity->mass;
-		e->addVelocity(xdiff * factorthis, ydiff * factorthis);
-		double factorother = -factor * e->mass;
-		entity->addVelocity(xdiff * factorother, ydiff * factorother);
-		entity->attracted.push_back(e->id);
-		return;
+		if (doGravity) {
+			for (uint32_t id : e->attracted) {
+				if (id == entity->id) {
+					return;
+				}
+			}
+			double xdiff = entity->x - e->x, ydiff = entity->y - e->y;
+			double dist = dst(xdiff, ydiff);
+			double factor = delta * G / (dist * dist * dist);
+			double factorthis = factor * entity->mass;
+			e->addVelocity(xdiff * factorthis, ydiff * factorthis);
+			double factorother = -factor * e->mass;
+			entity->addVelocity(xdiff * factorother, ydiff * factorother);
+			entity->attracted.push_back(e->id);
+			return;
+		}
 	}
-	double halfsize = size * 0.5, midx = x + halfsize, midy = y + halfsize;
-	double distance = abs(e->x - midx) + abs(e->y - midy);
-	if (invsize * distance > gravityAccuracy) {
-		double xdiff = midx - e->x, ydiff = midy - e->y;
-		double dist = dst(xdiff, ydiff);
-		double factor = delta * mass * G / (dist * dist * dist);
-		e->addVelocity(xdiff * factor, ydiff * factor);
+	if (doGravity) {
+		double halfsize = size * 0.5, midx = x + halfsize, midy = y + halfsize;
+		if (invsize * abs(e->x - midx) + abs(e->y - midy) > gravityAccuracy) {
+			double xdiff = midx - e->x, ydiff = midy - e->y;
+			double dist = dst(xdiff, ydiff);
+			double factor = delta * mass * G / (dist * dist * dist);
+			e->addVelocity(xdiff * factor, ydiff * factor);
+			doGravity = false;
+		}
+	} else if (!checkCollide) {
 		return;
 	}
 	for (uint16_t c : children) {
 		if (c != 0) {
-			quadtree[c].collideAttract(e);
+			quadtree[c].collideAttract(e, doGravity, checkCollide);
 		}
 	}
 }
@@ -744,9 +690,44 @@ void CelestialBody::unloadSyncPacket(sf::Packet& packet) {
 	packet >> syncX >> syncY >> syncVelX >> syncVelY;
 }
 
-void CelestialBody::update2() {
-	Entity::update2();
+void CelestialBody::collide(Entity* with, bool collideOther) {
+	Entity::collide(with, collideOther);
+	if (headless && star && with->type() == Entities::Triangle) [[unlikely]] {
+		bool found = false;
+		for (Player* p : playerGroup) {
+			if (p->entity == with) [[unlikely]] {
+				sf::Packet chatPacket;
+				std::string sendMessage;
+				sendMessage.append("<").append(p->name()).append("> has been incinerated.");
+				relayMessage(sendMessage);
+				setupShip(p->entity);
+				found = true;
+				break;
+			}
+		}
+		if (!found && (headless || simulating)) {
+			entityDeleteBuffer.push_back(with);
+		}
+	} else if (with->type() == Entities::CelestialBody) [[unlikely]] {
+		if (mass >= with->mass && (headless || simulating)) {
+			if (!simulating) {
+				printf("Planetary collision: %u absorbed %u\n", id, with->id);
+			}
+			double radiusMul = sqrt((mass + with->mass) / mass);
+			mass += with->mass;
+			radius *= radiusMul;
+			if (headless) {
+				sf::Packet collisionPacket;
+				collisionPacket << Packets::PlanetCollision << id << mass << radius;
+				for (Player* p : playerGroup) {
+					p->tcpSocket.send(collisionPacket);
+				}
+			}
+			entityDeleteBuffer.push_back(with);
+		}
+	}
 }
+
 void CelestialBody::draw() {
 	Entity::draw();
 	shape->setPosition(x + drawShiftX, y + drawShiftY);
@@ -834,8 +815,6 @@ void Projectile::collide(Entity* with, bool collideOther) {
 		}
 		if (headless || simulating) {
 			entityDeleteBuffer.push_back(this);
-		}
-		if (simulating) {
 			entityDeleteBuffer.push_back(with);
 		}
 	} else if (with->type() == Entities::CelestialBody) {
@@ -848,8 +827,8 @@ void Projectile::collide(Entity* with, bool collideOther) {
 	} else {
 		if (debug) {
 			printf("of unaccounted type\n");
+			Entity::collide(with, collideOther);
 		}
-		Entity::collide(with, collideOther);
 	}
 }
 

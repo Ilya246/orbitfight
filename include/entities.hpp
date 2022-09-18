@@ -1,5 +1,6 @@
 #pragma once
 
+#include <limits>
 #include <memory>
 #include <vector>
 
@@ -50,9 +51,6 @@ struct Entity {
 
 	virtual void collide(Entity* with, bool collideOther);
 
-	std::vector<Entity*> near;
-	std::vector<Entity*> resNear;
-
 	std::vector<uint32_t> attracted, collided;
 
 	void syncCreation();
@@ -94,16 +92,16 @@ struct Entity {
 	radius = 0.0,
 	mass = 0.0,
 	lastCollideCheck = 0.0, lastCollideScan = 0.0,
-	resX = 0.0, resY = 0.0, resVelX = 0.0, resVelY = 0.0, resRotation = 0.0, resRotateVel = 0.0, resMass = 0.0, resRadius = 0.0, resCollideScan = 0.0,
+	resX = 0.0, resY = 0.0, resVelX = 0.0, resVelY = 0.0, resRotation = 0.0, resRotateVel = 0.0, resMass = 0.0, resRadius = 0.0,
 	syncX = 0.0, syncY = 0.0, syncVelX = 0.0, syncVelY = 0.0;
 	bool ghost = false, ai = false, synced = false;
 	Entity* simRelBody = nullptr;
 	unsigned char color[3]{255, 255, 255};
-	uint32_t id;
+	uint32_t id, parent_id = std::numeric_limits<uint32_t>::max();
 };
 
 struct Quad {
-	void collideAttract(Entity* e);
+	void collideAttract(Entity* e, bool, bool);
 	void put(Entity* e);
 	Quad& getChild(uint8_t at);
 
@@ -146,8 +144,9 @@ struct CelestialBody: public Entity {
 	CelestialBody(double radius, double mass);
 	CelestialBody(bool ghost);
 
-	void update2() override;
 	void draw() override;
+
+	void collide(Entity* with, bool collideOther) override;
 
 	void loadCreatePacket(sf::Packet& packet) override;
 	void unloadCreatePacket(sf::Packet& packet) override;
