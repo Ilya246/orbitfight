@@ -6,6 +6,7 @@
 #include "types.hpp"
 
 #include <cmath>
+#include <cstring>
 #include <exception>
 #include <iostream>
 #include <sstream>
