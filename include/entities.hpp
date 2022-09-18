@@ -104,12 +104,13 @@ struct Quad {
 	void collideAttract(Entity* e, bool, bool);
 	void put(Entity* e);
 	Quad& getChild(uint8_t at);
+	void postBuild();
 
 	void draw();
 
 	uint16_t children[4] = {0, 0, 0, 0};
 	Entity* entity = nullptr;
-	double size, invsize, x, y, mass = 0.0;
+	double size, invsize, x, y, comx = 0.0, comy = 0.0, mass = 0.0;
 	bool used = false;
 };
 

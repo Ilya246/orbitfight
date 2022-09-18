@@ -291,6 +291,8 @@ Quad& Quad::getChild(uint8_t at) {
 }
 void Quad::put(Entity* e) {
 	mass += e->mass;
+	comx += e->mass * e->x;
+	comy += e->mass * e->y;
 	if (used) {
 		getChild((e->x > x + size * 0.5) + 2 * (e->y > y + size * 0.5)).put(e);
 		if (entity) {
@@ -304,6 +306,15 @@ void Quad::put(Entity* e) {
 	} else {
 		entity = e;
 		used = true;
+	}
+}
+void Quad::postBuild() {
+	comx /= mass;
+	comy /= mass;
+	for (uint16_t c : children) {
+		if (c != 0) {
+			quadtree[c].postBuild();
+		}
 	}
 }
 void Quad::collideAttract(Entity* e, bool doGravity, bool checkCollide) {
@@ -345,7 +356,7 @@ void Quad::collideAttract(Entity* e, bool doGravity, bool checkCollide) {
 	if (doGravity) {
 		double halfsize = size * 0.5, midx = x + halfsize, midy = y + halfsize;
 		if (invsize * (abs(e->x - midx) + abs(e->y - midy)) > gravityAccuracy) {
-			double xdiff = midx - e->x, ydiff = midy - e->y;
+			double xdiff = comx - e->x, ydiff = comy - e->y;
 			double dist = dst(xdiff, ydiff);
 			double factor = delta * mass * G / (dist * dist * dist);
 			e->addVelocity(xdiff * factor, ydiff * factor);
@@ -419,6 +430,7 @@ void buildQuadtree() {
 			reallocateQuadtree();
 		}
 	}
+	quadtree[0].postBuild();
 	if (quadsConstructed < quadsAllocated * quadtreeShrinkThreshold) [[unlikely]] {
 		if (debug) [[unlikely]] {
 			printf("Shrinking quadtree... ");
