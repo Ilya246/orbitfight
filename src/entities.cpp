@@ -385,6 +385,20 @@ void Quad::put(Entity* e) {
 	}
 }
 
+void Quad::draw() {
+	sf::RectangleShape quad(sf::Vector2f(size / g_camera.scale, size / g_camera.scale));
+	quad.setPosition(g_camera.w * 0.5 + (x - ownX) / g_camera.scale, g_camera.h * 0.5 + (y - ownY) / g_camera.scale);
+	quad.setFillColor(sf::Color(0, 0, 0, 0));
+	quad.setOutlineColor(sf::Color(0, 0, 255, 255));
+	quad.setOutlineThickness(2);
+	window->draw(quad);
+	for (uint16_t c : children) {
+		if (c != 0) {
+			quadtree[c].draw();
+		}
+	}
+}
+
 Triangle::Triangle() : Entity() {
 	mass = 20000.0;
 	radius = 16.0;

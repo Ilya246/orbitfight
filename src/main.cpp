@@ -441,6 +441,9 @@ int main(int argc, char** argv) {
 			chat->setString(chatString);
 			chat->setPosition(2, g_camera.h - (textCharacterSize + 4) * (displayMessageCount + 1));
 			window->draw(*chat);
+			if (debug) {
+				quadtree[0].draw();
+			}
 			g_camera.bindWorld();
 			window->display();
 

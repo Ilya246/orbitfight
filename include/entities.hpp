@@ -101,6 +101,8 @@ struct Quad {
 	void put(Entity* e);
 	Quad& getChild(uint8_t at);
 
+	void draw();
+
 	uint16_t children[4] = {0, 0, 0, 0};
 	Entity* entity = nullptr;
 	double size, x, y, mass = 0.0;
