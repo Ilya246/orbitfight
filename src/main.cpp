@@ -239,6 +239,11 @@ int main(int argc, char** argv) {
 				sparePlayer->port = sparePlayer->tcpSocket.getRemotePort();
 				printf("%s has connected.\n", sparePlayer->name().c_str());
 				sparePlayer->lastAck = globalTime;
+				for (Player* p : playerGroup) {
+					sf::Packet namePacket;
+					namePacket << Packets::Name << p->entity->id << p->username;
+					player->tcpSocket.send(namePacket);
+				}
 				playerGroup.push_back(sparePlayer);
 				for (Entity* e : updateGroup) {
 					sf::Packet packet;
