@@ -63,12 +63,14 @@ void inputListen() {
 }
 
 int main(int argc, char** argv) {
+	bool regenConfig = false;
 	for (int i = 1; i < argc; i++) {
 		headless |= !strcmp(argv[i], "--headless");
+		regenConfig |= !strcmp(argv[i], "--regenerate-help");
 	}
 	bool configNotPresent = parseTomlFile(configFile) != 0;
-	if (configNotPresent) {
-		printf("No config file detected, creating config %s and documentation file %s.\n", configFile.c_str(), configDocFile.c_str());
+	if (configNotPresent || regenConfig) {
+		if (configNotPresent) printf("No config file detected, creating config %s and documentation file %s.\n", configFile.c_str(), configDocFile.c_str());
 		std::ofstream out;
 		out.open(configDocFile);
 		out << "NOTE: configs changed using the console will not be saved" << std::endl;
@@ -91,6 +93,9 @@ int main(int argc, char** argv) {
 		out << "autoConnect: As a client, whether to automatically connect to a server (bool)" << std::endl;
 		out << "enableControlLock: As a client, whether to enable using LAlt to lock controls (bool)" << std::endl;
 		out << "DEBUG: Whether to enable debug mode, prints extra info to console (bool)" << std::endl;
+		if(regenConfig) {
+			return 0;
+		}
 	}
 
 	std::ofstream out;
