@@ -466,7 +466,7 @@ void buildQuadtree() {
 }
 
 Triangle::Triangle() : Entity() {
-	mass = 20000.0;
+	mass = 1000000.0;
 	radius = 16.0;
 	if (!headless && !simulating) {
 		shape = std::make_unique<sf::CircleShape>(radius, 3);
@@ -796,7 +796,7 @@ uint8_t CelestialBody::type() {
 
 Projectile::Projectile() : Entity() {
 	this->radius = 6;
-	this->mass = 2000.0;
+	this->mass = 50000.0;
 	this->color[0] = 180;
 	this->color[1] = 0;
 	this->color[2] = 0;
