@@ -38,7 +38,7 @@ inline double delta = 1.0 / 60.0,
 	globalTime = 0.0,
 	maxAckTime = 15.0,
 	syncSpacing = 0.1, fullsyncSpacing = 5.0, projectileSweepSpacing = 30.0,
-	collideRestitution = 1.2, // how "bouncy" collisions should be
+	collideRestitution = 0.8, // how "bouncy" collisions should be
 	friction = 0.002, // friction of colliding bodies, stops infinite sliding
 	gen_extraStarChance = 0.3, gen_blackholeChance = 1.0 / 3.0, gen_starMass = 5.0e20, gen_starRadius = 6.0e4,
 	gen_minNextRadius = 1.2, gen_maxNextRadius = 1.7, gen_minPlanetRadius = 600.0, gen_maxPlanetRadius = 9000.0,

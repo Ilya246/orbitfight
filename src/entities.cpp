@@ -239,27 +239,33 @@ void Entity::draw() {
 	}
 }
 
-void Entity::collide(Entity* with, bool collideOther) {
+void Entity::collide(Entity* with, bool specialOnly) {
+	if (specialOnly) {
+		return;
+	}
 	if (debug && !simulating && dst2(with->velX - velX, with->velY - velY) > 0.1) [[unlikely]] {
 		printf("collision: %u-%u\n", id, with->id);
 	}
-	double dVx = velX - with->velX, dVy = with->velY - velY;
-	double inHeading = std::atan2(y - with->y, with->x - x);
-	double velHeading = std::atan2(dVy, dVx);
-	double massFactor = std::min(with->mass / mass, 1.0);
-	double factor = massFactor * std::cos(std::abs(deltaAngleRad(inHeading, velHeading))) * collideRestitution;
+	double massFactorThis = 1.0 / (1.0 + mass / with->mass);
+	double massFactorOther = 1.0 / (1.0 + with->mass / mass); // for conservation of momentum
+	double inHeading = std::atan2(y - with->y, x - with->x); // heading of vector from other to this
+	double inX = std::cos(inHeading);
+	double inY = std::sin(inHeading);
+	double newX = x + (with->x - x + (radius + with->radius) * inX) * massFactorThis;
+	double newY = y + (with->y - y + (radius + with->radius) * inY) * massFactorThis;
+	with->x -= (with->x - x + (radius + with->radius) * inX) * massFactorOther;
+	with->y -= (with->y - y + (radius + with->radius) * inY) * massFactorOther;
+	x = newX;
+	y = newY;
+	double dVx = with->velX - velX, dVy = with->velY - velY;
+	double velHeading = std::atan2(dVy, -dVx); // heading of own relative velocity
+	double factor = std::cos(std::abs(deltaAngleRad(inHeading, velHeading)));
 	if (factor < 0.0) {
 		return;
 	}
-	double vel = dst(dVx, dVy);
-	double inX = std::cos(inHeading), inY = std::sin(inHeading);
-	velX -= vel * inX * factor + massFactor * friction * delta * dVx;
-	velY += vel * inY * factor + massFactor * friction * delta * dVy;
-	x = (x + (with->x - (radius + with->radius) * inX) * massFactor) / (1.0 + massFactor);
-	y = (y + (with->y + (radius + with->radius) * inY) * massFactor) / (1.0 + massFactor);
-	if (collideOther) {
-		with->collide(this, false);
-	}
+	factor *= dst(dVx, dVy) * collideRestitution; // normal component of velocity multiplied by restitution
+	addVelocity(massFactorThis * (inX * factor + friction * delta * dVx), massFactorThis * (inY * factor + friction * delta * dVy));
+	with->addVelocity(-massFactorOther * (inX * factor + friction * delta * dVx), -massFactorOther * (inY * factor + friction * delta * dVy));
 }
 
 void Entity::simSetup() {
@@ -344,7 +350,8 @@ void Quad::collideAttract(Entity* e, bool doGravity, bool checkCollide) {
 				}
 			}
 			if (!alreadyCollided && dst2(e->x - entity->x, e->y - entity->y) <= (e->radius + entity->radius) * (e->radius + entity->radius)) {
-				e->collide(entity, true);
+				e->collide(entity, false);
+				entity->collide(e, true);
 				entity->collided.push_back(e->id);
 			}
 		}
@@ -721,8 +728,8 @@ void CelestialBody::unloadSyncPacket(sf::Packet& packet) {
 	packet >> syncX >> syncY >> syncVelX >> syncVelY;
 }
 
-void CelestialBody::collide(Entity* with, bool collideOther) {
-	Entity::collide(with, collideOther);
+void CelestialBody::collide(Entity* with, bool specialOnly) {
+	Entity::collide(with, specialOnly);
 	if (!with->active) [[unlikely]] {
 		return;
 	}
@@ -822,7 +829,7 @@ void Projectile::unloadSyncPacket(sf::Packet& packet) {
 	packet >> syncX >> syncY >> syncVelX >> syncVelY;
 }
 
-void Projectile::collide(Entity* with, bool collideOther) {
+void Projectile::collide(Entity* with, bool specialOnly) {
 	if (debug) {
 		printf("bullet collision: %u-%u ", id, with->id);
 	}
@@ -861,7 +868,7 @@ void Projectile::collide(Entity* with, bool collideOther) {
 	} else {
 		if (debug) {
 			printf("of unaccounted type\n");
-			Entity::collide(with, collideOther);
+			Entity::collide(with, specialOnly);
 		}
 	}
 }
