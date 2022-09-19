@@ -258,7 +258,7 @@ void Entity::collide(Entity* with, bool specialOnly) {
 	x = newX;
 	y = newY;
 	double dVx = with->velX - velX, dVy = with->velY - velY;
-	double velHeading = std::atan2(dVy, -dVx); // heading of own relative velocity
+	double velHeading = std::atan2(dVy, dVx); // heading of own relative velocity
 	double factor = std::cos(std::abs(deltaAngleRad(inHeading, velHeading)));
 	if (factor < 0.0) {
 		return;
