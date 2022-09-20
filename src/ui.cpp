@@ -74,9 +74,9 @@ ChatUI::ChatUI() {
     text.setFont(*font);
     text.setCharacterSize(textCharacterSize);
     text.setFillColor(sf::Color::White);
-    mulWidthMax = 0.5f;
+    mulWidthMax = 0.4f;
     mulWidthMin = 0.35f;
-    mulHeightMax = 0.5f;
+    mulHeightMax = 0.4f;
     mulHeightMin = 0.3f;
 }
 
