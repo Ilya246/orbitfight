@@ -853,7 +853,7 @@ void Projectile::update2() {
 		double tangentVel = dst(dVx, dVy) * std::cos(deltaAngleRad(tangentHeading, velHeading));
 		bool sign = tangentVel > 0;
 		double dtaccel = delta * accel;
-		double tangentAccel = (abs(tangentVel) > dtaccel ? (sign ? dtaccel : -dtaccel) : std::min(delta, 1.0) * tangentVel);
+		double tangentAccel = abs(tangentVel) > dtaccel ? (sign ? dtaccel : -dtaccel) : (std::min(delta, 1.0) * tangentVel);
 		velX += tangentAccel * std::cos(tangentHeading);
 		velY += tangentAccel * std::sin(tangentHeading);
 		if (dtaccel > abs(tangentAccel)) {
