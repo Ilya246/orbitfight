@@ -925,11 +925,19 @@ void Projectile::collide(Entity* with, bool specialOnly) {
 		if (headless || simulating) {
 			active = false;
 		}
+	} else if (with->type() == Entities::Projectile) {
+		if (debug) {
+			printf("of type Projectile\n");
+		}
+		if (headless || simulating) {
+			active = false;
+			with->active = false;
+		}
 	} else {
 		if (debug) {
 			printf("of unaccounted type\n");
-			Entity::collide(with, specialOnly);
 		}
+		Entity::collide(with, specialOnly);
 	}
 }
 
