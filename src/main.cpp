@@ -330,7 +330,7 @@ int main(int argc, char** argv) {
 							trajectoryRef = closestEntity;
 							printf("Selected entity id %u as reference body\n", trajectoryRef->id);
 						}
-					} else if (event.key.code == sf::Keyboard::T) {
+					} else if (!chatting && event.key.code == sf::Keyboard::T) {
 						if (!ownEntity || ownEntity->type() != Entities::Triangle) {
 							break;
 						}
