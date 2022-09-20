@@ -5,6 +5,7 @@
 #include "math.hpp"
 #include "net.hpp"
 #include "types.hpp"
+#include "ui.hpp"
 #include "strings.hpp"
 
 #include <SFML/Graphics.hpp>
@@ -137,14 +138,14 @@ int main(int argc, char** argv) {
 			return 1;
 		}
 
-		posInfo = new sf::Text;
+		uiGroup.push_back(new MiscInfoUI());
 		chat = new sf::Text;
-		posInfo->setFont(*font);
-		posInfo->setCharacterSize(textCharacterSize);
-		posInfo->setFillColor(sf::Color::White);
 		chat->setFont(*font);
 		chat->setCharacterSize(textCharacterSize);
 		chat->setFillColor(sf::Color::White);
+		for (UIElement* e : uiGroup) {
+			e->resized();
+		}
 
 		systemCenter = new CelestialBody(true);
 
@@ -282,6 +283,11 @@ int main(int argc, char** argv) {
 						printf("Resized view, new size: %g * %g\n", (double)g_camera.w * g_camera.scale, (double)g_camera.h * g_camera.scale);
 					}
 					serverSocket->send(resize);
+					g_camera.bindUI();
+					for (UIElement* e : uiGroup) {
+						e->resized();
+					}
+					g_camera.bindWorld();
 					break;
 				}
 				case sf::Event::MouseWheelScrolled: {
@@ -432,17 +438,9 @@ int main(int argc, char** argv) {
 				}
 			}
 			g_camera.bindUI();
-			std::string info = "";
-			info.append("FPS: ").append(std::to_string(framerate))
-			.append("\nPing: ").append(std::to_string((int)(lastPing * 1000.0))).append("ms");
-			if (lastTrajectoryRef) {
-				info.append("\nDistance: ").append(std::to_string((int)(dst(ownX - lastTrajectoryRef->x, ownY - lastTrajectoryRef->y))));
-				if (ownEntity) [[likely]] {
-					info.append("\nVelocity: ").append(std::to_string((int)(dst(ownEntity->velX - lastTrajectoryRef->velX, ownEntity->velY - lastTrajectoryRef->velY) * 60.0)));
-				}
+			for (UIElement* e : uiGroup) {
+				e->update();
 			}
-			posInfo->setString(info);
-			window->draw(*posInfo);
 			if (lastTrajectoryRef) {
 				float radius = std::max(5.f, (float)(lastTrajectoryRef->radius / g_camera.scale));
 				sf::CircleShape selection(radius, 4);

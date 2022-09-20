@@ -2,6 +2,7 @@
 
 #include "entities.hpp"
 #include "types.hpp"
+#include "ui.hpp"
 
 #include <future>
 #include <map>
@@ -16,12 +17,12 @@ inline sf::TcpSocket* serverSocket = nullptr;
 inline sf::TcpListener* connectListener = nullptr;
 inline sf::RenderWindow* window = nullptr;
 inline obf::Entity* ownEntity = nullptr;
-inline sf::Text* posInfo = nullptr;
 inline sf::Text* chat = nullptr;
 inline sf::Font* font = nullptr;
 inline obf::Player* sparePlayer = new obf::Player;
 inline std::vector<Entity*> updateGroup;
 inline std::vector<Player*> playerGroup;
+inline std::vector<UIElement*> uiGroup;
 inline std::vector<Entity*> simCleanupBuffer;
 inline std::vector<CelestialBody*> planets;
 inline std::vector<std::vector<Point>> ghostTrajectories;
