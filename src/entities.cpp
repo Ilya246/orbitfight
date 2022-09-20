@@ -326,10 +326,24 @@ void Quad::put(Entity* e) {
 		used = true;
 	}
 }
+uint32_t Quad::unstaircasize() {
+	for (uint32_t& c : children) {
+		if (c != 0) {
+			Quad& quad = quadtree[c];
+			uint32_t retcode = quad.unstaircasize();
+			if (quad.comx == comx && quad.comy == comy) {
+				return retcode == 0 ? c : retcode;
+			} else if (retcode != 0) {
+				c = retcode;
+			}
+		}
+	}
+	return 0;
+}
 void Quad::postBuild() {
 	comx /= mass;
 	comy /= mass;
-	for (uint16_t c : children) {
+	for (uint32_t c : children) {
 		if (c != 0) {
 			quadtree[c].postBuild();
 		}
@@ -384,7 +398,7 @@ void Quad::collideAttract(Entity* e, bool doGravity, bool checkCollide) {
 	} else if (!checkCollide) {
 		return;
 	}
-	for (uint16_t c : children) {
+	for (uint32_t c : children) {
 		if (c != 0) {
 			quadtree[c].collideAttract(e, doGravity, checkCollide);
 		}
@@ -397,7 +411,7 @@ void Quad::draw() {
 	quad.setOutlineColor(sf::Color(0, 0, 255, 255));
 	quad.setOutlineThickness(1);
 	window->draw(quad);
-	for (uint16_t c : children) {
+	for (uint32_t c : children) {
 		if (c != 0) {
 			quadtree[c].draw();
 		}
@@ -456,6 +470,7 @@ void buildQuadtree() {
 			reallocateQuadtree();
 		}
 	}
+	quadtree[0].unstaircasize();
 	quadtree[0].postBuild();
 	if (std::max((double)quadsConstructed, minQuadtreeSize / quadtreeShrinkThreshold) < quadsAllocated * quadtreeShrinkThreshold) [[unlikely]] {
 		if (debug) [[unlikely]] {
