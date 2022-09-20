@@ -17,7 +17,6 @@ inline sf::TcpSocket* serverSocket = nullptr;
 inline sf::TcpListener* connectListener = nullptr;
 inline sf::RenderWindow* window = nullptr;
 inline obf::Entity* ownEntity = nullptr;
-inline sf::Text* chat = nullptr;
 inline sf::Font* font = nullptr;
 inline obf::Player* sparePlayer = new obf::Player;
 inline std::vector<Entity*> updateGroup;
@@ -57,7 +56,7 @@ inline double delta = 1.0 / 60.0,
 	predictingFor = 0.0,
 	drawShiftX = 0.0, drawShiftY = 0.0,
 	ownX = 0.0, ownY = 0.0;
-inline const int displayMessageCount = 7, storedMessageCount = 40;
+inline const int storedMessageCount = 40;
 inline int messageLimit = 50,
 usernameLimit = 24,
 textCharacterSize = 18,
@@ -65,7 +64,7 @@ nextID = 0,
 predictSteps = (int)(30.0 / predictDelta * 60.0),
 gen_baseMinPlanets = 5,
 gen_baseMaxPlanets = 10,
-messageCursorPos = storedMessageCount - displayMessageCount,
+messageCursorPos = 0,
 quadsConstructed = 100, minQuadtreeSize = 80,
 quadsAllocated = (int)(quadsConstructed * extraQuadAllocation);
 inline long long measureFrames = 0, framerate = 0;

@@ -139,10 +139,7 @@ int main(int argc, char** argv) {
 		}
 
 		uiGroup.push_back(new MiscInfoUI());
-		chat = new sf::Text;
-		chat->setFont(*font);
-		chat->setCharacterSize(textCharacterSize);
-		chat->setFillColor(sf::Color::White);
+		uiGroup.push_back(new ChatUI());
 		for (UIElement* e : uiGroup) {
 			e->resized();
 		}
@@ -293,7 +290,7 @@ int main(int argc, char** argv) {
 				case sf::Event::MouseWheelScrolled: {
 					double factor = 1.0 + 0.1 * ((event.mouseWheelScroll.delta < 0) * 2 - 1);
 					if (chatting) {
-						messageCursorPos = factor > 1.0 ? min(storedMessageCount - displayMessageCount, messageCursorPos + 1) : max(0, messageCursorPos - 1);
+						messageCursorPos = factor < 1.0 ? messageCursorPos + 1 : max(0, messageCursorPos - 1);
 					} else {
 						g_camera.zoom(factor);
 						sf::Packet resize;
@@ -462,15 +459,6 @@ int main(int argc, char** argv) {
 				selection.setOutlineThickness(1.f);
 				window->draw(selection);
 			}
-			std::string chatString = "";
-			for (int i = messageCursorPos; i < messageCursorPos + displayMessageCount; i++) {
-				std::string message = storedMessages[i];
-				chatString.append(message).append("\n");
-			}
-			chatString.append(chatBuffer);
-			chat->setString(chatString);
-			chat->setPosition(2, g_camera.h - (textCharacterSize + 4) * (displayMessageCount + 1));
-			window->draw(*chat);
 			if (debug && quadtree[0].used) [[unlikely]] {
 				quadtree[0].draw();
 			}

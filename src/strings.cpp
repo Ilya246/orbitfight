@@ -44,14 +44,13 @@ void stripSpecialChars(string& str) {
 }
 
 void displayMessage(const string& message, bool print) {
-	int to = storedMessageCount - 1;
-	for (int i = 0; i < storedMessageCount; i++) {
-		storedMessages[i] = storedMessages[i + 1];
+	for (int i = storedMessageCount - 1; i > 0; i--) {
+		storedMessages[i] = storedMessages[i - 1];
 	}
 	if (print) {
 		printf("%s\n", message.c_str());
 	}
-	storedMessages[to] = sf::String(message);
+	storedMessages[0] = sf::String(message);
 }
 void displayMessage(const string& message) {
 	displayMessage(message, true);
