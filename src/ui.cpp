@@ -16,7 +16,7 @@ void wrapText(std::string& string, sf::Text& text, double maxWidth) {
             if (i == 0) [[unlikely]] {
                 throw std::runtime_error("Couldn't wrap text: width too small.");
             }
-            string.insert(i, 1, '\n');
+            string.insert(i - 1, 1, '\n');
             text.setString(string);
         }
     }
@@ -24,8 +24,8 @@ void wrapText(std::string& string, sf::Text& text, double maxWidth) {
 
 UIElement::UIElement() {
     body.setOutlineThickness(2.f);
-    body.setOutlineColor(sf::Color(64, 64, 64, 192));
-    body.setFillColor(sf::Color(64, 64, 64, 192));
+    body.setOutlineColor(sf::Color(32, 32, 32, 192));
+    body.setFillColor(sf::Color(64, 64, 64, 64));
     body.setPosition(0.f, 0.f);
     body.setSize(sf::Vector2f(0.f, 0.f));
 }
