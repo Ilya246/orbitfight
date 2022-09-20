@@ -18,6 +18,7 @@ On screenshot: myself orbiting a moon in a planetary system after having shot a 
 - LShift - charge up hyperboost (NOT a fuel bar)
 - LCtrl - boost | afterburn during hyperboost
 - Spacebar - fire
+- T - target body closest to cursor
 - Tab - set/change/unset reference body to predict trajectories against
 
 # Hosting

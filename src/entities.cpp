@@ -105,6 +105,15 @@ void fullClear() {
 	fullclearing = false;
 }
 
+Entity* idLookup(uint32_t id) {
+	for (Entity* e : updateGroup) {
+		if (e->id == id) [[unlikely]] {
+			return e;
+		}
+	}
+	return nullptr;
+}
+
 std::string Player::name() {
 	if (username.size()) return username;
 
@@ -154,12 +163,21 @@ Entity::~Entity() noexcept {
 			if (e == this) [[unlikely]] {
 				updateGroup[i] = updateGroup[updateGroup.size() - 1];
 				updateGroup.pop_back();
+				i--;
 			} else {
 				if (e->simRelBody == this) [[unlikely]] {
 					e->simRelBody = nullptr;
 				}
-				if (e->type() == Entities::Projectile && ((Projectile*)e)->owner == this) {
-					((Projectile*)e)->owner = nullptr;
+				if (e->type() == Entities::Projectile) {
+					if (((Projectile*)e)->owner == this) [[unlikely]] {
+						((Projectile*)e)->owner = nullptr;
+					}
+					if (((Projectile*)e)->target == this) [[unlikely]] {
+						((Projectile*)e)->target = nullptr;
+					}
+				}
+				if (e->type() == Entities::Triangle && ((Triangle*)e)->target == this) {
+					((Triangle*)e)->target = nullptr;
 				}
 			}
 		}
@@ -609,10 +627,11 @@ void Triangle::control(movement& cont) {
 			if (simulating) {
 				simCleanupBuffer.push_back(proj);
 			}
-			proj->setPosition(x + (radius + proj->radius * 2.0) * xMul, y - (radius + proj->radius * 2.0) * yMul);
+			proj->setPosition(x + (radius + proj->radius * 3.0) * xMul, y + (radius + proj->radius * 3.0) * yMul);
+			addVelocity(-shootPower * xMul * proj->mass / mass, -shootPower * yMul * proj->mass / mass);
 			proj->setVelocity(velX + shootPower * xMul, velY + shootPower * yMul);
 			proj->owner = this;
-			addVelocity(-shootPower * xMul * proj->mass / mass, -shootPower * yMul * proj->mass / mass);
+			proj->target = target;
 			if (headless) {
 				proj->syncCreation();
 			}
@@ -810,8 +829,8 @@ uint8_t CelestialBody::type() {
 }
 
 Projectile::Projectile() : Entity() {
-	this->radius = 6;
-	this->mass = 50000.0;
+	this->radius = 4;
+	this->mass = 20000.0;
 	this->color[0] = 180;
 	this->color[1] = 0;
 	this->color[2] = 0;
@@ -825,14 +844,40 @@ Projectile::Projectile() : Entity() {
 	}
 }
 
+void Projectile::update2() {
+	if (target) {
+		double dVx = target->velX - velX, dVy = target->velY - velY;
+		double dX = target->x - x, dY = target->y - y;
+		double inHeading = std::atan2(dY, dX), tangentHeading = inHeading + 0.5 * PI;
+		double velHeading = std::atan2(dVy, dVx);
+		double tangentVel = dst(dVx, dVy) * std::cos(deltaAngleRad(tangentHeading, velHeading));
+		bool sign = tangentVel > 0;
+		double dtaccel = delta * accel;
+		double tangentAccel = (abs(tangentVel) > dtaccel ? (sign ? dtaccel : -dtaccel) : std::min(delta, 1.0) * tangentVel);
+		velX += tangentAccel * std::cos(tangentHeading);
+		velY += tangentAccel * std::sin(tangentHeading);
+		if (accel > abs(tangentVel)) {
+			double normalAccel = delta * (accel - abs(tangentVel));
+			velX += normalAccel * std::cos(inHeading);
+			velY += normalAccel * std::sin(inHeading);
+		}
+	}
+	Entity::update2();
+}
+
 void Projectile::loadCreatePacket(sf::Packet& packet) {
-	packet << type() << id << x << y << velX << velY;
+	packet << type() << id << x << y << velX << velY << (target == nullptr ? std::numeric_limits<uint32_t>::max() : target->id);
 	if (debug) {
 		printf("Sent id %d: %g %g %g %g\n", id, x, y, velX, velY);
 	}
 }
 void Projectile::unloadCreatePacket(sf::Packet& packet) {
 	packet >> id >> x >> y >> velX >> velY;
+	uint32_t entityID;
+	packet >> entityID;
+	if (entityID != std::numeric_limits<uint32_t>::max()) {
+		target = idLookup(entityID);
+	}
 	if (debug) {
 		printf(", id %d: %g %g %g %g\n", id, x, y, velX, velY);
 	}
@@ -856,14 +901,12 @@ void Projectile::collide(Entity* with, bool specialOnly) {
 			printf("of type triangle\n");
 		}
 		if (headless) {
-			for (Player* p : playerGroup) {
-				if (p->entity == with) [[unlikely]] {
-					sf::Packet chatPacket;
-					std::string sendMessage;
-					sendMessage.append("<").append(p->name()).append("> has been killed.");
-					relayMessage(sendMessage);
-					setupShip(p->entity);
-				}
+			if (with->player) {
+				sf::Packet chatPacket;
+				std::string sendMessage;
+				sendMessage.append("<").append(with->player->name()).append("> has been killed.");
+				relayMessage(sendMessage);
+				setupShip((Triangle*)with);
 			}
 			if (owner) {
 				owner->kills++;
@@ -871,7 +914,9 @@ void Projectile::collide(Entity* with, bool specialOnly) {
 		}
 		if (headless || simulating) {
 			active = false;
-			with->active = false;
+			if (simulating) {
+				with->active = false;
+			}
 		}
 	} else if (with->type() == Entities::CelestialBody) {
 		if (debug) {

@@ -65,12 +65,12 @@ void clientParsePacket(sf::Packet& packet) {
     case Packets::SyncEntity: {
         uint32_t entityID;
         packet >> entityID;
-        for (Entity* e : updateGroup) {
-            if (e->id == entityID) [[unlikely]] {
-                e->unloadSyncPacket(packet);
-                e->synced = true;
-                break;
-            }
+        Entity* entity = idLookup(entityID);
+        if (entity) [[likely]] {
+            entity->unloadSyncPacket(packet);
+            entity->synced = true;
+        } else {
+            printf("Server has referred to invalid entity %u in packet of type %u.\n", entityID, type);
         }
         break;
     }
@@ -90,34 +90,20 @@ void clientParsePacket(sf::Packet& packet) {
     case Packets::AssignEntity: {
         uint32_t entityID;
         packet >> entityID;
-        for (Entity* e : updateGroup) {
-            if (e->id == entityID) [[unlikely]] {
-                ownEntity = e;
-                break;
-            }
-        }
+        ownEntity = idLookup(entityID);
         break;
     }
     case Packets::DeleteEntity: {
-        uint32_t deleteID;
-        packet >> deleteID;
-        for (Entity* e : updateGroup) {
-            if (e->id == deleteID) [[unlikely]] {
-                delete e;
-                break;
-            }
-        }
+        uint32_t entityID;
+        packet >> entityID;
+        delete idLookup(entityID);
         break;
     }
     case Packets::ColorEntity: {
-        uint32_t id;
-        packet >> id;
-        for (Entity* e : updateGroup) {
-            if (e->id == id) [[unlikely]] {
-                packet >> e->color[0] >> e->color[1] >> e->color[2];
-                break;
-            }
-        }
+        uint32_t entityID;
+        packet >> entityID;
+        Entity* e = idLookup(entityID);
+        packet >> e->color[0] >> e->color[1] >> e->color[2];
         break;
     }
     case Packets::Chat: {
@@ -130,27 +116,26 @@ void clientParsePacket(sf::Packet& packet) {
         packet >> lastPing;
         break;
     case Packets::Name: {
-        uint32_t id;
-        packet >> id;
-        for (Entity* e : updateGroup) {
-            if (e->id == id) [[unlikely]] {
-                packet >> ((Triangle*)e)->name;
-                break;
-            }
+        uint32_t entityID;
+        packet >> entityID;
+        Entity* e = idLookup(entityID);
+        if (e) [[likely]] {
+            packet >> ((Triangle*)e)->name;
+        } else {
+            printf("Server has referred to invalid entity %u in packet of type %u.\n", entityID, type);
         }
         break;
     }
     case Packets::PlanetCollision: {
-        uint32_t id;
-        packet >> id;
-        for (Entity* e : updateGroup) {
-            if (e->id == id) [[unlikely]] {
-                CelestialBody* at = (CelestialBody*)e;
-                packet >> at->mass >> at->radius;
-                at->shape->setRadius(at->radius);
-                at->shape->setOrigin(at->radius, at->radius);
-                break;
-            }
+        uint32_t entityID;
+        packet >> entityID;
+        CelestialBody* e = (CelestialBody*)idLookup(entityID);
+        if (e) [[likely]] {
+            packet >> e->mass >> e->radius;
+            e->shape->setRadius(e->radius);
+            e->shape->setOrigin(e->radius, e->radius);
+        } else {
+            printf("Server has referred to invalid entity %u in packet of type %u.\n", entityID, type);
         }
         break;
     }
@@ -220,6 +205,16 @@ void serverParsePacket(sf::Packet& packet, Player* player) {
     case Packets::ResizeView:
         packet >> player->viewW >> player->viewH;
         break;
+    case Packets::SetTarget: {
+        uint32_t entityID;
+        packet >> entityID;
+        if (entityID == numeric_limits<uint32_t>::max()) {
+            ((Triangle*)player->entity)->target = nullptr;
+            break;
+        }
+        ((Triangle*)player->entity)->target = idLookup(entityID);
+        break;
+    }
     default:
         printf("Illegal packet %d\n", type);
         break;

@@ -268,7 +268,6 @@ int main(int argc, char** argv) {
 					controls.primaryfire = sf::Keyboard::isKeyPressed(sf::Keyboard::Space);
 				}
 			}
-
 			sf::Event event;
 			while (window->pollEvent(event)) {
 				switch(event.type) {
@@ -328,6 +327,27 @@ int main(int argc, char** argv) {
 							trajectoryRef = closestEntity;
 							printf("Selected entity id %u as reference body\n", trajectoryRef->id);
 						}
+					} else if (event.key.code == sf::Keyboard::T) {
+						if (!ownEntity || ownEntity->type() != Entities::Triangle) {
+							break;
+						}
+						double minDst = DBL_MAX;
+						Entity* closestEntity = nullptr;
+						for (Entity* e : updateGroup) {
+							if (e == ownEntity) {
+								continue;
+							}
+							double dst = dst2(e->x - ownX - (mousePos.x - g_camera.w * 0.5) * g_camera.scale, e->y - ownY - (mousePos.y - g_camera.h * 0.5) * g_camera.scale) - e->radius * e->radius;
+							if (dst < minDst) {
+								minDst = dst;
+								closestEntity = e;
+							}
+						}
+						bool unset = closestEntity == ((Triangle*)ownEntity)->target;
+						((Triangle*)ownEntity)->target = unset ? nullptr : closestEntity;
+						sf::Packet targetPacket;
+						targetPacket << Packets::SetTarget << (unset ? numeric_limits<uint32_t>::max() : closestEntity->id);
+						serverSocket->send(targetPacket);
 					} else if (event.key.code == sf::Keyboard::Return) {
 						if(chatting && (int)chatBuffer.getSize() > 0){
 							std::string sendMessage = chatBuffer.toAnsiString();
@@ -363,7 +383,6 @@ int main(int argc, char** argv) {
 					break;
 				}
 			}
-
 			window->clear(sf::Color(16, 0, 32));
 			if (ownEntity) [[likely]] {
 				ownX = ownEntity->x;
@@ -413,7 +432,6 @@ int main(int argc, char** argv) {
 				}
 			}
 			g_camera.bindUI();
-
 			std::string info = "";
 			info.append("FPS: ").append(std::to_string(framerate))
 			.append("\nPing: ").append(std::to_string((int)(lastPing * 1000.0))).append("ms");
@@ -432,6 +450,17 @@ int main(int argc, char** argv) {
 				selection.setPosition(g_camera.w * 0.5 + (lastTrajectoryRef->x - ownX) / g_camera.scale, g_camera.h * 0.5 + (lastTrajectoryRef->y - ownY) / g_camera.scale);
 				selection.setFillColor(sf::Color(0, 0, 0, 0));
 				selection.setOutlineColor(sf::Color(255, 255, 64));
+				selection.setOutlineThickness(1.f);
+				window->draw(selection);
+			}
+			if (ownEntity && ((Triangle*)ownEntity)->target != nullptr) {
+				Entity* target = ((Triangle*)ownEntity)->target;
+				float radius = std::max(5.f, (float)(target->radius / g_camera.scale));
+				sf::CircleShape selection(radius, 3);
+				selection.setOrigin(radius, radius);
+				selection.setPosition(g_camera.w * 0.5 + (target->x - ownX) / g_camera.scale, g_camera.h * 0.5 + (target->y - ownY) / g_camera.scale);
+				selection.setFillColor(sf::Color(0, 0, 0, 0));
+				selection.setOutlineColor(sf::Color(255, 0, 0));
 				selection.setOutlineThickness(1.f);
 				window->draw(selection);
 			}

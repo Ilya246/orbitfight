@@ -16,7 +16,8 @@ constexpr uint16_t Ping = 0,
 	ResizeView = 10,
 	Name = 11,
 	PlanetCollision = 12,
-	SyncDone = 13;
+	SyncDone = 13,
+	SetTarget = 14;
 }
 
 namespace obf::Entities {
