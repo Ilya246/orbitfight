@@ -74,10 +74,10 @@ ChatUI::ChatUI() {
     text.setFont(*font);
     text.setCharacterSize(textCharacterSize);
     text.setFillColor(sf::Color::White);
-    mulWidthMax = 0.4f;
-    mulWidthMin = 0.35f;
-    mulHeightMax = 0.4f;
-    mulHeightMin = 0.3f;
+    mulWidthMax = 0.5f;
+    mulWidthMin = 0.25f;
+    mulHeightMax = 0.5f;
+    mulHeightMin = 0.24f;
 }
 
 void ChatUI::update() {
@@ -105,7 +105,7 @@ void ChatUI::update() {
 
 void ChatUI::resized() {
     float lerpf = std::max(std::min(1.f, (g_camera.w - widestAdjustAt) / narrowestAdjustAt), 0.f);
-    width = g_camera.w * (lerpf * mulWidthMin + (1.f - lerpf) * mulWidthMax);
+    width = std::min((float)(messageLimit * (textCharacterSize + 2)), g_camera.w * (lerpf * mulWidthMin + (1.f - lerpf) * mulWidthMax));
     lerpf = std::max(std::min(1.f, (g_camera.h - tallestAdjustAt) / shortestAdjustAt), 0.f);
     height = std::min((float)(storedMessageCount + 1) * (textCharacterSize + 3), g_camera.h * (lerpf * mulHeightMin + (1.f - lerpf) * mulHeightMax));
     body.setPosition(0.f, g_camera.h - height);
