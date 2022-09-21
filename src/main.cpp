@@ -683,14 +683,19 @@ int main(int argc, char** argv) {
 			}
 		}
 
-		delta = deltaOverride < 0.0 ? deltaClock.restart().asSeconds() * 60.0 : deltaOverride;
+		delta = deltaClock.restart().asSeconds();
 		measureFrames++;
 		if (globalTime > lastShowFramerate + 1.0) {
 			lastShowFramerate = globalTime;
 			framerate = measureFrames;
 			measureFrames = 0;
 		}
-		sf::sleep(sf::seconds(std::max((1.0 / targetFramerate - delta / 60.0), 0.0)));
+		sf::sleep(sf::seconds(std::max((1.0 / targetFramerate - delta), 0.0)));
+		if (deltaOverride > 0.0) {
+			delta = deltaOverride;
+		} else {
+			delta *= 60.0 * timescale;
+		}
 		globalTime = globalClock.getElapsedTime().asSeconds();
 	}
 

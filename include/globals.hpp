@@ -37,6 +37,7 @@ inline movement lastControls, controls;
 inline double delta = 1.0 / 60.0,
 	globalTime = 0.0,
 	deltaOverride = -1.0, // disabled when < 0
+	timescale = 1.0,
 	maxAckTime = 15.0,
 	syncSpacing = 0.2, fullsyncSpacing = 5.0, projectileSweepSpacing = 30.0,
 	collideRestitution = 1.6, // how "bouncy" collisions should be
@@ -116,6 +117,7 @@ inline std::map<std::string, Var> vars {
 	{"gravityStrength", {Double, &G}},
 
 	{"deltaOverride", {Double, &deltaOverride}},
+	{"timescale", {Double, &timescale}},
 
 	{"gen_baseDensity", {Double, &gen_baseDensity}},
 	{"gen_baseMinPlanets", {Int, &gen_baseMinPlanets}},

@@ -595,7 +595,7 @@ void Triangle::control(movement& cont) {
 	if (rotateVel < 0.0) {
 		rotateVel = std::min(0.0, rotateVel + rotateSpeed * delta * rotateSlowSpeedMult);
 	}
-	if (cont.boost && lastBoosted + boostCooldown < globalTime) {
+	if (cont.boost && lastBoosted + boostCooldown / timescale < globalTime) {
 		addVelocity(boostStrength * xMul, boostStrength * yMul);
 		lastBoosted = globalTime;
 		if (!headless) {
@@ -603,7 +603,7 @@ void Triangle::control(movement& cont) {
 			forwards->setRotation(90.f - rotation);
 		}
 	}
-	if (cont.primaryfire && lastShot + reload < globalTime) {
+	if (cont.primaryfire && lastShot + reload / timescale < globalTime) {
 		if (headless || simulating) {
 			Projectile* proj = new Projectile();
 			if (simulating) {
@@ -633,8 +633,8 @@ void Triangle::draw() {
 	double uiX = g_camera.w * 0.5 + (x - ownX) / g_camera.scale, uiY = g_camera.h * 0.5 + (y - ownY) / g_camera.scale;
 	forwards->setPosition(uiX + 14.0 * cos(rotationRad), uiY - 14.0 * sin(rotationRad));
 	if (ownEntity == this) {
-		float reloadProgress = ((lastShot - globalTime) / reload + 1.0) * 40.f,
-		boostProgress = ((lastBoosted - globalTime) / boostCooldown + 1.0) * 40.f;
+		float reloadProgress = ((lastShot - globalTime) / reload / timescale + 1.0) * 40.f,
+		boostProgress = ((lastBoosted - globalTime) / boostCooldown / timescale + 1.0) * 40.f;
 		if (reloadProgress > 0.0) {
 			sf::RectangleShape reloadBar(sf::Vector2f(reloadProgress, 4.f));
 			reloadBar.setFillColor(sf::Color(255, 64, 64));
