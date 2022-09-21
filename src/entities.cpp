@@ -373,34 +373,16 @@ void Quad::collideAttract(Entity* e, bool doGravity, bool checkCollide) {
 		if (e->parent_id == entity->id || entity->parent_id == e->id) [[unlikely]] {
 			return;
 		}
-		if (checkCollide) {
-			bool alreadyCollided = false;
-			for (uint32_t id : e->collided) {
-				if (id == entity->id) {
-					alreadyCollided = true;
-					break;
-				}
-			}
-			if (!alreadyCollided && dst2(e->x - entity->x, e->y - entity->y) <= (e->radius + entity->radius) * (e->radius + entity->radius)) {
-				e->collide(entity, false);
-				entity->collide(e, true);
-				entity->collided.push_back(e->id);
-			}
+		if (checkCollide && std::find(e->collided.begin(), e->collided.end(), entity->id) == e->collided.end() && dst2(e->x - entity->x, e->y - entity->y) <= (e->radius + entity->radius) * (e->radius + entity->radius)) {
+			e->collide(entity, false);
+			entity->collide(e, true);
+			entity->collided.push_back(e->id);
 		}
 		if (doGravity) {
-			for (uint32_t id : e->attracted) {
-				if (id == entity->id) {
-					return;
-				}
-			}
 			double xdiff = entity->x - e->x, ydiff = entity->y - e->y;
 			double dist = dst(xdiff, ydiff);
-			double factor = delta * G / (dist * dist * dist);
-			double factorthis = factor * entity->mass;
-			e->addVelocity(xdiff * factorthis, ydiff * factorthis);
-			double factorother = -factor * e->mass;
-			entity->addVelocity(xdiff * factorother, ydiff * factorother);
-			entity->attracted.push_back(e->id);
+			double factor = entity->mass * delta * G / (dist * dist * dist);
+			e->addVelocity(xdiff * factor, ydiff * factor);
 		}
 		return;
 	}
