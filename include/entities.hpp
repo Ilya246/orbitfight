@@ -93,7 +93,6 @@ struct Entity {
 	double x = 0.0, y = 0.0, velX = 0.0, velY = 0.0, rotation = 0.0, rotateVel = 0.0,
 	radius = 0.0,
 	mass = 0.0,
-	lastCollideCheck = 0.0, lastCollideScan = 0.0,
 	resX = 0.0, resY = 0.0, resVelX = 0.0, resVelY = 0.0, resRotation = 0.0, resRotateVel = 0.0, resMass = 0.0, resRadius = 0.0,
 	syncX = 0.0, syncY = 0.0, syncVelX = 0.0, syncVelY = 0.0;
 	bool ghost = false, ai = false, synced = false, active = true;
@@ -135,8 +134,8 @@ struct Triangle: public Entity {
 
 	uint8_t type() override;
 	double accel = 0.015, rotateSlowSpeedMult = 2.0 / 3.0, rotateSpeed = 3.0 / 60.0, boostCooldown = 12.0, boostStrength = 1.5, reload = 8.0, shootPower = 2.5, hyperboostStrength = 0.12, hyperboostTime = 20.0 * 60.0, hyperboostRotateSpeed = rotateSpeed * 0.02, afterburnStrength = 0.3, minAfterburn = hyperboostTime + 8.0 * 60.0,
-	lastBoosted = -boostCooldown, lastShot = -reload, hyperboostCharge = 0.0,
-	resLastBoosted = 0.0, resLastShot = 0.0, resHyperboostCharge = 0.0;
+	boostProgress = 0.0, reloadProgress = 0.0, hyperboostCharge = 0.0,
+	resBoostProgress = 0.0, resReloadProgress = 0.0, resHyperboostCharge = 0.0;
 	int kills = 0;
 
 	bool burning = false, resBurning;

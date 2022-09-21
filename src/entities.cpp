@@ -515,15 +515,15 @@ void Triangle::unloadSyncPacket(sf::Packet& packet) {
 
 void Triangle::simSetup() {
 	Entity::simSetup();
-	resLastBoosted = lastBoosted;
-	resLastShot = lastShot;
+	resBoostProgress = boostProgress;
+	resReloadProgress = reloadProgress;
 	resHyperboostCharge = hyperboostCharge;
 	resBurning = burning;
 }
 void Triangle::simReset() {
 	Entity::simReset();
-	lastBoosted = resLastBoosted;
-	lastShot = resLastShot;
+ 	boostProgress = resBoostProgress;
+	reloadProgress = resReloadProgress;
 	hyperboostCharge = resHyperboostCharge;
 	burning = resBurning;
 }
@@ -531,6 +531,8 @@ void Triangle::simReset() {
 void Triangle::control(movement& cont) {
 	float rotationRad = rotation * degToRad;
 	double xMul = std::cos(rotationRad), yMul = -std::sin(rotationRad);
+	boostProgress += delta / 60.0;
+	reloadProgress += delta / 60.0;
 	if (cont.hyperboost || burning) {
 		hyperboostCharge += delta * (burning ? -2 : 1);
 		hyperboostCharge = std::min(hyperboostCharge, 2.0 * hyperboostTime);
@@ -595,15 +597,15 @@ void Triangle::control(movement& cont) {
 	if (rotateVel < 0.0) {
 		rotateVel = std::min(0.0, rotateVel + rotateSpeed * delta * rotateSlowSpeedMult);
 	}
-	if (cont.boost && lastBoosted + boostCooldown / timescale < globalTime) {
+	if (cont.boost && boostProgress > boostCooldown) {
 		addVelocity(boostStrength * xMul, boostStrength * yMul);
-		lastBoosted = globalTime;
+		boostProgress = 0.0;
 		if (!headless) {
 			forwards->setFillColor(sf::Color(64, 255, 64));
 			forwards->setRotation(90.f - rotation);
 		}
 	}
-	if (cont.primaryfire && lastShot + reload / timescale < globalTime) {
+	if (cont.primaryfire && reloadProgress > reload) {
 		if (headless || simulating) {
 			Projectile* proj = new Projectile();
 			if (simulating) {
@@ -618,7 +620,7 @@ void Triangle::control(movement& cont) {
 				proj->syncCreation();
 			}
 		}
-		lastShot = globalTime;
+		reloadProgress = 0.0;
 	}
 }
 
@@ -633,8 +635,8 @@ void Triangle::draw() {
 	double uiX = g_camera.w * 0.5 + (x - ownX) / g_camera.scale, uiY = g_camera.h * 0.5 + (y - ownY) / g_camera.scale;
 	forwards->setPosition(uiX + 14.0 * cos(rotationRad), uiY - 14.0 * sin(rotationRad));
 	if (ownEntity == this) {
-		float reloadProgress = ((lastShot - globalTime) / reload / timescale + 1.0) * 40.f,
-		boostProgress = ((lastBoosted - globalTime) / boostCooldown / timescale + 1.0) * 40.f;
+		float reloadProgress = (-this->reloadProgress / reload + 1.0) * 40.f,
+		boostProgress = (-this->boostProgress / boostCooldown + 1.0) * 40.f;
 		if (reloadProgress > 0.0) {
 			sf::RectangleShape reloadBar(sf::Vector2f(reloadProgress, 4.f));
 			reloadBar.setFillColor(sf::Color(255, 64, 64));
