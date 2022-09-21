@@ -42,7 +42,7 @@ inline double delta = 1.0 / 60.0,
 	collideRestitution = 1.6, // how "bouncy" collisions should be
 	friction = 0.002, // friction of colliding bodies, stops infinite sliding
 	gen_extraStarChance = 0.3, gen_blackholeChance = 1.0 / 3.0, gen_starMass = 5.0e20, gen_starRadius = 6.0e4,
-	gen_minNextRadius = 1.2, gen_maxNextRadius = 1.7, gen_minPlanetRadius = 600.0, gen_maxPlanetRadius = 9000.0,
+	gen_firstPlanetDistance = 120000.0, gen_minNextRadius = 1.2, gen_maxNextRadius = 1.7, gen_minPlanetRadius = 600.0, gen_maxPlanetRadius = 9000.0,
 	gen_baseDensity = 8.0e9, gen_moonFactor = gen_maxPlanetRadius * 0.24, gen_minMoonDistance = 2.0, gen_maxMoonDistance = 9.0,
 	gen_minMoonRadius = 120.0, gen_maxMoonRadiusFrac = 1.0 / 6.0,
 	syncCullThreshold = 0.6, syncCullOffset = 100000.0, sweepThreshold = 8e6 * 8e6,
@@ -122,6 +122,7 @@ inline std::map<std::string, Var> vars {
 	{"gen_baseMaxPlanets", {Int, &gen_baseMaxPlanets}},
 	{"gen_blackholeChance", {Double, &gen_blackholeChance}},
 	{"gen_extraStarChance", {Double, &gen_extraStarChance}},
+	{"gen_firstPlanetDistance", {Double, &gen_firstPlanetDistance}},
 	{"gen_minNextRadius", {Double, &gen_minNextRadius}},
 	{"gen_maxNextRadius", {Double, &gen_maxNextRadius}},
 	{"gen_minPlanetRadius", {Double, &gen_minPlanetRadius}},
