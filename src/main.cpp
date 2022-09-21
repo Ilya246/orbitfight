@@ -690,7 +690,7 @@ int main(int argc, char** argv) {
 			framerate = measureFrames;
 			measureFrames = 0;
 		}
-		sf::sleep(sf::seconds(std::max((1.0 / targetFramerate - delta / 60.0), 0.0)));
+		sf::sleep(sf::seconds(std::max((1.0 / targetFramerate - (deltaOverride < 0.0 ? delta : deltaOverride) / 60.0), 0.0)));
 		globalTime = globalClock.getElapsedTime().asSeconds();
 	}
 
