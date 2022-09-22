@@ -29,7 +29,7 @@ T deltaAngleRad(T a, T b) {
 }
 template <typename T>
 T absMax(T a, T b) {
-	return abs(a) > abs(b) ? a : b;
+	return std::abs(a) > std::abs(b) ? a : b;
 }
 float lerpRotation(float, float, float);
 

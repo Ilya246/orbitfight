@@ -654,7 +654,7 @@ int main(int argc, char** argv) {
 				if (globalTime - player->lastSynced > syncSpacing) {
 					bool fullsync = globalTime - player->lastFullsynced > fullsyncSpacing;
 					for (Entity* e : updateGroup) {
-						if (player->entity && !fullsync && (abs(e->y - player->entity->y) - syncCullOffset > player->viewH * syncCullThreshold || abs(e->x - player->entity->x) - syncCullOffset > player->viewW * syncCullThreshold)) {
+						if (player->entity && !fullsync && (std::abs(e->y - player->entity->y) - syncCullOffset > player->viewH * syncCullThreshold || std::abs(e->x - player->entity->x) - syncCullOffset > player->viewW * syncCullThreshold)) {
 							continue;
 						}
 						sf::Packet packet;

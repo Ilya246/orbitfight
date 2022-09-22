@@ -416,7 +416,7 @@ void Quad::collideAttract(Entity* e, bool doGravity, bool checkCollide) {
 	}
 	if (doGravity) {
 		double halfsize = size * 0.5, midx = x + halfsize, midy = y + halfsize;
-		if (invsize * (abs(e->x - midx) + abs(e->y - midy)) > gravityAccuracy) {
+		if (invsize * (std::abs(e->x - midx) + std::abs(e->y - midy)) > gravityAccuracy) {
 			double xdiff = comx - e->x, ydiff = comy - e->y;
 			double dist = dst(xdiff, ydiff);
 			double factor = delta * mass * G / (dist * dist * dist);
@@ -865,11 +865,11 @@ void Projectile::update2() {
 		double tangentVel = dst(dVx, dVy) * std::cos(deltaAngleRad(tangentHeading, velHeading));
 		bool sign = tangentVel > 0;
 		double dtaccel = delta * accel;
-		double tangentAccel = abs(tangentVel) > dtaccel ? (sign ? dtaccel : -dtaccel) : (std::min(delta, 1.0) * tangentVel);
+		double tangentAccel = std::abs(tangentVel) > dtaccel ? (sign ? dtaccel : -dtaccel) : (std::min(delta, 1.0) * tangentVel);
 		velX += tangentAccel * std::cos(tangentHeading);
 		velY += tangentAccel * std::sin(tangentHeading);
-		if (dtaccel > abs(tangentAccel)) {
-			double normalAccel = dtaccel - abs(tangentAccel);
+		if (dtaccel > std::abs(tangentVel)) {
+			double normalAccel = dtaccel - std::abs(tangentAccel);
 			velX += normalAccel * std::cos(inHeading);
 			velY += normalAccel * std::sin(inHeading);
 		}
