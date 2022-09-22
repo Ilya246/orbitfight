@@ -72,6 +72,7 @@ messageCursorPos = 0,
 quadsConstructed = 100, minQuadtreeSize = 80,
 quadsAllocated = (int)(quadsConstructed * extraQuadAllocation),
 updateThreadCount = 1;
+inline size_t minThreadEntities = 100;
 inline long long measureFrames = 0, framerate = 0;
 inline size_t trajectoryOffset = 0;
 inline bool headless = false, autoConnect = false, debug = false, autorestart = false,
@@ -111,6 +112,7 @@ inline std::map<std::string, Var> vars {
 	{"fullSyncSpacing", {Double, &fullsyncSpacing}},
 	{"targetFramerate", {Double, &targetFramerate}},
 	{"updateThreadCount", {Int, &updateThreadCount}},
+	{"minThreadEntities", {Int, &minThreadEntities}},
 
 	{"sweepThreshold", {Double, &sweepThreshold}},
 

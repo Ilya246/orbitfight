@@ -225,6 +225,7 @@ void parseCommand (const string& command) {
 		printPreferred("help - print this\n"
 		"config <line> - parse argument like a config file line\n"
 		"lookup <id> - print info about entity ID in argument\n"
+		"count - print amount of entities in existence\n"
 		"showfps - print current framerate\n");
 		if (headless) {
 			printPreferred("reset - regenerate the star system\n"
@@ -295,6 +296,9 @@ void parseCommand (const string& command) {
 			}
 		}
 		printPreferred("No entity ID "+to_string(id)+" found.\n");
+		return;
+	} else if (args[0] == "count") {
+		printPreferred(to_string(updateGroup.size())+"\n");
 		return;
 	} else if (args[0] == "reset") {
 		if (!headless) {

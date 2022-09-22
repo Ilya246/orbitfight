@@ -113,14 +113,14 @@ void updateEntities2(size_t from, size_t to) {
 } // in a function for multithreading purposes
 
 void updateEntities() {
-	if (updateThreadCount == 1) {
+	if (updateThreadCount == 1 || updateGroup.size() <= minThreadEntities) {
 		updateEntities2(0, updateGroup.size());
 		return;
 	}
 	size_t prev = 0;
 	for (int i = 0; i < updateThreadCount; i++) {
 		size_t to = i == updateThreadCount - 1 ? updateGroup.size() : (size_t)((float)(updateGroup.size() * (i + 1)) / (float)updateThreadCount);
-		if (to == prev) {
+		if (to - prev < minThreadEntities && i != updateThreadCount - 1) {
 			continue;
 		}
 		updateThreads.push_back(new std::thread(updateEntities2, prev, to));
