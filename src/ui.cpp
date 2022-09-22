@@ -84,17 +84,11 @@ void ChatUI::update() {
     std::string chatString = "";
     int displayMessageCount = std::min((int)(height / (textCharacterSize + 3)) - 1, storedMessageCount);
     messageCursorPos = std::max(0, std::min(messageCursorPos, storedMessageCount - displayMessageCount));
-    int countOffset = 0;
     chatString.append("> " + chatBuffer);
-    int overshoot = 0;
-    for (int i = messageCursorPos; i < messageCursorPos + displayMessageCount - countOffset; i++) {
+    for (int i = messageCursorPos; i < messageCursorPos + displayMessageCount; i++) {
         chatString.insert(0, storedMessages[i] + "\n");
-        text.setString(chatString);
-        if (text.getLocalBounds().width + padding * 2.f > width) {
-            countOffset += wrapText(chatString, text, width - padding * 2.f);
-            overshoot = i - messageCursorPos - displayMessageCount + countOffset + 1;
-        }
     }
+    int overshoot = wrapText(chatString, text, width - padding * 2.f);
     for (int i = 0; i < overshoot; i++) {
         for (size_t c = 0; c < chatString.size(); c++) {
             if (chatString[c] == '\n' && c + 1 < chatString.size()) {
