@@ -2,7 +2,7 @@
 A very in-development game where you're a spaceship shooting other spaceships in a very large solar system, other mechanics might possibly be added later
 <br>Currently you have to join a server to play the game, singleplayer is not available
 
-Matrix server: https://matrix.to/#/#orbitfight:matrix.org
+Development progress is posted in the matrix server: https://matrix.to/#/#orbitfight:matrix.org
 
 This game is more of a learning project than a real game and is not really intended to be particularly interesting, another side effect of which is that the code may be rather cursed in places
 
