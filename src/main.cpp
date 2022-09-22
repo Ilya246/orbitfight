@@ -304,14 +304,42 @@ int main(int argc, char** argv) {
 					break;
 				}
 				case sf::Event::KeyPressed: {
-					if (!chatting && event.key.code == sf::Keyboard::LShift && ownEntity) {
-						controls.hyperboost = !controls.hyperboost;
-					} else if (!chatting && enableControlLock && event.key.code == sf::Keyboard::LAlt) {
-						lockControls = !lockControls;
-						sf::Packet controlsPacket;
-						controlsPacket << Packets::Controls << (lockControls ? (unsigned char) 0 : *(unsigned char*) &controls);
-						serverSocket->send(controlsPacket);
-					} else if (event.key.code == sf::Keyboard::Tab) {
+					if (chatting) {
+						if (event.key.code == sf::Keyboard::BackSpace && (int)chatBuffer.getSize() > 0) {
+							chatBuffer.erase(chatBuffer.getSize() - 1);
+						}
+					} else {
+						if (enableControlLock && event.key.code == sf::Keyboard::LAlt) {
+							lockControls = !lockControls;
+							sf::Packet controlsPacket;
+							controlsPacket << Packets::Controls << (lockControls ? (unsigned char) 0 : *(unsigned char*) &controls);
+							serverSocket->send(controlsPacket);
+						} else if (event.key.code == sf::Keyboard::T) {
+							if (!ownEntity || ownEntity->type() != Entities::Triangle) {
+								break;
+							}
+							double minDst = DBL_MAX;
+							Entity* closestEntity = nullptr;
+							for (Entity* e : updateGroup) {
+								if (e == ownEntity) {
+									continue;
+								}
+								double dst = dst2(e->x - ownX - (mousePos.x - g_camera.w * 0.5) * g_camera.scale, e->y - ownY - (mousePos.y - g_camera.h * 0.5) * g_camera.scale) - e->radius * e->radius;
+								if (dst < minDst) {
+									minDst = dst;
+									closestEntity = e;
+								}
+							}
+							bool unset = closestEntity == ((Triangle*)ownEntity)->target;
+							((Triangle*)ownEntity)->target = unset ? nullptr : closestEntity;
+							sf::Packet targetPacket;
+							targetPacket << Packets::SetTarget << (unset ? numeric_limits<uint32_t>::max() : closestEntity->id);
+							serverSocket->send(targetPacket);
+						} else if (event.key.code == sf::Keyboard::LShift && ownEntity) {
+							controls.hyperboost = !controls.hyperboost;
+						}
+					}
+					if (event.key.code == sf::Keyboard::Tab) {
 						double minDst = DBL_MAX;
 						Entity* closestEntity = nullptr;
 						for (Entity* e : updateGroup) {
@@ -331,46 +359,21 @@ int main(int argc, char** argv) {
 							trajectoryRef = closestEntity;
 							printf("Selected entity id %u as reference body\n", trajectoryRef->id);
 						}
-					} else if (!chatting && event.key.code == sf::Keyboard::T) {
-						if (!ownEntity || ownEntity->type() != Entities::Triangle) {
+					} else if (event.key.code == sf::Keyboard::Return) {
+						chatting = !chatting;
+						if ((int)chatBuffer.getSize() == 0) {
 							break;
 						}
-						double minDst = DBL_MAX;
-						Entity* closestEntity = nullptr;
-						for (Entity* e : updateGroup) {
-							if (e == ownEntity) {
-								continue;
-							}
-							double dst = dst2(e->x - ownX - (mousePos.x - g_camera.w * 0.5) * g_camera.scale, e->y - ownY - (mousePos.y - g_camera.h * 0.5) * g_camera.scale) - e->radius * e->radius;
-							if (dst < minDst) {
-								minDst = dst;
-								closestEntity = e;
-							}
-						}
-						bool unset = closestEntity == ((Triangle*)ownEntity)->target;
-						((Triangle*)ownEntity)->target = unset ? nullptr : closestEntity;
-						sf::Packet targetPacket;
-						targetPacket << Packets::SetTarget << (unset ? numeric_limits<uint32_t>::max() : closestEntity->id);
-						serverSocket->send(targetPacket);
-					} else if (event.key.code == sf::Keyboard::Return) {
-						if(chatting && (int)chatBuffer.getSize() > 0){
-							std::string sendMessage = chatBuffer.toAnsiString();
-							if (chatBuffer[0] == '/') {
-								parseCommand(sendMessage.substr(1, sendMessage.size() - 1));
-								chatting = !chatting;
-								chatBuffer.clear();
-								break;
-							}
-							sf::Packet chatPacket;
-							chatPacket << Packets::Chat << sendMessage;
-							serverSocket->send(chatPacket);
+						std::string sendMessage = chatBuffer.toAnsiString();
+						if (chatBuffer[0] == '/') {
+							parseCommand(sendMessage.substr(1, sendMessage.size() - 1));
 							chatBuffer.clear();
+							break;
 						}
-						chatting = !chatting;
-					} else if (event.key.code == sf::Keyboard::BackSpace) {
-						if(chatting && (int)chatBuffer.getSize() > 0){
-							chatBuffer.erase(chatBuffer.getSize() - 1);
-						}
+						sf::Packet chatPacket;
+						chatPacket << Packets::Chat << sendMessage;
+						serverSocket->send(chatPacket);
+						chatBuffer.clear();
 					}
 					break;
 				}
