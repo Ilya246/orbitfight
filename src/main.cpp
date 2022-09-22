@@ -19,6 +19,7 @@
 #include <future>
 #include <iostream>
 #include <regex>
+#include <thread>
 
 using namespace obf;
 
@@ -492,9 +493,7 @@ int main(int argc, char** argv) {
 		for (Entity* e : updateGroup) {
 			e->update1();
 		}
-		for (Entity* e : updateGroup) {
-			e->update2();
-		}
+		updateEntities();
 
 		if (headless && lastSweep + projectileSweepSpacing < globalTime) {
 			for (Entity* e : updateGroup) {
@@ -551,9 +550,7 @@ int main(int argc, char** argv) {
 				for (Entity* e : updateGroup) {
 					e->update1();
 				}
-				for (Entity* e : updateGroup) {
-					e->update2();
-				}
+				updateEntities();
 				if (!stars.empty()) [[likely]] {
 					double x = 0.0, y = 0.0;
 					for (CelestialBody* star : stars) {

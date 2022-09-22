@@ -6,6 +6,7 @@
 
 #include <future>
 #include <map>
+#include <thread>
 #include <vector>
 
 #include <SFML/Graphics.hpp>
@@ -29,6 +30,7 @@ inline std::vector<sf::Color> ghostTrajectoryColors;
 inline sf::Vector2i mousePos;
 inline sf::Clock deltaClock, globalClock;
 inline std::future<void> inputReader;
+inline std::vector<std::thread*> updateThreads;
 inline std::string serverAddress = "", name = "",
 inputBuffer = "";
 inline sf::String chatBuffer = "";
@@ -68,7 +70,8 @@ gen_baseMinPlanets = 5,
 gen_baseMaxPlanets = 10,
 messageCursorPos = 0,
 quadsConstructed = 100, minQuadtreeSize = 80,
-quadsAllocated = (int)(quadsConstructed * extraQuadAllocation);
+quadsAllocated = (int)(quadsConstructed * extraQuadAllocation),
+updateThreadCount = 1;
 inline long long measureFrames = 0, framerate = 0;
 inline size_t trajectoryOffset = 0;
 inline bool headless = false, autoConnect = false, debug = false, autorestart = false,
@@ -107,6 +110,7 @@ inline std::map<std::string, Var> vars {
 	{"syncSpacing", {Double, &syncSpacing}},
 	{"fullSyncSpacing", {Double, &fullsyncSpacing}},
 	{"targetFramerate", {Double, &targetFramerate}},
+	{"updateThreadCount", {Int, &updateThreadCount}},
 
 	{"sweepThreshold", {Double, &sweepThreshold}},
 

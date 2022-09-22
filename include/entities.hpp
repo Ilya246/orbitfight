@@ -21,6 +21,8 @@ void generateSystem();
 
 void fullClear();
 
+void updateEntities();
+
 void reallocateQuadtree();
 void buildQuadtree();
 

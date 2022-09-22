@@ -10,6 +10,7 @@
 #include <exception>
 #include <iostream>
 #include <sstream>
+#include <thread>
 #include <vector>
 
 #include <SFML/Graphics.hpp>
@@ -103,6 +104,33 @@ void fullClear() {
 	planets.clear();
 	stars.clear();
 	fullclearing = false;
+}
+
+void updateEntities2(size_t from, size_t to) {
+	for (size_t i = from; i < to; i++) {
+		updateGroup[i]->update2();
+	}
+} // in a function for multithreading purposes
+
+void updateEntities() {
+	if (updateThreadCount == 1) {
+		updateEntities2(0, updateGroup.size());
+		return;
+	}
+	size_t prev = 0;
+	for (int i = 0; i < updateThreadCount; i++) {
+		size_t to = i == updateThreadCount - 1 ? updateGroup.size() : (size_t)((float)(updateGroup.size() * (i + 1)) / (float)updateThreadCount);
+		if (to == prev) {
+			continue;
+		}
+		updateThreads.push_back(new std::thread(updateEntities2, prev, to));
+		prev = to;
+	}
+	for (int i = updateThreads.size() - 1; i >= 0; i--) {
+		updateThreads[i]->join();
+		delete updateThreads[i];
+	}
+	updateThreads.clear();
 }
 
 Entity* idLookup(uint32_t id) {
