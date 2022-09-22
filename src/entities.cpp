@@ -413,11 +413,6 @@ void Quad::collideAttract(Entity* e, bool doGravity, bool checkCollide) {
 				double y = entity->y;
 				for (int i = 0; i < ticks; i++) {
 					if (dst2(e->x - x, e->y - y) <= (e->radius + entity->radius) * (e->radius + entity->radius)) {
-						double progress = (double)i / (double)ticks;
-						entity->x += progress * entity->dVelX;
-						entity->y += progress * entity->dVelY;
-						e->x += progress * e->dVelX;
-						e->y += progress * e->dVelY;
 						e->collide(entity, false);
 						entity->collide(e, true);
 						entity->collided.push_back(e->id);
@@ -668,6 +663,8 @@ void Triangle::control(movement& cont) {
 			proj->setPosition(x + (radius + proj->radius * 3.0) * xMul, y + (radius + proj->radius * 3.0) * yMul);
 			addVelocity(-shootPower * xMul * proj->mass / mass, -shootPower * yMul * proj->mass / mass);
 			proj->setVelocity(velX + shootPower * xMul, velY + shootPower * yMul);
+			proj->rotation = rotation;
+			proj->rotateVel = rotateVel;
 			proj->owner = this;
 			proj->target = target;
 			if (headless) {
@@ -873,12 +870,11 @@ Projectile::Projectile() : Entity() {
 	this->color[1] = 0;
 	this->color[2] = 0;
 	if (!headless && !simulating) {
-		shape = std::make_unique<sf::CircleShape>(radius, 10);
+		shape = std::make_unique<sf::CircleShape>(radius, 3);
 		shape->setOrigin(radius, radius);
-		icon = std::make_unique<sf::CircleShape>(2.f, 4);
+		icon = std::make_unique<sf::CircleShape>(2.f, 3);
 		icon->setOrigin(2.f, 2.f);
 		icon->setFillColor(sf::Color(255, 0, 0));
-		icon->setRotation(45.f);
 		warning = std::make_unique<sf::CircleShape>(4.f, 4);
 		warning->setOrigin(4.f, 4.f);
 		warning->setFillColor(sf::Color(0, 0, 0, 0));
@@ -895,15 +891,15 @@ void Projectile::update2() {
 		double inHeading = std::atan2(dY, dX), tangentHeading = inHeading + 0.5 * PI;
 		double velHeading = std::atan2(dVy, dVx);
 		double tangentVel = dst(dVx, dVy) * std::cos(deltaAngleRad(tangentHeading, velHeading));
-		bool sign = tangentVel > 0;
 		double dtaccel = delta * accel;
-		double tangentAccel = std::abs(tangentVel) > dtaccel ? (sign ? dtaccel : -dtaccel) : (std::min(delta, 1.0) * tangentVel);
-		velX += tangentAccel * std::cos(tangentHeading);
-		velY += tangentAccel * std::sin(tangentHeading);
-		if (dtaccel > std::abs(tangentVel)) {
-			double normalAccel = dtaccel - std::abs(tangentAccel);
-			velX += normalAccel * std::cos(inHeading);
-			velY += normalAccel * std::sin(inHeading);
+		double targetRotation = inHeading + (std::abs(tangentVel) * easeInFactor > dtaccel ? (tangentVel > 0.0 ? 0.5 * PI : 0.5 * -PI) : std::atan2(tangentVel * easeInFactor, accel));
+		if (!simulating && measureFrames % 10 == 0) {
+			printf("in %g, target %g, actual %g\n", inHeading * radToDeg, targetRotation * radToDeg, rotation);
+		}
+		rotateVel += delta * (deltaAngleRad((rotation + (rotateVel > 0.0 ? 0.5 : -0.5) * rotateVel * rotateVel / rotateSpeed) * degToRad, targetRotation) > 0.0 ? rotateSpeed : -rotateSpeed);
+		double thrustDirection = rotation * degToRad + std::max(-maxThrustAngle, std::min(maxThrustAngle, deltaAngleRad(rotation * degToRad, targetRotation)));
+		if (std::abs(deltaAngleRad(targetRotation, rotation * degToRad)) < 0.5 * PI) {
+			addVelocity(dtaccel * std::cos(thrustDirection), dtaccel * std::sin(thrustDirection));
 		}
 	}
 	Entity::update2();
@@ -988,11 +984,13 @@ void Projectile::collide(Entity* with, bool specialOnly) {
 void Projectile::draw() {
 	Entity::draw();
 	shape->setPosition(x + drawShiftX, y + drawShiftY);
+	shape->setRotation(90.f - rotation);
 	shape->setFillColor(sf::Color(color[0], color[1], color[2]));
 	window->draw(*shape);
 	if (g_camera.scale > radius) {
 		g_camera.bindUI();
 		icon->setPosition(g_camera.w * 0.5 + (x - ownX) / g_camera.scale, g_camera.h * 0.5 + (y - ownY) / g_camera.scale);
+		icon->setRotation(90.f - rotation);
 		window->draw(*icon);
 		if (target && ownEntity && target == ownEntity) {
 			warning->setPosition(g_camera.w * 0.5 + (x - ownX) / g_camera.scale, g_camera.h * 0.5 + (y - ownY) / g_camera.scale);
