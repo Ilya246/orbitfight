@@ -893,9 +893,6 @@ void Projectile::update2() {
 		double tangentVel = dst(dVx, dVy) * std::cos(deltaAngleRad(tangentHeading, velHeading));
 		double dtaccel = delta * accel;
 		double targetRotation = inHeading + (std::abs(tangentVel) * easeInFactor > dtaccel ? (tangentVel > 0.0 ? 0.5 * PI : 0.5 * -PI) : std::atan2(tangentVel * easeInFactor, accel));
-		if (!simulating && measureFrames % 10 == 0) {
-			printf("in %g, target %g, actual %g\n", inHeading * radToDeg, targetRotation * radToDeg, rotation);
-		}
 		rotateVel += delta * (deltaAngleRad((rotation + (rotateVel > 0.0 ? 0.5 : -0.5) * rotateVel * rotateVel / rotateSpeed) * degToRad, targetRotation) > 0.0 ? rotateSpeed : -rotateSpeed);
 		double thrustDirection = rotation * degToRad + std::max(-maxThrustAngle, std::min(maxThrustAngle, deltaAngleRad(rotation * degToRad, targetRotation)));
 		if (std::abs(deltaAngleRad(targetRotation, rotation * degToRad)) < 0.5 * PI) {
@@ -984,13 +981,13 @@ void Projectile::collide(Entity* with, bool specialOnly) {
 void Projectile::draw() {
 	Entity::draw();
 	shape->setPosition(x + drawShiftX, y + drawShiftY);
-	shape->setRotation(90.f - rotation);
+	shape->setRotation(90.f + rotation);
 	shape->setFillColor(sf::Color(color[0], color[1], color[2]));
 	window->draw(*shape);
 	if (g_camera.scale > radius) {
 		g_camera.bindUI();
 		icon->setPosition(g_camera.w * 0.5 + (x - ownX) / g_camera.scale, g_camera.h * 0.5 + (y - ownY) / g_camera.scale);
-		icon->setRotation(90.f - rotation);
+		icon->setRotation(90.f + rotation);
 		window->draw(*icon);
 		if (target && ownEntity && target == ownEntity) {
 			warning->setPosition(g_camera.w * 0.5 + (x - ownX) / g_camera.scale, g_camera.h * 0.5 + (y - ownY) / g_camera.scale);
