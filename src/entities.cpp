@@ -797,7 +797,7 @@ void CelestialBody::collide(Entity* with, bool specialOnly) {
 		}
 	} else if (with->type() == Entities::CelestialBody) [[unlikely]] {
 		if (mass >= with->mass && (headless || simulating)) {
-			if (!simulating) {
+			if (!simulating && printPlanetMerges) {
 				printf("Planetary collision: %u absorbed %u\n", id, with->id);
 			}
 			double radiusMul = sqrt((mass + with->mass) / mass);

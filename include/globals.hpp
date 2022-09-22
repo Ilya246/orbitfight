@@ -79,7 +79,8 @@ inline bool headless = false, autoConnect = false, debug = false, autorestart = 
 inputWaiting = false, chatting = false, lockControls = false,
 enableControlLock = false,
 simulating = false,
-autorestartRegenned = true, fullclearing = false;
+autorestartRegenned = true, fullclearing = false,
+printPlanetMerges = true;
 
 inline obf::Quad* quadtree = (Quad*)malloc((size_t)(sizeof(Quad) * quadsAllocated));
 
@@ -102,6 +103,7 @@ inline std::map<std::string, Var> vars {
 	{"autoConnect", {Bool, &autoConnect}},
 	{"DEBUG", {Bool, &debug}},
 	{"enableControlLock", {Bool, &enableControlLock}},
+	{"printPlanetMerges", {Bool, &printPlanetMerges}},
 
 	{"autorestart", {Bool, &autorestart}},
 	{"autorestartNotifSpacing", {Double, &autorestartNotifSpacing}},
