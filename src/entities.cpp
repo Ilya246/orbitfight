@@ -853,6 +853,12 @@ Projectile::Projectile() : Entity() {
 		icon->setOrigin(2.f, 2.f);
 		icon->setFillColor(sf::Color(255, 0, 0));
 		icon->setRotation(45.f);
+		warning = std::make_unique<sf::CircleShape>(4.f, 4);
+		warning->setOrigin(4.f, 4.f);
+		warning->setFillColor(sf::Color(0, 0, 0, 0));
+		warning->setOutlineColor(sf::Color(255, 0, 0, 255));
+		warning->setOutlineThickness(1.f);
+		warning->setRotation(45.f);
 	}
 }
 
@@ -962,6 +968,10 @@ void Projectile::draw() {
 		g_camera.bindUI();
 		icon->setPosition(g_camera.w * 0.5 + (x - ownX) / g_camera.scale, g_camera.h * 0.5 + (y - ownY) / g_camera.scale);
 		window->draw(*icon);
+		if (target && ownEntity && target == ownEntity) {
+			warning->setPosition(g_camera.w * 0.5 + (x - ownX) / g_camera.scale, g_camera.h * 0.5 + (y - ownY) / g_camera.scale);
+			window->draw(*warning);
+		}
 		g_camera.bindWorld();
 	}
 }

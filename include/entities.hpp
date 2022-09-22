@@ -190,7 +190,7 @@ struct Projectile: public Entity {
 
 	double accel = 0.01;
 
-	std::unique_ptr<sf::CircleShape> shape;
+	std::unique_ptr<sf::CircleShape> shape, warning;
 };
 
 struct Player {
