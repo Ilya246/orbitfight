@@ -257,8 +257,10 @@ void Entity::syncCreation() {
 
 void Entity::control(movement& cont) {}
 void Entity::update1() {
-	x += velX * delta;
-	y += velY * delta;
+	dVelX = velX * delta;
+	dVelY = velY * delta;
+	x += dVelX;
+	y += dVelY;
 	rotation += rotateVel * delta;
 	collided.clear();
 	attracted.clear();
@@ -396,15 +398,39 @@ void Quad::postBuild() {
 	}
 }
 void Quad::collideAttract(Entity* e, bool doGravity, bool checkCollide) {
-	checkCollide = checkCollide && e->x + e->radius > x && e->y + e->radius > y && e->x - e->radius < x + size && e->y - e->radius < y + size;
+	checkCollide = checkCollide && e->x + (e->radius + std::abs(e->dVelX)) * 2.0 > x && e->y + (e->radius + std::abs(e->dVelY)) * 2.0 > y && e->x - (e->radius + std::abs(e->dVelX)) * 2.0 < x + size && e->y - (e->radius + std::abs(e->dVelY)) * 2.0 < y + size;
 	if (entity && entity != e) {
 		if (e->parent_id == entity->id || entity->parent_id == e->id) [[unlikely]] {
 			return;
 		}
-		if (checkCollide && std::find(e->collided.begin(), e->collided.end(), entity->id) == e->collided.end() && dst2(e->x - entity->x, e->y - entity->y) <= (e->radius + entity->radius) * (e->radius + entity->radius)) {
-			e->collide(entity, false);
-			entity->collide(e, true);
-			entity->collided.push_back(e->id);
+		if (checkCollide && std::find(e->collided.begin(), e->collided.end(), entity->id) == e->collided.end()) {
+			double dVx = entity->dVelX - e->dVelX, dVy = entity->dVelY - e->dVelY;
+			if (2.0 * (dVx + dVy) > e->radius + entity->radius) {
+				int ticks = std::ceil(dst(dVx, dVy) / std::max(entity->radius, e->radius) * 2.0);
+				dVx /= ticks;
+				dVy /= ticks;
+				double x = entity->x;
+				double y = entity->y;
+				for (int i = 0; i < ticks; i++) {
+					if (dst2(e->x - x, e->y - y) <= (e->radius + entity->radius) * (e->radius + entity->radius)) {
+						double progress = (double)i / (double)ticks;
+						entity->x += progress * entity->dVelX;
+						entity->y += progress * entity->dVelY;
+						e->x += progress * e->dVelX;
+						e->y += progress * e->dVelY;
+						e->collide(entity, false);
+						entity->collide(e, true);
+						entity->collided.push_back(e->id);
+						break;
+					}
+					x += dVx;
+					y += dVy;
+				}
+			} else if (dst2(e->x - entity->x, e->y - entity->y) <= (e->radius + entity->radius) * (e->radius + entity->radius)) {
+				e->collide(entity, false);
+				entity->collide(e, true);
+				entity->collided.push_back(e->id);
+			}
 		}
 		if (doGravity) {
 			double xdiff = entity->x - e->x, ydiff = entity->y - e->y;
@@ -841,7 +867,7 @@ uint8_t CelestialBody::type() {
 }
 
 Projectile::Projectile() : Entity() {
-	this->radius = 4;
+	radius = 4.0;
 	this->mass = 20000.0;
 	this->color[0] = 180;
 	this->color[1] = 0;
