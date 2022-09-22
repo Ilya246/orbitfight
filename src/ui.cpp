@@ -86,11 +86,21 @@ void ChatUI::update() {
     messageCursorPos = std::max(0, std::min(messageCursorPos, storedMessageCount - displayMessageCount));
     int countOffset = 0;
     chatString.append("> " + chatBuffer);
+    int overshoot = 0;
     for (int i = messageCursorPos; i < messageCursorPos + displayMessageCount - countOffset; i++) {
         chatString.insert(0, storedMessages[i] + "\n");
         text.setString(chatString);
         if (text.getLocalBounds().width + padding * 2.f > width) {
             countOffset += wrapText(chatString, text, width - padding * 2.f);
+            overshoot = i - messageCursorPos - displayMessageCount + countOffset + 1;
+        }
+    }
+    for (int i = 0; i < overshoot; i++) {
+        for (size_t c = 0; c < chatString.size(); c++) {
+            if (chatString[c] == '\n' && c + 1 < chatString.size()) {
+                chatString = chatString.substr(c + 1, chatString.size());
+                break;
+            }
         }
     }
     if (chatting && std::sin(globalTime * TAU * 1.5) > 0.0) {
