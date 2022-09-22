@@ -642,8 +642,7 @@ void Triangle::control(movement& cont) {
 	}
 	if (rotateVel > 0.0) {
 		rotateVel = std::max(0.0, rotateVel - rotateSpeed * delta * rotateSlowSpeedMult);
-	}
-	if (rotateVel < 0.0) {
+	} else {
 		rotateVel = std::min(0.0, rotateVel + rotateSpeed * delta * rotateSlowSpeedMult);
 	}
 	if (cont.boost && boostProgress > boostCooldown) {
@@ -893,7 +892,10 @@ void Projectile::update2() {
 		double tangentVel = dst(dVx, dVy) * std::cos(deltaAngleRad(tangentHeading, velHeading));
 		double dtaccel = delta * accel;
 		double targetRotation = inHeading + (std::abs(tangentVel) * easeInFactor > dtaccel ? (tangentVel > 0.0 ? 0.5 * PI : 0.5 * -PI) : std::atan2(tangentVel * easeInFactor, accel));
-		rotateVel += delta * (deltaAngleRad((rotation + (rotateVel > 0.0 ? 0.5 : -0.5) * rotateVel * rotateVel / rotateSpeed) * degToRad, targetRotation) > 0.0 ? rotateSpeed : -rotateSpeed);
+		rotateVel += delta * (deltaAngleRad((rotation + (rotateVel > 0.0 ? rotateVel : -rotateVel) * rotateVel / rotateSpeed) * degToRad, targetRotation) > 0.0 ? rotateSpeed : -rotateSpeed);
+		if (!simulating && measureFrames % 10 == 0) {
+			printf("in %g, target %g, actual %g\n", inHeading * radToDeg, targetRotation * radToDeg, rotation);
+		}
 		double thrustDirection = rotation * degToRad + std::max(-maxThrustAngle, std::min(maxThrustAngle, deltaAngleRad(rotation * degToRad, targetRotation)));
 		if (std::abs(deltaAngleRad(targetRotation, rotation * degToRad)) < 0.5 * PI) {
 			addVelocity(dtaccel * std::cos(thrustDirection), dtaccel * std::sin(thrustDirection));
@@ -903,13 +905,13 @@ void Projectile::update2() {
 }
 
 void Projectile::loadCreatePacket(sf::Packet& packet) {
-	packet << type() << id << x << y << velX << velY << (target == nullptr ? std::numeric_limits<uint32_t>::max() : target->id);
+	packet << type() << id << x << y << velX << velY << rotation << (target == nullptr ? std::numeric_limits<uint32_t>::max() : target->id);
 	if (debug) {
 		printf("Sent id %d: %g %g %g %g\n", id, x, y, velX, velY);
 	}
 }
 void Projectile::unloadCreatePacket(sf::Packet& packet) {
-	packet >> id >> x >> y >> velX >> velY;
+	packet >> id >> x >> y >> velX >> velY >> rotation;
 	uint32_t entityID;
 	packet >> entityID;
 	if (entityID != std::numeric_limits<uint32_t>::max()) {
@@ -920,10 +922,10 @@ void Projectile::unloadCreatePacket(sf::Packet& packet) {
 	}
 }
 void Projectile::loadSyncPacket(sf::Packet& packet) {
-	packet << id << x << y << velX << velY;
+	packet << id << x << y << velX << velY << rotation;
 }
 void Projectile::unloadSyncPacket(sf::Packet& packet) {
-	packet >> syncX >> syncY >> syncVelX >> syncVelY;
+	packet >> syncX >> syncY >> syncVelX >> syncVelY >> rotation;
 }
 
 void Projectile::collide(Entity* with, bool specialOnly) {
