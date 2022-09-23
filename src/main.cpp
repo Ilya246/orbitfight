@@ -1,5 +1,6 @@
 #include "camera.hpp"
 #include "entities.hpp"
+#include "events.hpp"
 #include "font.hpp"
 #include "globals.hpp"
 #include "math.hpp"
@@ -299,6 +300,13 @@ int main(int argc, char** argv) {
 					}
 					break;
 				}
+				case sf::Event::MouseButtonPressed: {
+					for (UIElement* e : uiGroup) {
+						if (e->isMousedOver()) {
+							e->pressed(event.mouseButton.button);
+						}
+					}
+				}
 				case sf::Event::KeyPressed: {
 					if (chatting) {
 						if (event.key.code == sf::Keyboard::BackSpace && (int)chatBuffer.getSize() > 0) {
@@ -436,7 +444,9 @@ int main(int argc, char** argv) {
 			}
 			g_camera.bindUI();
 			for (UIElement* e : uiGroup) {
-				e->update();
+				if (e->active) {
+					e->update();
+				}
 			}
 			if (lastTrajectoryRef) {
 				float radius = std::max(5.f, (float)(lastTrajectoryRef->radius / g_camera.scale));
@@ -522,20 +532,8 @@ int main(int argc, char** argv) {
 			}
 		}
 		for (Entity* d : deleted) {
-			for (Entity* e : updateGroup) {
-				if (e->simRelBody == d) {
-					e->simRelBody = nullptr;
-				}
-				if (e->type() == Entities::Projectile) {
-					if (((Projectile*)e)->owner == d) [[unlikely]] {
-						((Projectile*)e)->owner = nullptr;
-					}
-					if (((Projectile*)e)->target == d) [[unlikely]] {
-						((Projectile*)e)->target = d->type() == Entities::Projectile && ((Projectile*)e)->owner != ((Projectile*)d)->owner ? ((Projectile*)d)->owner : nullptr;
-					}
-				} else if (e->type() == Entities::Triangle && ((Triangle*)e)->target == d) {
-					((Triangle*)e)->target = nullptr;
-				}
+			for (EventListener* l : EntityDeleteListener::listeners) {
+				((EntityDeleteListener*)l)->onEntityDelete(d);
 			}
 			if (d->type() == Entities::CelestialBody) {
 				for (size_t i = 0; i < stars.size(); i++) {

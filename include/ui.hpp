@@ -1,4 +1,5 @@
 #pragma once
+#include "globals.hpp"
 
 #include <SFML/Graphics.hpp>
 
@@ -11,6 +12,9 @@ struct UIElement {
 
     virtual void update();
     virtual void resized();
+    virtual void pressed(sf::Mouse::Button button);
+
+    bool isMousedOver();
 
     float x = 0.0, y = 0.0, width = 0.0, height = 0.0,
     padding = 5.0,
@@ -18,9 +22,18 @@ struct UIElement {
     widestAdjustAt = 200.0, narrowestAdjustAt = 800.0,
     mulHeightMin = 0.15, mulHeightMax = 0.3,
     tallestAdjustAt = 200.0, shortestAdjustAt = 800.0;
+    bool active = true;
 
     sf::RectangleShape body;
 };
+
+/* struct Button : UIElement {
+    Button();
+
+    void update() override;
+
+    std::string text;
+}; */
 
 struct MiscInfoUI : UIElement {
     MiscInfoUI();
@@ -38,5 +51,23 @@ struct ChatUI : UIElement {
 
     sf::Text text;
 };
+
+/* namespace MenuStates {
+
+constexpr uint8_t Main = 0,
+	ConnectMenu = 1,
+	SettingsMenu = 2;
+};
+
+struct MenuUI : UIelement {
+    MenuUI();
+
+    void update() override;
+    void resized() override;
+
+    Button buttons[4];
+
+    uint8_t state = MenuStates::Main;
+}; */
 
 }

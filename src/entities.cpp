@@ -295,6 +295,12 @@ void Entity::simReset() {
 	radius = resRadius;
 }
 
+void Entity::onEntityDelete(Entity* d) {
+	if (simRelBody == d) {
+		simRelBody = nullptr;
+	}
+}
+
 Quad& Quad::getChild(uint8_t at) {
 	if (children[at] == 0) {
 		if (quadsConstructed == quadsAllocated) [[unlikely]] {
@@ -690,6 +696,13 @@ void Triangle::draw() {
 	g_camera.bindWorld();
 }
 
+void Triangle::onEntityDelete(Entity* d) {
+	Entity::onEntityDelete(d);
+	if (target == d) {
+		target = nullptr;
+	}
+}
+
 uint8_t Triangle::type() {
 	return Entities::Triangle;
 }
@@ -948,6 +961,16 @@ void Projectile::draw() {
 			window->draw(*warning);
 		}
 		g_camera.bindWorld();
+	}
+}
+
+void Projectile::onEntityDelete(Entity* d) {
+	Entity::onEntityDelete(d);
+	if (owner == d) {
+		owner = nullptr;
+	}
+	if (target == d) {
+		target = d->type() == Entities::Projectile && ((Projectile*)d)->owner != owner ? ((Projectile*)d)->owner : nullptr;
 	}
 }
 

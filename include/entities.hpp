@@ -1,4 +1,5 @@
 #pragma once
+#include "events.hpp"
 #include "math.hpp"
 
 #include <limits>
@@ -10,7 +11,6 @@
 #include <SFML/Network.hpp>
 
 namespace obf {
-
 
 struct Player;
 
@@ -45,7 +45,7 @@ struct Point {
 
 bool operator ==(movement& mov1, movement& mov2);
 
-struct Entity {
+struct Entity : EntityDeleteListener {
 	Entity();
 	virtual ~Entity() noexcept;
 
@@ -67,6 +67,8 @@ struct Entity {
 
 	virtual void simSetup();
 	virtual void simReset();
+
+	void onEntityDelete(Entity* d) override;
 
 	inline void setPosition(double x, double y) {
 		this->x = x;
@@ -136,6 +138,8 @@ struct Triangle: public Entity {
 	void simSetup() override;
 	void simReset() override;
 
+	void onEntityDelete(Entity* d) override;
+
 	uint8_t type() override;
 	double accel = 0.015, rotateSlowSpeedMult = 2.0 / 3.0, rotateSpeed = 3.0 / 60.0, boostCooldown = 12.0, boostStrength = 1.5, reload = 8.0, shootPower = 2.0, hyperboostStrength = 0.12, hyperboostTime = 20.0 * 60.0, hyperboostRotateSpeed = rotateSpeed * 0.02, afterburnStrength = 0.3, minAfterburn = hyperboostTime + 8.0 * 60.0,
 	boostProgress = 0.0, reloadProgress = 0.0, hyperboostCharge = 0.0,
@@ -183,6 +187,8 @@ struct Projectile: public Entity {
 	void unloadCreatePacket(sf::Packet& packet) override;
 	void loadSyncPacket(sf::Packet& packet) override;
 	void unloadSyncPacket(sf::Packet& packet) override;
+
+	void onEntityDelete(Entity* d) override;
 
 	uint8_t type() override;
 

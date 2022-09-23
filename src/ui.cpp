@@ -44,6 +44,14 @@ void UIElement::resized() {
     height = g_camera.h * (lerpf * mulHeightMin + (1.f - lerpf) * mulHeightMax);
 }
 
+bool UIElement::isMousedOver() {
+    return mousePos.x > x && mousePos.y > y && mousePos.x < x + width && mousePos.y < y + height;
+}
+
+void UIElement::pressed(sf::Mouse::Button button) {
+    return;
+}
+
 MiscInfoUI::MiscInfoUI() {
     text.setFont(*font);
     text.setCharacterSize(textCharacterSize);
