@@ -16,7 +16,7 @@ struct Player;
 
 struct Entity;
 
-void setupShip(Entity* ship);
+void setupShip(Entity* ship, bool sync);
 
 void generateSystem();
 
@@ -140,7 +140,6 @@ struct Triangle: public Entity {
 	double accel = 0.015, rotateSlowSpeedMult = 2.0 / 3.0, rotateSpeed = 3.0 / 60.0, boostCooldown = 12.0, boostStrength = 1.5, reload = 8.0, shootPower = 2.0, hyperboostStrength = 0.12, hyperboostTime = 20.0 * 60.0, hyperboostRotateSpeed = rotateSpeed * 0.02, afterburnStrength = 0.3, minAfterburn = hyperboostTime + 8.0 * 60.0,
 	boostProgress = 0.0, reloadProgress = 0.0, hyperboostCharge = 0.0,
 	resBoostProgress = 0.0, resReloadProgress = 0.0, resHyperboostCharge = 0.0;
-	int kills = 0;
 
 	bool burning = false, resBurning;
 	std::string name = "unnamed";
@@ -188,7 +187,7 @@ struct Projectile: public Entity {
 	uint8_t type() override;
 
 	Entity* target = nullptr;
-	Triangle* owner = nullptr;
+	Entity* owner = nullptr;
 
 	double accel = 0.04, rotateSpeed = 6.0 / 60.0, maxThrustAngle = 45.0 * degToRad, easeInFactor = 1.0 / 90.0;
 
@@ -207,6 +206,7 @@ struct Player {
 	std::string username = "unnamed", ip = "";
 	double lastAck = 0.0, lastPingSent = 0.0, lastSynced = 0.0, lastFullsynced = 0.0, ping = 0.0,
 	viewW = 500.0, viewH = 500.0;
+	int kills = 0;
 	movement controls;
 	unsigned short port = 0;
 };

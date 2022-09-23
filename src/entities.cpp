@@ -22,13 +22,21 @@ bool operator ==(movement& mov1, movement& mov2) {
 	return *(unsigned char*) &mov1 == *(unsigned char*) &mov2;
 }
 
-void setupShip(Entity* ship) {
+void setupShip(Entity* ship, bool sync) {
 	CelestialBody* planet = planets[(int)rand_f(0, planets.size())];
 	double spawnDst = planet->radius + rand_f(2000.f, 6000.f);
 	float spawnAngle = rand_f(-PI, PI);
 	ship->setPosition(planet->x + spawnDst * std::cos(spawnAngle), planet->y + spawnDst * std::sin(spawnAngle));
 	double vel = sqrt(G * planet->mass / spawnDst);
 	ship->setVelocity(planet->velX + vel * std::cos(spawnAngle + PI / 2.0), planet->velY + vel * std::sin(spawnAngle + PI / 2.0));
+	if (sync) {
+		sf::Packet packet;
+		packet << Packets::SyncEntity;
+		ship->loadSyncPacket(packet);
+		for (Player* p : playerGroup) {
+			p->tcpSocket.send(packet);
+		}
+	}
 }
 
 int generateOrbitingPlanets(int amount, double x, double y, double velx, double vely, double parentmass, double minradius, double maxradius, double spawnDst) {
@@ -760,7 +768,7 @@ void CelestialBody::collide(Entity* with, bool specialOnly) {
 				std::string sendMessage;
 				sendMessage.append("<").append(p->name()).append("> has been incinerated.");
 				relayMessage(sendMessage);
-				setupShip(p->entity);
+				setupShip(p->entity, true);
 				found = true;
 				break;
 			}
@@ -853,18 +861,17 @@ void Projectile::update2() {
 }
 
 void Projectile::loadCreatePacket(sf::Packet& packet) {
-	packet << type() << id << x << y << velX << velY << rotation << (target == nullptr ? std::numeric_limits<uint32_t>::max() : target->id);
+	packet << type() << id << x << y << velX << velY << rotation << (target == nullptr ? std::numeric_limits<uint32_t>::max() : target->id) << (owner == nullptr ? std::numeric_limits<uint32_t>::max() : owner->id);
 	if (debug) {
 		printf("Sent id %d: %g %g %g %g\n", id, x, y, velX, velY);
 	}
 }
 void Projectile::unloadCreatePacket(sf::Packet& packet) {
 	packet >> id >> x >> y >> velX >> velY >> rotation;
-	uint32_t entityID;
-	packet >> entityID;
-	if (entityID != std::numeric_limits<uint32_t>::max()) {
-		target = idLookup(entityID);
-	}
+	uint32_t entityID, ownerID;
+	packet >> entityID >> ownerID;
+	target = entityID == std::numeric_limits<uint32_t>::max() ? nullptr : idLookup(entityID);
+	owner = ownerID == std::numeric_limits<uint32_t>::max() ? nullptr : idLookup(ownerID);
 	if (debug) {
 		printf(", id %d: %g %g %g %g\n", id, x, y, velX, velY);
 	}
@@ -881,22 +888,20 @@ void Projectile::collide(Entity* with, bool specialOnly) {
 		printf("bullet collision: %u-%u ", id, with->id);
 	}
 	if (with->type() == Entities::Triangle) {
-		if (owner) {
-			owner->kills++;
+		if (owner && owner->player) {
+			owner->player->kills++;
 		}
 		if (debug) {
 			printf("of type triangle\n");
 		}
 		if (headless) {
 			if (with->player) {
-				sf::Packet chatPacket;
 				std::string sendMessage;
 				sendMessage.append("<").append(with->player->name()).append("> has been killed.");
 				relayMessage(sendMessage);
-				setupShip((Triangle*)with);
-			}
-			if (owner) {
-				owner->kills++;
+				setupShip((Triangle*)with, true);
+			} else {
+				with->active = false;
 			}
 		}
 		if (headless || simulating) {

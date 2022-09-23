@@ -206,7 +206,7 @@ int main(int argc, char** argv) {
 							}
 						}
 						for (Player* p : playerGroup) {
-							setupShip(p->entity);
+							setupShip(p->entity, true);
 						}
 						std::string sendMessage = "ANNOUNCEMENT: The system has been regenerated.";
 						relayMessage(sendMessage);
@@ -241,7 +241,7 @@ int main(int argc, char** argv) {
 				playerGroup.push_back(sparePlayer);
 
 				sparePlayer->entity = new Triangle();
-				setupShip(sparePlayer->entity);
+				setupShip(sparePlayer->entity, false);
 				sparePlayer->entity->player = sparePlayer;
 				sparePlayer->entity->syncCreation();
 				sf::Packet entityAssign;

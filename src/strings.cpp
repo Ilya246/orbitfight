@@ -314,7 +314,7 @@ void parseCommand (const string& command) {
 			}
 		}
 		for (Player* p : playerGroup) {
-			setupShip(p->entity);
+			setupShip(p->entity, true);
 		}
 		std::string sendMessage = "ANNOUNCEMENT: The system has been regenerated.";
 		relayMessage(sendMessage);
