@@ -222,7 +222,6 @@ void Entity::update1() {
 	y += dVelY;
 	rotation += rotateVel * delta;
 	collided.clear();
-	attracted.clear();
 }
 void Entity::update2() {
 	quadtree[0].collideAttract(this, true, true);

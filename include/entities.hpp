@@ -56,7 +56,7 @@ struct Entity {
 
 	virtual void collide(Entity* with, bool collideOther);
 
-	std::vector<uint32_t> attracted, collided;
+	std::vector<uint32_t> collided;
 
 	void syncCreation();
 
