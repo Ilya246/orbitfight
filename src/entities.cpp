@@ -96,14 +96,24 @@ void generateSystem() {
 }
 
 void fullClear() {
-	fullclearing = true;
-	for (Entity* e : updateGroup) {
-		delete e;
+	if (headless) {
+		sf::Packet clearPacket;
+		clearPacket << Packets::FullClear;
+		for (Player* p : playerGroup) {
+			p->tcpSocket.send(clearPacket);
+		}
 	}
-	updateGroup.clear();
+	std::vector<Entity*> triangles;
+	for (Entity* e : updateGroup) {
+		if (e->type() != Entities::Triangle) {
+			delete e;
+		} else {
+			triangles.push_back(e);
+		}
+	}
+	updateGroup = triangles;
 	planets.clear();
 	stars.clear();
-	fullclearing = false;
 }
 
 void updateEntities2(size_t from, size_t to) {
@@ -184,65 +194,6 @@ Entity::Entity() {
 Entity::~Entity() noexcept {
 	if (debug) {
 		printf("Deleting entity id %u\n", this->id);
-	}
-	if (!fullclearing) {
-		for (size_t i = 0; i < updateGroup.size(); i++) {
-			Entity* e = updateGroup[i];
-			if (e == this) [[unlikely]] {
-				updateGroup[i] = updateGroup[updateGroup.size() - 1];
-				updateGroup.pop_back();
-				i--;
-			} else {
-				if (e->simRelBody == this) [[unlikely]] {
-					e->simRelBody = nullptr;
-				}
-				if (e->type() == Entities::Projectile) {
-					if (((Projectile*)e)->owner == this) [[unlikely]] {
-						((Projectile*)e)->owner = nullptr;
-					}
-					if (((Projectile*)e)->target == this) [[unlikely]] {
-						((Projectile*)e)->target = nullptr;
-					}
-				}
-				if (e->type() == Entities::Triangle && ((Triangle*)e)->target == this) {
-					((Triangle*)e)->target = nullptr;
-				}
-			}
-		}
-	}
-	if (!fullclearing) {
-		for (size_t i = 0; i < stars.size(); i++) {
-			Entity* e = stars[i];
-			if (e == this) [[unlikely]] {
-				stars[i] = stars[stars.size() - 1];
-				stars.pop_back();
-				break;
-			}
-		}
-	}
-	if (headless) {
-		for (Player* p : playerGroup) {
-			sf::Packet despawnPacket;
-			despawnPacket << Packets::DeleteEntity << this->id;
-			p->tcpSocket.send(despawnPacket);
-		}
-		if (!fullclearing) {
-			for (size_t i = 0; i < planets.size(); i++) {
-				Entity* e = planets[i];
-				if (e == this) [[unlikely]] {
-					planets[i] = planets[planets.size() - 1];
-					planets.pop_back();
-					break;
-				}
-			}
-		}
-	} else {
-		if (this == lastTrajectoryRef) {
-			lastTrajectoryRef = nullptr;
-		}
-		if (this == trajectoryRef) {
-			trajectoryRef = nullptr;
-		}
 	}
 }
 

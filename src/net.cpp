@@ -96,7 +96,10 @@ void clientParsePacket(sf::Packet& packet) {
     case Packets::DeleteEntity: {
         uint32_t entityID;
         packet >> entityID;
-        delete idLookup(entityID);
+        Entity* e = idLookup(entityID);
+        if (e) {
+            e->active = false;
+        }
         break;
     }
     case Packets::ColorEntity: {
@@ -138,6 +141,9 @@ void clientParsePacket(sf::Packet& packet) {
             printf("Server has referred to invalid entity %u in packet of type %u.\n", entityID, type);
         }
         break;
+    }
+    case Packets::FullClear: {
+        fullClear();
     }
     default:
         printf("Unknown packet %d received\n", type);

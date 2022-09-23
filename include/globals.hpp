@@ -79,7 +79,7 @@ inline bool headless = false, autoConnect = false, debug = false, autorestart = 
 inputWaiting = false, chatting = false, lockControls = false,
 enableControlLock = false,
 simulating = false,
-autorestartRegenned = true, fullclearing = false,
+autorestartRegenned = true,
 printPlanetMerges = true;
 
 inline obf::Quad* quadtree = (Quad*)malloc((size_t)(sizeof(Quad) * quadsAllocated));

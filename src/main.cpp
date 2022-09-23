@@ -198,11 +198,7 @@ int main(int argc, char** argv) {
 				} else {
 					if (lastAutorestart + autorestartSpacing < globalTime) {
 						delta = 0.0;
-						for (Entity* e :updateGroup) {
-							if (e->type() != Entities::Triangle) {
-								delete e;
-							}
-						}
+						fullClear();
 						generateSystem();
 						for (Entity* e : updateGroup) {
 							if (e->type() != Entities::Triangle) {
@@ -516,12 +512,67 @@ int main(int argc, char** argv) {
 			}
 			lastSweep = globalTime;
 		}
+		std::vector<Entity*> deleted;
 		for (size_t i = 0; i < updateGroup.size(); i++) {
 			if (!updateGroup[i]->active) [[unlikely]] {
-				delete updateGroup[i];
+				deleted.push_back(updateGroup[i]);
+				updateGroup[i] = updateGroup[updateGroup.size() - 1];
+				updateGroup.pop_back();
 				i--;
 			}
 		}
+		for (Entity* d : deleted) {
+			for (Entity* e : updateGroup) {
+				if (e->simRelBody == d) {
+					e->simRelBody = nullptr;
+				}
+				if (e->type() == Entities::Projectile) {
+					if (((Projectile*)e)->owner == d) [[unlikely]] {
+						((Projectile*)e)->owner = nullptr;
+					}
+					if (((Projectile*)e)->target == d) [[unlikely]] {
+						((Projectile*)e)->target = d->type() == Entities::Projectile && ((Projectile*)e)->owner != ((Projectile*)d)->owner ? ((Projectile*)d)->owner : nullptr;
+					}
+				} else if (e->type() == Entities::Triangle && ((Triangle*)e)->target == d) {
+					((Triangle*)e)->target = nullptr;
+				}
+			}
+			if (d->type() == Entities::CelestialBody) {
+				for (size_t i = 0; i < stars.size(); i++) {
+					Entity* e = stars[i];
+					if (e == d) [[unlikely]] {
+						stars[i] = stars[stars.size() - 1];
+						stars.pop_back();
+						break;
+					}
+				}
+				if (headless) {
+					for (size_t i = 0; i < planets.size(); i++) {
+						Entity* e = planets[i];
+						if (e == d) [[unlikely]] {
+							planets[i] = planets[planets.size() - 1];
+							planets.pop_back();
+							break;
+						}
+					}
+				}
+			}
+			if (headless) {
+				for (Player* p : playerGroup) {
+					sf::Packet despawnPacket;
+					despawnPacket << Packets::DeleteEntity << d->id;
+					p->tcpSocket.send(despawnPacket);
+				}
+			}
+			if (d == lastTrajectoryRef) {
+				lastTrajectoryRef = nullptr;
+			}
+			if (d == trajectoryRef) {
+				trajectoryRef = nullptr;
+			}
+			delete d;
+		}
+		deleted.clear();
 		if (!headless && globalTime - lastPredict > predictSpacing && trajectoryRef) [[unlikely]] {
 			double resdelta = delta;
 			double resTime = globalTime;
