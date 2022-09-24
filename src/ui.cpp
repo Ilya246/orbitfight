@@ -14,8 +14,8 @@ using namespace obf;
 
 namespace obf {
 
-int wrapText(std::string& string, sf::Text& text, float maxWidth) {
-    int newlines = 0;
+size_t wrapText(std::string& string, sf::Text& text, float maxWidth) {
+    size_t newlines = 0;
     text.setString(string);
     for (size_t i = 0; i < string.size(); i++) {
         if (text.findCharacterPos(i).x - text.findCharacterPos(0).x > maxWidth) {
@@ -110,25 +110,7 @@ ChatUI::ChatUI() {
 }
 
 void ChatUI::update() {
-    string = "";
-    int displayMessageCount = std::min((int)((height - textbox.padding * 2.f - textbox.height) / (textCharacterSize + 3)), storedMessageCount);
-    messageCursorPos = std::max(0, std::min(messageCursorPos, storedMessageCount - displayMessageCount));
-    for (int i = messageCursorPos; i < messageCursorPos + displayMessageCount; i++) {
-        string.insert(0, storedMessages[i] + "\n");
-    }
-    int overshoot = wrapText(string, text, width - padding * 2.f);
-    for (int i = 0; i < overshoot; i++) {
-        for (size_t c = 0; c < string.size(); c++) {
-            if (string[c] == '\n' && c + 1 < string.size()) {
-                string = string.substr(c + 1, string.size());
-                break;
-            }
-        }
-    }
-    text.setString(string);
-    text.setPosition(padding, g_camera.h - (textCharacterSize + 3) * (displayMessageCount + 1) - padding - textbox.padding * 2.f);
-    UIElement::update();
-    window->draw(text);
+    TextElement::update();
     textbox.update();
 }
 
@@ -142,6 +124,23 @@ void ChatUI::resized() {
     textbox.position(0, g_camera.h - textbox.height);
     textbox.width = width;
     textbox.body.setSize(sf::Vector2f(textbox.width, textbox.height));
+    string = "";
+    size_t displayMessageCount = std::min((size_t)((height - textbox.padding * 2.f - textbox.height) / (textCharacterSize + 3)), storedMessageCount);
+    messageCursorPos = std::max((size_t)0, std::min(messageCursorPos, storedMessageCount - displayMessageCount));
+    for (size_t i = messageCursorPos; i < messageCursorPos + displayMessageCount; i++) {
+        string.insert(0, storedMessages[i] + "\n");
+    }
+    size_t overshoot = wrapText(string, text, width - padding * 2.f);
+    for (size_t i = 0; i < overshoot; i++) {
+        for (size_t c = 0; c < string.size(); c++) {
+            if (string[c] == '\n' && c + 1 < string.size()) {
+                string = string.substr(c + 1, string.size());
+                break;
+            }
+        }
+    }
+    text.setString(string);
+    text.setPosition(padding, g_camera.h - (textCharacterSize + 3) * (displayMessageCount + 1) - padding - textbox.padding * 2.f);
 }
 
 void ChatUI::onKeyPress(sf::Keyboard::Key k) {
@@ -170,6 +169,19 @@ void ChatUI::onKeyPress(sf::Keyboard::Key k) {
         textbox.fullString = "";
         textbox.stringChanged();
     }
+}
+
+void ChatUI::onNewMessage(std::string s) {
+    for (size_t i = storedMessageCount - 1; i > 0; i--) {
+		storedMessages[i] = storedMessages[i - 1];
+	}
+	storedMessages[0] = s;
+    resized();
+}
+
+void ChatUI::onMouseScroll(float d) {
+    messageCursorPos = d > 0.f ? messageCursorPos + 1 : (messageCursorPos == 0 ? 0 : messageCursorPos - 1);
+    resized();
 }
 
 void TextElement::update() {

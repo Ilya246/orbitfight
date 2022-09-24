@@ -6,7 +6,7 @@
 
 namespace obf {
 
-int wrapText(std::string& string, sf::Text& text, double maxWidth);
+size_t wrapText(std::string& string, sf::Text& text, double maxWidth);
 
 struct UIElement {
     UIElement();
@@ -64,15 +64,20 @@ struct MiscInfoUI : UIElement {
     sf::Text text;
 };
 
-struct ChatUI : TextElement, KeyPressListener {
+struct ChatUI : TextElement, KeyPressListener, MessageDisplayedListener, MouseScrolledListener {
     ChatUI();
 
     void update() override;
     void resized() override;
 
     void onKeyPress(sf::Keyboard::Key k) override;
+    void onNewMessage(std::string s) override;
+    void onMouseScroll(float d) override;
 
     TextBoxElement textbox;
+
+    size_t storedMessageCount = 40, messageCursorPos = 0;
+    std::string storedMessages[40];
 };
 
 namespace MenuStates {

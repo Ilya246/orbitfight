@@ -60,13 +60,11 @@ inline double delta = 1.0 / 60.0,
 	predictingFor = 0.0,
 	drawShiftX = 0.0, drawShiftY = 0.0,
 	ownX = 0.0, ownY = 0.0;
-inline const int storedMessageCount = 40;
 inline int textCharacterSize = 18,
 nextID = 0,
 predictSteps = (int)(30.0 / predictDelta * 60.0),
 gen_baseMinPlanets = 5,
 gen_baseMaxPlanets = 10,
-messageCursorPos = 0,
 quadsConstructed = 100, minQuadtreeSize = 80,
 quadsAllocated = (int)(quadsConstructed * extraQuadAllocation),
 updateThreadCount = 1;
@@ -142,8 +140,6 @@ inline std::map<std::string, Var> vars {
 	{"gen_moonFactor", {Double, &gen_moonFactor}},
 	{"gen_starMass", {Double, &gen_starMass}},
 	{"gen_starRadius", {Double, &gen_starRadius}}};
-
-inline sf::String storedMessages[storedMessageCount];
 
 inline std::vector<CelestialBody*> stars;
 inline Entity* trajectoryRef = nullptr;

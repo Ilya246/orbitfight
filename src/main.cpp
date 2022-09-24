@@ -259,10 +259,11 @@ int main(int argc, char** argv) {
 					break;
 				}
 				case sf::Event::MouseWheelScrolled: {
-					double factor = 1.0 + 0.1 * ((event.mouseWheelScroll.delta < 0) * 2 - 1);
-					if (activeTextbox) {
-						messageCursorPos = factor < 1.0 ? messageCursorPos + 1 : max(0, messageCursorPos - 1);
-					} else {
+					for (MouseScrolledListener* l : MouseScrolledListener::listeners) {
+						l->onMouseScroll(event.mouseWheelScroll.delta);
+					}
+					if (!activeTextbox) {
+						double factor = 1.0 + 0.1 * ((event.mouseWheelScroll.delta < 0) * 2 - 1);
 						g_camera.zoom(factor);
 						if (debug) [[unlikely]] {
 							printf("Resized view, new size: %g * %g\n", (double)g_camera.w * g_camera.scale, (double)g_camera.h * g_camera.scale);

@@ -82,4 +82,40 @@ struct MousePressListener {
     inline static std::vector<MousePressListener*> listeners;
 };
 
+struct MessageDisplayedListener {
+    inline MessageDisplayedListener() {
+        listeners.push_back(this);
+    }
+    inline ~MessageDisplayedListener() {
+        for (size_t i = 0; i < listeners.size(); i++) {
+            if (listeners[i] == this) {
+                listeners[i] = listeners[listeners.size() - 1];
+                listeners.pop_back();
+                break;
+            }
+        }
+    }
+    virtual void onNewMessage(std::string m) = 0;
+
+    inline static std::vector<MessageDisplayedListener*> listeners;
+};
+
+struct MouseScrolledListener {
+    inline MouseScrolledListener() {
+        listeners.push_back(this);
+    }
+    inline ~MouseScrolledListener() {
+        for (size_t i = 0; i < listeners.size(); i++) {
+            if (listeners[i] == this) {
+                listeners[i] = listeners[listeners.size() - 1];
+                listeners.pop_back();
+                break;
+            }
+        }
+    }
+    virtual void onMouseScroll(float d) = 0;
+
+    inline static std::vector<MouseScrolledListener*> listeners;
+};
+
 }
