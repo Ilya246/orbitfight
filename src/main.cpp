@@ -259,8 +259,8 @@ int main(int argc, char** argv) {
 					break;
 				}
 				case sf::Event::MouseWheelScrolled: {
-					for (MouseScrolledListener* l : MouseScrolledListener::listeners) {
-						l->onMouseScroll(event.mouseWheelScroll.delta);
+					for (size_t i = 0; i < MouseScrolledListener::listeners.size(); i++) {
+						MouseScrolledListener::listeners[i]->onMouseScroll(event.mouseWheelScroll.delta);
 					}
 					if (!activeTextbox) {
 						double factor = 1.0 + 0.1 * ((event.mouseWheelScroll.delta < 0) * 2 - 1);
@@ -277,13 +277,13 @@ int main(int argc, char** argv) {
 					break;
 				}
 				case sf::Event::MouseButtonPressed: {
-					for (MousePressListener* l : MousePressListener::listeners) {
-						l->onMousePress(event.mouseButton.button);
+					for (size_t i = 0; i < MousePressListener::listeners.size(); i++) {
+						MousePressListener::listeners[i]->onMousePress(event.mouseButton.button);
 					}
 				}
 				case sf::Event::KeyPressed: {
-					for (KeyPressListener* l : KeyPressListener::listeners) {
-						l->onKeyPress(event.key.code);
+					for (size_t i = 0; i < KeyPressListener::listeners.size(); i++) {
+						KeyPressListener::listeners[i]->onKeyPress(event.key.code);
 					}
 					handledTextBoxSelect = false;
 					if (!activeTextbox){
@@ -345,8 +345,8 @@ int main(int argc, char** argv) {
 					break;
 				}
 				case sf::Event::TextEntered: {
-					for (TextEnteredListener* l : TextEnteredListener::listeners) {
-						l->onTextEntered(event.text.unicode);
+					for (size_t i = 0; i < TextEnteredListener::listeners.size(); i++) {
+						TextEnteredListener::listeners[i]->onTextEntered(event.text.unicode);
 					}
 					break;
 				}
@@ -504,8 +504,8 @@ int main(int argc, char** argv) {
 			}
 		}
 		for (Entity* d : deleted) {
-			for (EntityDeleteListener* l : EntityDeleteListener::listeners) {
-				l->onEntityDelete(d);
+			for (size_t i = 0; i < EntityDeleteListener::listeners.size(); i++) {
+				EntityDeleteListener::listeners[i]->onEntityDelete(d);
 			}
 			if (d->type() == Entities::CelestialBody) {
 				for (size_t i = 0; i < stars.size(); i++) {
