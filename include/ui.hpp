@@ -52,6 +52,8 @@ struct TextBoxElement : TextElement, KeyPressListener, TextEnteredListener {
 
     std::string fullString;
     size_t viewPos = 0, cursorPos = 0, maxChars = std::numeric_limits<size_t>::max();
+
+    sf::RectangleShape cursor;
 };
 
 struct MiscInfoUI : UIElement {

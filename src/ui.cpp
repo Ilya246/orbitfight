@@ -203,10 +203,9 @@ void TextElement::position(float x, float y) {
 void TextBoxElement::update() {
     TextElement::update();
     if (activeTextbox == this && std::sin(globalTime * TAU * 1.5) > 0.0) {
-        sf::RectangleShape rect(sf::Vector2f(1.f, textCharacterSize));
-        sf::FloatRect bounds = text.getGlobalBounds();
-        rect.setPosition(text.findCharacterPos(cursorPos - viewPos).x, bounds.top);
-        window->draw(rect);
+        cursor.setSize(sf::Vector2f(1.f, textCharacterSize));
+        cursor.setPosition(text.findCharacterPos(cursorPos - viewPos).x, y + padding);
+        window->draw(cursor);
     }
 }
 
