@@ -20,7 +20,7 @@ void setupShip(Entity* ship, bool sync);
 
 void generateSystem();
 
-void fullClear();
+void fullClear(bool clearTriangles);
 
 void updateEntities();
 

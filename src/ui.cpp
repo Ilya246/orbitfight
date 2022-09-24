@@ -386,10 +386,7 @@ void MenuUI::connect() {
     }
     delete serverSocket;
     serverSocket = newSocket;
-    fullClear();
-    delete ownEntity;
-    ownEntity = nullptr;
-    updateGroup.clear();
+    fullClear(true);
     onServerConnection();
     if (activeTextbox == buttons[1]) {
         activeTextbox = nullptr;
@@ -414,9 +411,7 @@ void MenuUI::onMousePress(sf::Mouse::Button b) {
     switch (state) {
         case MenuStates::Main: {
             if (buttons[0]->isMousedOver()) {
-                fullClear();
-                delete ownEntity;
-                updateGroup.clear();
+                fullClear(true);
                 generateSystem();
                 ownEntity = new Triangle();
                 ((Triangle*)ownEntity)->name = name;
@@ -430,10 +425,7 @@ void MenuUI::onMousePress(sf::Mouse::Button b) {
             } else if (buttons[2]->isMousedOver()) {
                 printPreferred("Not implemented yet");
             } else if (buttons[3]->isMousedOver()) {
-                fullClear();
-                delete ownEntity;
-                ownEntity = nullptr;
-                updateGroup.clear();
+                fullClear(true);
                 delete serverSocket;
                 serverSocket = nullptr;
             }

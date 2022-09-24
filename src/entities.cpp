@@ -103,7 +103,7 @@ void generateSystem() {
 	printf("Generated system: %u stars, %u planets, %u moons\n", starsN, planets, generateOrbitingPlanets(planets, 0.0, 0.0, 0.0, 0.0, starsMass, gen_minPlanetRadius, gen_maxPlanetRadius, spawnDst));
 }
 
-void fullClear() {
+void fullClear(bool clearTriangles) {
 	if (isServer) {
 		sf::Packet clearPacket;
 		clearPacket << Packets::FullClear;
@@ -113,13 +113,18 @@ void fullClear() {
 	}
 	std::vector<Entity*> triangles;
 	for (Entity* e : updateGroup) {
-		if (e->type() != Entities::Triangle) {
+		if (clearTriangles || e->type() != Entities::Triangle) {
 			delete e;
 		} else {
 			triangles.push_back(e);
 		}
 	}
-	updateGroup = triangles;
+	if (clearTriangles) {
+		ownEntity = nullptr;
+		updateGroup.clear();
+	} else {
+		updateGroup = triangles;
+	}
 	planets.clear();
 	stars.clear();
 	trajectoryRef = nullptr;

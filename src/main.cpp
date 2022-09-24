@@ -162,14 +162,14 @@ int main(int argc, char** argv) {
 					lastAutorestartNotif = -autorestartNotifSpacing;
 					lastAutorestart = globalTime;
 					if (!autorestartRegenned) {
-						fullClear();
+						fullClear(false);
 						generateSystem();
 					}
 					autorestartRegenned = true;
 				} else {
 					if (lastAutorestart + autorestartSpacing < globalTime) {
 						delta = 0.0;
-						fullClear();
+						fullClear(false);
 						generateSystem();
 						for (Entity* e : updateGroup) {
 							if (e->type() != Entities::Triangle) {
@@ -446,12 +446,9 @@ int main(int argc, char** argv) {
 						clientParsePacket(packet);
 					} else if (status == sf::Socket::Disconnected) {
 						printPreferred("Connection to server closed.\n");
-						fullClear();
+						fullClear(true);
 						delete serverSocket;
 						serverSocket = nullptr;
-						delete ownEntity;
-						ownEntity = nullptr;
-						updateGroup.clear();
 						break;
 					}
 				}

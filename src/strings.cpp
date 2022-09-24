@@ -306,7 +306,7 @@ void parseCommand (const string& command) {
 			return;
 		}
 		delta = 0.0;
-		fullClear();
+		fullClear(false);
 		generateSystem();
 		for (Entity* e : updateGroup) {
 			if (e->type() != Entities::Triangle) {

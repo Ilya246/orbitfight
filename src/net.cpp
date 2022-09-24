@@ -158,7 +158,7 @@ void clientParsePacket(sf::Packet& packet) {
         break;
     }
     case Packets::FullClear: {
-        fullClear();
+        fullClear(false);
     }
     default:
         printf("Unknown packet %d received\n", type);
