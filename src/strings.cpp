@@ -218,7 +218,7 @@ void parseCommand (const string& command) {
 	vector<string> args;
 	splitString(command, args, ' ');
 	if (args.size() == 0) {
-		printf("Invalid command.\n");
+		printPreferred("Invalid command.");
 		return;
 	}
 	if (args[0] == "help") {
@@ -226,41 +226,41 @@ void parseCommand (const string& command) {
 		"config <line> - parse argument like a config file line\n"
 		"lookup <id> - print info about entity ID in argument\n"
 		"count - print amount of entities in existence\n"
-		"showfps - print current framerate\n");
-		if (headless) {
-			printPreferred("reset - regenerate the star system\n"
-			"players - list currently online players\n"
-			"say <message> - say argument into ingame chat\n");
+		"showfps - print current framerate\n"
+		"reset - regenerate the star system");
+		if (isServer) {
+			printPreferred("players - list currently online players\n"
+			"say <message> - say argument into ingame chat");
 		}
 		return;
 	} else if (args[0] == "config") {
 		if (args.size() < 2) {
-			printPreferred("Invalid argument.\n");
+			printPreferred("Invalid argument.");
 			return;
 		}
 		int retcode = parseToml(string(args[1]));
 		switch (retcode) {
 			case 1:
-				printPreferred("Invalid key.\n");
+				printPreferred("Invalid key.");
 				break;
 			case 3:
-				printPreferred("Invalid value. Must be integer.\n");
+				printPreferred("Invalid value. Must be integer.");
 				break;
 			case 4:
-				printPreferred("Invalid value. Must be a real number.\n");
+				printPreferred("Invalid value. Must be a real number.");
 				break;
 			case 5:
-				printPreferred("Invalid value. Must be true|false.\n");
+				printPreferred("Invalid value. Must be true|false.");
 				break;
 			case 6:
-				printPreferred("Invalid type specified for variable.\n");
+				printPreferred("Invalid type specified for variable.");
 				break;
 			default:
 				break;
 		}
 		return;
 	} else if (args[0] == "say") {
-		if (!headless) {
+		if (!isServer) {
 			displayMessage("This command only works if you're the server.");
 			return;
 		}
@@ -279,52 +279,58 @@ void parseCommand (const string& command) {
 		return;
 	} else if (args[0] == "lookup") {
 		if (args.size() < 2) {
-			printPreferred("Invalid argument.\n");
+			printPreferred("Invalid argument.");
 			return;
 		}
 		string id_s = string(args[1]);
 		if (!regex_match(id_s, int_regex)) {
-			printPreferred("Invalid ID.\n");
+			printPreferred("Invalid ID.");
 			return;
 		}
 		size_t id = stoi(id_s);
 		for (Entity* e : updateGroup) {
 			if (e->id == id) {
-				sprintf(out, "Mass %g, radius %g, relative to star 0: x %g, y %g, vX %g, vY %g\n", e->mass, e->radius, e->x - stars[0]->x, e->y - stars[0]->y, e->velX - stars[0]->velX, e->velY - stars[0]->velY);
+				sprintf(out, "Mass %g, radius %g, relative to star 0: x %g, y %g, vX %g, vY %g", e->mass, e->radius, e->x - stars[0]->x, e->y - stars[0]->y, e->velX - stars[0]->velX, e->velY - stars[0]->velY);
 				printPreferred(string(out));
 				return;
 			}
 		}
-		printPreferred("No entity ID "+to_string(id)+" found.\n");
+		printPreferred("No entity ID " + to_string(id) + " found.");
 		return;
 	} else if (args[0] == "count") {
-		printPreferred(to_string(updateGroup.size())+"\n");
+		printPreferred(to_string(updateGroup.size()));
 		return;
 	} else if (args[0] == "reset") {
-		if (!headless) {
+		if (!authority) {
 			displayMessage("This command only works if you're the server.");
 			return;
 		}
 		delta = 0.0;
-		fullClear(false);
+		fullClear(!isServer);
 		generateSystem();
-		for (Entity* e : updateGroup) {
-			if (e->type() != Entities::Triangle) {
-				e->syncCreation();
+		if (isServer) {
+			for (Entity* e : updateGroup) {
+				if (e->type() != Entities::Triangle) {
+					e->syncCreation();
+				}
 			}
-		}
-		for (Player* p : playerGroup) {
-			setupShip(p->entity, true);
-		}
-		std::string sendMessage = "ANNOUNCEMENT: The system has been regenerated.";
-		relayMessage(sendMessage);
-		if (autorestart) {
-			lastAutorestartNotif = -autorestartNotifSpacing;
-			lastAutorestart = globalTime;
+			for (Player* p : playerGroup) {
+				setupShip(p->entity, true);
+			}
+			std::string sendMessage = "ANNOUNCEMENT: The system has been regenerated.";
+			relayMessage(sendMessage);
+			if (autorestart) {
+				lastAutorestartNotif = -autorestartNotifSpacing;
+				lastAutorestart = globalTime;
+			}
+		} else {
+			ownEntity = new Triangle();
+			((Triangle*)ownEntity)->name = name;
+			setupShip(ownEntity, false);
 		}
 		return;
 	} else if (args[0] == "players") {
-		if (!headless) {
+		if (!isServer) {
 			displayMessage("This command only works if you're the server.");
 			return;
 		}
@@ -334,10 +340,10 @@ void parseCommand (const string& command) {
 		}
 		return;
 	} else if (args[0] == "showfps") {
-		printPreferred(to_string(framerate)+"\n");
+		printPreferred(to_string(framerate));
 		return;
 	}
-	printPreferred("Unknown command.\n");
+	printPreferred("Unknown command.");
 }
 
 }
