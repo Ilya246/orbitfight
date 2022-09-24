@@ -183,7 +183,7 @@ void serverParsePacket(sf::Packet& packet, Player* player) {
     case Packets::Nickname: {
         packet >> player->username;
         stripSpecialChars(player->username);
-        if (player->username.empty() || (int)player->username.size() > usernameLimit) {
+        if (player->username.empty() || player->username.size() > usernameLimit) {
             player->username = "unnamed";
         }
 
@@ -214,7 +214,7 @@ void serverParsePacket(sf::Packet& packet, Player* player) {
     case Packets::Chat: {
         std::string message;
         packet >> message;
-        if ((int)message.size() <= messageLimit && message.size() > 0) {
+        if (message.size() <= messageLimit && message.size() > 0) {
             stripSpecialChars(message);
             sf::Packet chatPacket;
             std::string sendMessage = "";

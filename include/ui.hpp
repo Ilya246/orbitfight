@@ -51,7 +51,7 @@ struct TextBoxElement : TextElement, KeyPressListener, TextEnteredListener {
     void handleMousePress();
 
     std::string fullString;
-    int viewPos = 0, cursorPos = 0;
+    size_t viewPos = 0, cursorPos = 0, maxChars = std::numeric_limits<size_t>::max();
 };
 
 struct MiscInfoUI : UIElement {

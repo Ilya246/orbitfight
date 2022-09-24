@@ -30,13 +30,15 @@ int wrapText(std::string& string, sf::Text& text, float maxWidth) {
     return newlines;
 }
 
-void fitText(std::string& string, sf::Text& text, float maxWidth) {
+size_t fitText(std::string& string, sf::Text& text, float maxWidth) {
     text.setString(string);
     for (size_t i = 0; i < string.size(); i++) {
         if (text.findCharacterPos(i).x - text.findCharacterPos(0).x > maxWidth) {
             text.setString(string.substr(0, i));
+            return string.size() - i;
         }
     }
+    return 0;
 }
 
 UIElement::UIElement() {
@@ -100,6 +102,7 @@ ChatUI::ChatUI() {
     textbox.text.setFont(*font);
     textbox.text.setCharacterSize(textCharacterSize);
     textbox.text.setFillColor(sf::Color::White);
+    textbox.maxChars = messageLimit;
     mulWidthMax = 0.5f;
     mulWidthMin = 0.25f;
     mulHeightMax = 0.5f;
@@ -221,8 +224,15 @@ void TextBoxElement::stringChanged() {
     } else {
         sub = "";
         cursorPos = 0;
+        viewPos = 0;
+        text.setString(sub);
+        return;
     }
-    fitText(sub, text, width - padding * 2.f);
+    size_t chars = fullString.size() - viewPos - fitText(sub, text, width - padding * 2.f);
+    if (cursorPos - viewPos > chars) {
+        viewPos = cursorPos - chars;
+        stringChanged();
+    }
 }
 
 void TextBoxElement::onKeyPress(sf::Keyboard::Key k) {
@@ -238,10 +248,22 @@ void TextBoxElement::onKeyPress(sf::Keyboard::Key k) {
         }
         case sf::Keyboard::BackSpace: {
             if (fullString.size() > 0 && cursorPos > 0) {
-                fullString.erase(cursorPos - 1);
-                cursorPos = std::max(0, cursorPos - 1);
+                fullString.erase(cursorPos - 1, 1);
+                cursorPos = std::max((size_t)0, cursorPos - 1);
+                viewPos = viewPos == 0 ? 0 : viewPos - 1;
                 stringChanged();
             }
+            break;
+        }
+        case sf::Keyboard::Left: {
+            cursorPos = cursorPos == 0 ? 0 : cursorPos - 1;
+            viewPos = std::min(cursorPos, viewPos);
+            stringChanged();
+            break;
+        }
+        case sf::Keyboard::Right: {
+            cursorPos = std::min(cursorPos + 1, fullString.size());
+            stringChanged();
             break;
         }
         default:
@@ -250,7 +272,7 @@ void TextBoxElement::onKeyPress(sf::Keyboard::Key k) {
 }
 
 void TextBoxElement::onTextEntered(uint32_t c) {
-    if (activeTextbox == this && c > 31 && c < 128) {
+    if (activeTextbox == this && c > 31 && c < 128 && fullString.size() < maxChars) {
         fullString.insert(cursorPos, 1, (char)c);
         cursorPos++;
         stringChanged();

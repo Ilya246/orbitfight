@@ -61,9 +61,7 @@ inline double delta = 1.0 / 60.0,
 	drawShiftX = 0.0, drawShiftY = 0.0,
 	ownX = 0.0, ownY = 0.0;
 inline const int storedMessageCount = 40;
-inline int messageLimit = 50,
-usernameLimit = 24,
-textCharacterSize = 18,
+inline int textCharacterSize = 18,
 nextID = 0,
 predictSteps = (int)(30.0 / predictDelta * 60.0),
 gen_baseMinPlanets = 5,
@@ -72,7 +70,8 @@ messageCursorPos = 0,
 quadsConstructed = 100, minQuadtreeSize = 80,
 quadsAllocated = (int)(quadsConstructed * extraQuadAllocation),
 updateThreadCount = 1;
-inline size_t minThreadEntities = 100;
+inline size_t minThreadEntities = 100,
+messageLimit = 50, usernameLimit = 24;
 inline long long measureFrames = 0, framerate = 0;
 inline size_t trajectoryOffset = 0;
 inline bool headless = false, isServer = false, authority = false, autoConnect = false, debug = false, autorestart = false,
