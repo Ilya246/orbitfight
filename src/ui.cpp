@@ -8,6 +8,8 @@
 #include <SFML/Graphics.hpp>
 #include <SFML/Window.hpp>
 
+#include <thread>
+
 using namespace obf;
 
 namespace obf {
@@ -396,6 +398,10 @@ void MenuUI::connect() {
     setState(MenuStates::Main);
 }
 
+void selfListen() {
+    connectListener->accept(sparePlayer->tcpSocket);
+}
+
 void MenuUI::onMousePress(sf::Mouse::Button b) {
     if (!isMousedOver() || !active || b != sf::Mouse::Button::Left) {
         return;
@@ -408,13 +414,28 @@ void MenuUI::onMousePress(sf::Mouse::Button b) {
     switch (state) {
         case MenuStates::Main: {
             if (buttons[0]->isMousedOver()) {
-                printf("debug0\n");
+                fullClear();
+                delete ownEntity;
+                updateGroup.clear();
+                generateSystem();
+                ownEntity = new Triangle();
+                ((Triangle*)ownEntity)->name = name;
+                setupShip(ownEntity, false);
+                delete serverSocket;
+                serverSocket = nullptr;
+                authority = true;
+                active = false;
             } else if (buttons[1]->isMousedOver()) {
                 setState(MenuStates::ConnectMenu);
             } else if (buttons[2]->isMousedOver()) {
-                printf("debug2\n");
+                printPreferred("Not implemented yet");
             } else if (buttons[3]->isMousedOver()) {
-                printf("debug3\n");
+                fullClear();
+                delete ownEntity;
+                ownEntity = nullptr;
+                updateGroup.clear();
+                delete serverSocket;
+                serverSocket = nullptr;
             }
             break;
         }

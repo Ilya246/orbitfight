@@ -39,6 +39,8 @@ int main(int argc, char** argv) {
 		headless |= !strcmp(argv[i], "--headless");
 		regenConfig |= !strcmp(argv[i], "--regenerate-help");
 	}
+	authority = headless;
+	isServer = headless;
 	bool configNotPresent = parseTomlFile(configFile) != 0;
 	if (configNotPresent || regenConfig) {
 		if (configNotPresent) printf("No config file detected, creating config %s and documentation file %s.\n", configFile.c_str(), configDocFile.c_str());
@@ -145,15 +147,15 @@ int main(int argc, char** argv) {
 	}
 
 	while (headless || window->isOpen()) {
-		if (headless) {
-			if(!inputWaiting){
-				if(!inputBuffer.empty()){
-					parseCommand(inputBuffer);
-					inputBuffer.clear();
-				}
-				inputReader = std::async(std::launch::async, inputListen);
-				inputWaiting = true;
+		if(headless && !inputWaiting){
+			if(!inputBuffer.empty()){
+				parseCommand(inputBuffer);
+				inputBuffer.clear();
 			}
+			inputReader = std::async(std::launch::async, inputListen);
+			inputWaiting = true;
+		}
+		if (isServer) {
 			if (autorestart) {
 				if (playerGroup.size() == 0) {
 					delta = 0.0;
@@ -194,7 +196,7 @@ int main(int argc, char** argv) {
 			if (status == sf::Socket::Done) {
 				sparePlayer->ip = sparePlayer->tcpSocket.getRemoteAddress().toString();
 				sparePlayer->port = sparePlayer->tcpSocket.getRemotePort();
-				printf("%s has connected.\n", sparePlayer->name().c_str());
+				printPreferred(sparePlayer->name() + " has connected.");
 				sparePlayer->lastAck = globalTime;
 				for (Entity* e : updateGroup) {
 					sf::Packet packet;
@@ -218,9 +220,10 @@ int main(int argc, char** argv) {
 				sparePlayer->tcpSocket.send(entityAssign);
 				sparePlayer = new Player;
 			} else if (status != sf::Socket::NotReady) {
-				printf("An incoming connection has failed.\n");
+				printPreferred("An incoming connection has failed.");
 			}
-		} else {
+		}
+		if (!headless) {
 			if (window->hasFocus()) {
 				mousePos = sf::Mouse::getPosition(*window);
 				if (!activeTextbox) {
@@ -467,17 +470,25 @@ int main(int argc, char** argv) {
 		}
 		updateEntities();
 
-		if (headless && lastSweep + projectileSweepSpacing < globalTime) {
+		if (authority && lastSweep + projectileSweepSpacing < globalTime) {
 			for (Entity* e : updateGroup) {
 				if (e->type() != Entities::Projectile) {
 					continue;
 				}
 				double closest = DBL_MAX;
-				for (Player* p : playerGroup) {
-					if (!p->entity) {
-						continue;
+				if (isServer) {
+					for (Player* p : playerGroup) {
+						if (!p->entity) {
+							continue;
+						}
+						closest = std::min(closest, dst2(e->x - p->entity->x, e->y - p->entity->y));
 					}
-					closest = std::min(closest, dst2(e->x - p->entity->x, e->y - p->entity->y));
+				} else {
+					if (ownEntity) {
+						closest = dst2(e->x - ownEntity->x, e->y - ownEntity->y);
+					} else {
+						break;
+					}
 				}
 				if (closest > sweepThreshold) {
 					e->active = false;
@@ -507,18 +518,16 @@ int main(int argc, char** argv) {
 						break;
 					}
 				}
-				if (headless) {
-					for (size_t i = 0; i < planets.size(); i++) {
-						Entity* e = planets[i];
-						if (e == d) [[unlikely]] {
-							planets[i] = planets[planets.size() - 1];
-							planets.pop_back();
-							break;
-						}
+				for (size_t i = 0; i < planets.size(); i++) {
+					Entity* e = planets[i];
+					if (e == d) [[unlikely]] {
+						planets[i] = planets[planets.size() - 1];
+						planets.pop_back();
+						break;
 					}
 				}
 			}
-			if (headless) {
+			if (isServer) {
 				for (Player* p : playerGroup) {
 					sf::Packet despawnPacket;
 					despawnPacket << Packets::DeleteEntity << d->id;
@@ -611,7 +620,7 @@ int main(int argc, char** argv) {
 			lastPredict = globalTime;
 			lastTrajectoryRef = trajectoryRef;
 		}
-		if (headless) {
+		if (isServer) {
 			int to = playerGroup.size();
 			for (int i = 0; i < to; i++) {
 				Player* player = playerGroup[i];

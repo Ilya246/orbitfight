@@ -14,6 +14,10 @@ using namespace obf;
 namespace obf {
 
 void onServerConnection() {
+    authority = false;
+    isServer = false;
+    delete connectListener;
+    connectListener = nullptr;
     sf::Packet nicknamePacket;
     nicknamePacket << Packets::Nickname << name;
     serverSocket->send(nicknamePacket);
@@ -240,7 +244,7 @@ void serverParsePacket(sf::Packet& packet, Player* player) {
 
 void relayMessage(std::string& message) {
     sf::Packet chatPacket;
-    std::cout << message << std::endl;
+    printPreferred(message);
     chatPacket << Packets::Chat << message;
     for (Player* p : playerGroup) {
         p->tcpSocket.send(chatPacket);

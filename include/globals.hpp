@@ -75,7 +75,7 @@ updateThreadCount = 1;
 inline size_t minThreadEntities = 100;
 inline long long measureFrames = 0, framerate = 0;
 inline size_t trajectoryOffset = 0;
-inline bool headless = false, autoConnect = false, debug = false, autorestart = false,
+inline bool headless = false, isServer = false, authority = false, autoConnect = false, debug = false, autorestart = false,
 inputWaiting = false, lockControls = false,
 handledTextBoxSelect = false,
 enableControlLock = false,

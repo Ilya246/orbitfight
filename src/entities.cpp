@@ -104,7 +104,7 @@ void generateSystem() {
 }
 
 void fullClear() {
-	if (headless) {
+	if (isServer) {
 		sf::Packet clearPacket;
 		clearPacket << Packets::FullClear;
 		for (Player* p : playerGroup) {
@@ -122,6 +122,8 @@ void fullClear() {
 	updateGroup = triangles;
 	planets.clear();
 	stars.clear();
+	trajectoryRef = nullptr;
+	lastTrajectoryRef = nullptr;
 }
 
 void updateEntities2(size_t from, size_t to) {
@@ -194,9 +196,7 @@ Entity::Entity() {
 	id = nextID;
 	nextID++;
 	updateGroup.push_back(this);
-	if (!headless) {
-		ghost = simulating;
-	}
+	ghost = simulating;
 }
 
 Entity::~Entity() noexcept {
@@ -618,7 +618,7 @@ void Triangle::control(movement& cont) {
 		}
 	}
 	if (cont.primaryfire && reloadProgress > reload) {
-		if (headless || simulating) {
+		if (authority || simulating) {
 			Projectile* proj = new Projectile();
 			if (simulating) {
 				simCleanupBuffer.push_back(proj);
@@ -630,7 +630,7 @@ void Triangle::control(movement& cont) {
 			proj->rotateVel = rotateVel;
 			proj->owner = this;
 			proj->target = target;
-			if (headless) {
+			if (isServer) {
 				proj->syncCreation();
 			}
 		}
@@ -772,31 +772,33 @@ void CelestialBody::collide(Entity* with, bool specialOnly) {
 	if (!with->active) [[unlikely]] {
 		return;
 	}
-	if (headless && star && with->type() == Entities::Triangle) [[unlikely]] {
+	if (authority && star && with->type() == Entities::Triangle) [[unlikely]] {
 		bool found = false;
-		for (Player* p : playerGroup) {
-			if (p->entity == with) [[unlikely]] {
-				sf::Packet chatPacket;
-				std::string sendMessage;
-				sendMessage.append("<").append(p->name()).append("> has been incinerated.");
-				relayMessage(sendMessage);
-				setupShip(p->entity, true);
-				found = true;
-				break;
+		if (isServer) {
+			for (Player* p : playerGroup) {
+				if (p->entity == with) [[unlikely]] {
+					sf::Packet chatPacket;
+					std::string sendMessage;
+					sendMessage.append("<").append(p->name()).append("> has been incinerated.");
+					relayMessage(sendMessage);
+					setupShip(p->entity, isServer);
+					found = true;
+					break;
+				}
 			}
 		}
-		if (!found && (headless || simulating)) {
+		if (!found && authority) {
 			with->active = false;
 		}
 	} else if (with->type() == Entities::CelestialBody) [[unlikely]] {
-		if (mass >= with->mass && (headless || simulating)) {
+		if (mass >= with->mass && authority) {
 			if (!simulating && printPlanetMerges) {
 				printf("Planetary collision: %u absorbed %u\n", id, with->id);
 			}
 			double radiusMul = sqrt((mass + with->mass) / mass);
 			mass += with->mass;
 			radius *= radiusMul;
-			if (headless) {
+			if (isServer) {
 				sf::Packet collisionPacket;
 				collisionPacket << Packets::PlanetCollision << id << mass << radius;
 				for (Player* p : playerGroup) {
@@ -906,34 +908,31 @@ void Projectile::collide(Entity* with, bool specialOnly) {
 		if (debug) {
 			printf("of type triangle\n");
 		}
-		if (headless) {
-			if (with->player) {
-				std::string sendMessage;
-				sendMessage.append("<").append(with->player->name()).append("> has been killed.");
-				relayMessage(sendMessage);
-				setupShip((Triangle*)with, true);
+		if (authority) {
+			if (!simulating && (with->player || !isServer)) {
+				if (isServer) {
+					std::string sendMessage;
+					sendMessage.append("<").append(with->player->name()).append("> has been killed.");
+					relayMessage(sendMessage);
+				}
+				setupShip((Triangle*)with, isServer);
 			} else {
 				with->active = false;
 			}
-		}
-		if (headless || simulating) {
 			active = false;
-			if (simulating) {
-				with->active = false;
-			}
 		}
 	} else if (with->type() == Entities::CelestialBody) {
 		if (debug) {
 			printf("of type CelestialBody\n");
 		}
-		if (headless || simulating) {
+		if (authority) {
 			active = false;
 		}
 	} else if (with->type() == Entities::Projectile) {
 		if (debug) {
 			printf("of type Projectile\n");
 		}
-		if (headless || simulating) {
+		if (authority) {
 			active = false;
 			with->active = false;
 		}
