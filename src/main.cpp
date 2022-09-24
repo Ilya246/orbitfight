@@ -24,38 +24,6 @@
 
 using namespace obf;
 
-void connectToServer() {
-	serverSocket = new sf::TcpSocket;
-	printf("See https://github.com/Ilya246/orbitfight/blob/master/SERVERS.md for 24/7 servers\n");
-	while (true) {
-		printf("Specify server address:port:\n");
-		getline(std::cin, serverAddress);
-		std::vector<std::string> addressPort;
-		splitString(serverAddress, addressPort, ':');
-		if (addressPort.size() == 0) {
-			printf("Invalid input.\n");
-			continue;
-		}
-		std::string address = addressPort[0];
-		if (addressPort.size() == 2) {
-			if (std::regex_match(addressPort[1], int_regex)) {
-				port = stoi(addressPort[1]);
-			} else {
-				printf("Specified server port (%s) is not an integer.\n", addressPort[1].c_str());
-			}
-		}
-		if (serverSocket->connect(address, port) != sf::Socket::Done) {
-			printf("Could not connect to %s:%u.\n", address.c_str(), port);
-		} else {
-			printf("Connected to %s:%u.\n", address.c_str(), port);
-			sf::Packet nicknamePacket;
-			nicknamePacket << Packets::Nickname << name;
-			serverSocket->send(nicknamePacket);
-			break;
-		}
-	}
-}
-
 void inputListen() {
 	do {
 		std::string buffer;
@@ -129,7 +97,7 @@ int main(int argc, char** argv) {
 
 		generateSystem();
 	} else {
-		window = new sf::RenderWindow(sf::VideoMode(500, 500), "Orbitfight");
+		window = new sf::RenderWindow(sf::VideoMode(800, 800), "Orbitfight");
 
 		g_camera.scale = 1;
 		g_camera.resize();
@@ -142,6 +110,7 @@ int main(int argc, char** argv) {
 
 		uiGroup.push_back(new MiscInfoUI());
 		uiGroup.push_back(new ChatUI());
+		uiGroup.push_back(new MenuUI());
 		for (UIElement* e : uiGroup) {
 			e->resized();
 		}
@@ -152,27 +121,26 @@ int main(int argc, char** argv) {
 			std::vector<std::string> addressPort;
 			splitString(serverAddress, addressPort, ':');
 			std::string address = addressPort[0];
+			if (addressPort.size() == 1) {
+				addressPort.push_back(to_string(port));
+			}
 			if (addressPort.size() == 2) {
 				if (std::regex_match(addressPort[1], int_regex)) {
 					port = stoi(addressPort[1]);
+					printPreferred("Connecting automatically to " + address + ":" + addressPort[1] + ".");
+					serverSocket = new sf::TcpSocket;
+					if (serverSocket->connect(address, port) != sf::Socket::Done) [[unlikely]] {
+						printPreferred("Could not connect to " + address + ":" + addressPort[1] + ".");
+						delete serverSocket;
+						serverSocket = nullptr;
+					} else {
+						printPreferred("Connected to " + address + ":" + addressPort[1] + ".");
+						onServerConnection();
+					}
 				} else {
-					printf("Specified server port (%s) is not an integer.\n", addressPort[1].c_str());
+					printPreferred("Specified server port " + addressPort[1] + " is not an integer.");
 				}
 			}
-			printf("Connecting automatically to %s:%u.\n", address.c_str(), port);
-			serverSocket = new sf::TcpSocket;
-			if (serverSocket->connect(address, port) != sf::Socket::Done) [[unlikely]] {
-				printf("Could not connect to %s:%u.\n", address.c_str(), port);
-				delete serverSocket;
-				connectToServer();
-			} else {
-				printf("Connected to %s:%u.\n", address.c_str(), port);
-				sf::Packet nicknamePacket;
-				nicknamePacket << Packets::Nickname << name;
-				serverSocket->send(nicknamePacket);
-			}
-		} else {
-			connectToServer();
 		}
 	}
 
@@ -255,7 +223,7 @@ int main(int argc, char** argv) {
 		} else {
 			if (window->hasFocus()) {
 				mousePos = sf::Mouse::getPosition(*window);
-				if (!chatting) {
+				if (!activeTextbox) {
 					controls.forward = sf::Keyboard::isKeyPressed(sf::Keyboard::W);
 					controls.backward = sf::Keyboard::isKeyPressed(sf::Keyboard::S);
 					controls.turnleft = sf::Keyboard::isKeyPressed(sf::Keyboard::A);
@@ -272,12 +240,14 @@ int main(int argc, char** argv) {
 					break;
 				case sf::Event::Resized: {
 					g_camera.resize();
-					sf::Packet resize;
-					resize << Packets::ResizeView << (double)g_camera.w * g_camera.scale << (double)g_camera.h * g_camera.scale;
 					if (debug) [[unlikely]] {
 						printf("Resized view, new size: %g * %g\n", (double)g_camera.w * g_camera.scale, (double)g_camera.h * g_camera.scale);
 					}
-					serverSocket->send(resize);
+					if (serverSocket) {
+						sf::Packet resize;
+						resize << Packets::ResizeView << (double)g_camera.w * g_camera.scale << (double)g_camera.h * g_camera.scale;
+						serverSocket->send(resize);
+					}
 					g_camera.bindUI();
 					for (UIElement* e : uiGroup) {
 						e->resized();
@@ -287,37 +257,39 @@ int main(int argc, char** argv) {
 				}
 				case sf::Event::MouseWheelScrolled: {
 					double factor = 1.0 + 0.1 * ((event.mouseWheelScroll.delta < 0) * 2 - 1);
-					if (chatting) {
+					if (activeTextbox) {
 						messageCursorPos = factor < 1.0 ? messageCursorPos + 1 : max(0, messageCursorPos - 1);
 					} else {
 						g_camera.zoom(factor);
-						sf::Packet resize;
-						resize << Packets::ResizeView << (double)g_camera.w * g_camera.scale << (double)g_camera.h * g_camera.scale;
 						if (debug) [[unlikely]] {
 							printf("Resized view, new size: %g * %g\n", (double)g_camera.w * g_camera.scale, (double)g_camera.h * g_camera.scale);
 						}
-						serverSocket->send(resize);
+						if (serverSocket) {
+							sf::Packet resize;
+							resize << Packets::ResizeView << (double)g_camera.w * g_camera.scale << (double)g_camera.h * g_camera.scale;
+							serverSocket->send(resize);
+						}
 					}
 					break;
 				}
 				case sf::Event::MouseButtonPressed: {
-					for (UIElement* e : uiGroup) {
-						if (e->isMousedOver()) {
-							e->pressed(event.mouseButton.button);
-						}
+					for (MousePressListener* l : MousePressListener::listeners) {
+						l->onMousePress(event.mouseButton.button);
 					}
 				}
 				case sf::Event::KeyPressed: {
-					if (chatting) {
-						if (event.key.code == sf::Keyboard::BackSpace && (int)chatBuffer.getSize() > 0) {
-							chatBuffer.erase(chatBuffer.getSize() - 1);
-						}
-					} else {
+					for (KeyPressListener* l : KeyPressListener::listeners) {
+						l->onKeyPress(event.key.code);
+					}
+					handledTextBoxSelect = false;
+					if (!activeTextbox){
 						if (enableControlLock && event.key.code == sf::Keyboard::LAlt) {
 							lockControls = !lockControls;
-							sf::Packet controlsPacket;
-							controlsPacket << Packets::Controls << (lockControls ? (unsigned char) 0 : *(unsigned char*) &controls);
-							serverSocket->send(controlsPacket);
+							if (serverSocket) {
+								sf::Packet controlsPacket;
+								controlsPacket << Packets::Controls << (lockControls ? (unsigned char) 0 : *(unsigned char*) &controls);
+								serverSocket->send(controlsPacket);
+							}
 						} else if (event.key.code == sf::Keyboard::T) {
 							if (!ownEntity || ownEntity->type() != Entities::Triangle) {
 								break;
@@ -336,9 +308,11 @@ int main(int argc, char** argv) {
 							}
 							bool unset = closestEntity == ((Triangle*)ownEntity)->target;
 							((Triangle*)ownEntity)->target = unset ? nullptr : closestEntity;
-							sf::Packet targetPacket;
-							targetPacket << Packets::SetTarget << (unset ? numeric_limits<uint32_t>::max() : closestEntity->id);
-							serverSocket->send(targetPacket);
+							if (serverSocket) {
+								sf::Packet targetPacket;
+								targetPacket << Packets::SetTarget << (unset ? numeric_limits<uint32_t>::max() : closestEntity->id);
+								serverSocket->send(targetPacket);
+							}
 						} else if (event.key.code == sf::Keyboard::LShift && ownEntity) {
 							controls.hyperboost = !controls.hyperboost;
 						}
@@ -363,30 +337,12 @@ int main(int argc, char** argv) {
 							trajectoryRef = closestEntity;
 							printf("Selected entity id %u as reference body\n", trajectoryRef->id);
 						}
-					} else if (event.key.code == sf::Keyboard::Return) {
-						chatting = !chatting;
-						if ((int)chatBuffer.getSize() == 0) {
-							break;
-						}
-						std::string sendMessage = chatBuffer.toAnsiString();
-						if (chatBuffer[0] == '/') {
-							parseCommand(sendMessage.substr(1, sendMessage.size() - 1));
-							chatBuffer.clear();
-							break;
-						}
-						sf::Packet chatPacket;
-						chatPacket << Packets::Chat << sendMessage;
-						serverSocket->send(chatPacket);
-						chatBuffer.clear();
 					}
 					break;
 				}
 				case sf::Event::TextEntered: {
-					if(chatting && (int)chatBuffer.getSize() < messageLimit && event.text.unicode > 31){
-						chatBuffer += event.text.unicode;
-					}
-					if(chatting && debug){
-						printf("chat size: %u\n", (int)chatBuffer.getSize());
+					for (TextEnteredListener* l : TextEnteredListener::listeners) {
+						l->onTextEntered(event.text.unicode);
 					}
 					break;
 				}
@@ -443,11 +399,6 @@ int main(int argc, char** argv) {
 				}
 			}
 			g_camera.bindUI();
-			for (UIElement* e : uiGroup) {
-				if (e->active) {
-					e->update();
-				}
-			}
 			if (lastTrajectoryRef) {
 				float radius = std::max(5.f, (float)(lastTrajectoryRef->radius / g_camera.scale));
 				sf::CircleShape selection(radius, 4);
@@ -472,29 +423,41 @@ int main(int argc, char** argv) {
 			if (debug && quadtree[0].used) [[unlikely]] {
 				quadtree[0].draw();
 			}
+			for (UIElement* e : uiGroup) {
+				if (e->active) {
+					e->update();
+				}
+			}
 			g_camera.bindWorld();
 			window->display();
 
-			sf::Socket::Status status = sf::Socket::Done;
-			while (status != sf::Socket::NotReady) {
-				sf::Packet packet;
-				serverSocket->setBlocking(false);
-				status = serverSocket->receive(packet);
+			if (serverSocket) {
+				sf::Socket::Status status = sf::Socket::Done;
+				while (status != sf::Socket::NotReady) {
+					sf::Packet packet;
+					serverSocket->setBlocking(false);
+					status = serverSocket->receive(packet);
 
-				serverSocket->setBlocking(true);
-				if (status == sf::Socket::Done) {
-					clientParsePacket(packet);
-				} else if (status == sf::Socket::Disconnected) {
-					printf("Connection to server closed.\n");
-					fullClear();
-					connectToServer();
+					serverSocket->setBlocking(true);
+					if (status == sf::Socket::Done) {
+						clientParsePacket(packet);
+					} else if (status == sf::Socket::Disconnected) {
+						printPreferred("Connection to server closed.\n");
+						fullClear();
+						delete serverSocket;
+						serverSocket = nullptr;
+						delete ownEntity;
+						ownEntity = nullptr;
+						updateGroup.clear();
+						break;
+					}
 				}
-			}
-			if (ownEntity && lastControls != controls && !lockControls) {
-				sf::Packet controlsPacket;
-				controlsPacket << Packets::Controls << *(unsigned char*) &controls;
-				serverSocket->send(controlsPacket);
-				*(unsigned char*) &lastControls = *(unsigned char*) &controls;
+				if (ownEntity && lastControls != controls && !lockControls && serverSocket) {
+					sf::Packet controlsPacket;
+					controlsPacket << Packets::Controls << *(unsigned char*) &controls;
+					serverSocket->send(controlsPacket);
+					*(unsigned char*) &lastControls = *(unsigned char*) &controls;
+				}
 			}
 		}
 
@@ -532,8 +495,8 @@ int main(int argc, char** argv) {
 			}
 		}
 		for (Entity* d : deleted) {
-			for (EventListener* l : EntityDeleteListener::listeners) {
-				((EntityDeleteListener*)l)->onEntityDelete(d);
+			for (EntityDeleteListener* l : EntityDeleteListener::listeners) {
+				l->onEntityDelete(d);
 			}
 			if (d->type() == Entities::CelestialBody) {
 				for (size_t i = 0; i < stars.size(); i++) {

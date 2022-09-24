@@ -56,7 +56,7 @@ void displayMessage(const string& message) {
 	displayMessage(message, true);
 }
 void printPreferred(const string& s) {
-	cout << s;
+	cout << s << std::endl;
 	if (!headless) {
 		string buf;
 		buf.reserve(s.size());

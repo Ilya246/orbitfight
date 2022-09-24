@@ -20,6 +20,7 @@ inline sf::RenderWindow* window = nullptr;
 inline obf::Entity* ownEntity = nullptr;
 inline sf::Font* font = nullptr;
 inline obf::Player* sparePlayer = new obf::Player;
+inline obf::TextBoxElement* activeTextbox = nullptr;
 inline std::vector<Entity*> updateGroup;
 inline std::vector<Player*> playerGroup;
 inline std::vector<UIElement*> uiGroup;
@@ -33,7 +34,6 @@ inline std::future<void> inputReader;
 inline std::vector<std::thread*> updateThreads;
 inline std::string serverAddress = "", name = "",
 inputBuffer = "";
-inline sf::String chatBuffer = "";
 inline unsigned short port = 7817;
 inline movement lastControls, controls;
 inline double delta = 1.0 / 60.0,
@@ -76,7 +76,8 @@ inline size_t minThreadEntities = 100;
 inline long long measureFrames = 0, framerate = 0;
 inline size_t trajectoryOffset = 0;
 inline bool headless = false, autoConnect = false, debug = false, autorestart = false,
-inputWaiting = false, chatting = false, lockControls = false,
+inputWaiting = false, lockControls = false,
+handledTextBoxSelect = false,
 enableControlLock = false,
 simulating = false,
 autorestartRegenned = true,

@@ -13,6 +13,15 @@ using namespace obf;
 
 namespace obf {
 
+void onServerConnection() {
+    sf::Packet nicknamePacket;
+    nicknamePacket << Packets::Nickname << name;
+    serverSocket->send(nicknamePacket);
+    sf::Packet resize;
+    resize << Packets::ResizeView << (double)g_camera.w * g_camera.scale << (double)g_camera.h * g_camera.scale;
+    serverSocket->send(resize);
+}
+
 void clientParsePacket(sf::Packet& packet) {
     uint16_t type;
     packet >> type;
@@ -21,9 +30,11 @@ void clientParsePacket(sf::Packet& packet) {
     }
     switch (type) {
     case Packets::Ping: {
-        sf::Packet ackPacket;
-        ackPacket << Packets::Ping;
-        serverSocket->send(ackPacket);
+        if (serverSocket) {
+            sf::Packet ackPacket;
+            ackPacket << Packets::Ping;
+            serverSocket->send(ackPacket);
+        }
         break;
     }
     case Packets::CreateEntity: {

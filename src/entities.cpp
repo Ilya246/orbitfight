@@ -459,7 +459,7 @@ void buildQuadtree() {
 		try {
 			quadtree[0].put(updateGroup[i]);
 		} catch (const std::bad_alloc& except) {
-			delete quadtree;
+			free(quadtree);
 			quadsAllocated = (int)(quadsAllocated * extraQuadAllocation);
 			quadtree = (Quad*)malloc(quadsAllocated * sizeof(Quad));
 			quadtree[0] = Quad();

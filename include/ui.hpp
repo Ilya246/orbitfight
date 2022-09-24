@@ -2,6 +2,7 @@
 #include "globals.hpp"
 
 #include <SFML/Graphics.hpp>
+#include <SFML/Window.hpp>
 
 namespace obf {
 
@@ -9,10 +10,10 @@ int wrapText(std::string& string, sf::Text& text, double maxWidth);
 
 struct UIElement {
     UIElement();
+    virtual ~UIElement() noexcept;
 
     virtual void update();
     virtual void resized();
-    virtual void pressed(sf::Mouse::Button button);
 
     bool isMousedOver();
 
@@ -27,13 +28,31 @@ struct UIElement {
     sf::RectangleShape body;
 };
 
-/* struct Button : UIElement {
-    Button();
-
+// NOTE: the x, y, text and string properties of this struct should be managed by the owning struct
+struct TextElement : UIElement {
     void update() override;
+    void resized() override; // sets width, height of text and the UI body according to desired padding
+    void position(float x, float y); // positions text and UI body
+    void resizeY(float height); // force resize to desired size, position text accordingly, assumes string is unchanged
 
-    std::string text;
-}; */
+    std::string string;
+    sf::Text text;
+};
+
+// width and height should be set by owning struct
+struct TextBoxElement : TextElement, KeyPressListener, TextEnteredListener {
+    void update() override;
+    void resized() override;
+
+    void stringChanged();
+
+    void onKeyPress(sf::Keyboard::Key k) override;
+    void onTextEntered(uint32_t c) override;
+    void handleMousePress();
+
+    std::string fullString;
+    int viewPos = 0, cursorPos = 0;
+};
 
 struct MiscInfoUI : UIElement {
     MiscInfoUI();
@@ -43,31 +62,42 @@ struct MiscInfoUI : UIElement {
     sf::Text text;
 };
 
-struct ChatUI : UIElement {
+struct ChatUI : TextElement, KeyPressListener {
     ChatUI();
 
     void update() override;
     void resized() override;
 
-    sf::Text text;
+    void onKeyPress(sf::Keyboard::Key k) override;
+
+    TextBoxElement textbox;
 };
 
-/* namespace MenuStates {
+namespace MenuStates {
 
 constexpr uint8_t Main = 0,
 	ConnectMenu = 1,
 	SettingsMenu = 2;
 };
 
-struct MenuUI : UIelement {
+struct MenuUI : UIElement, MousePressListener, KeyPressListener {
     MenuUI();
 
     void update() override;
     void resized() override;
 
-    Button buttons[4];
+    void setState(uint8_t state);
+
+    void connect(); // for the ConnectMenu state to prevent code duplication
+
+    void onMousePress(sf::Mouse::Button b) override;
+    void onKeyPress(sf::Keyboard::Key k) override;
+
+    std::vector<TextElement*> buttons;
 
     uint8_t state = MenuStates::Main;
-}; */
+
+    float buttonSpacing = 5.f, buttonPadding = 2.f, connectBoxWidth = 250.f;
+};
 
 }
