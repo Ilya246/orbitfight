@@ -76,7 +76,7 @@ void printPreferred(const string& s) {
 	}
 }
 
-int parseToml(const string& line) {
+int parseToml(const string& line, bool print) {
 	string key = "";
 	string value = "";
 	bool parsingKey = true;
@@ -140,6 +140,9 @@ stopParsing:
 					return 3;
 				}
 				*(uint16_t*)variable.value = (uint16_t)stoi(value);
+				if (print) {
+					printPreferred(std::to_string(*(uint16_t*)variable.value));
+				}
 				break;
 			}
 			case obf::Types::Int: {
@@ -147,6 +150,9 @@ stopParsing:
 					return 3;
 				}
 				*(int*)variable.value = stoi(value);
+				if (print) {
+					printPreferred(std::to_string(*(int*)variable.value));
+				}
 				break;
 			}
 			case obf::Types::Double: {
@@ -154,6 +160,10 @@ stopParsing:
 					return 4;
 				}
 				*(double*)variable.value = stod(value);
+				sprintf(out, "%g", *(double*)variable.value);
+				if (print) {
+					printPreferred(string(out));
+				}
 				break;
 			}
 			case obf::Types::Bool: {
@@ -162,10 +172,16 @@ stopParsing:
 					return 5;
 				}
 				*(bool*)variable.value = temp;
+				if (print) {
+					printPreferred(to_string(*(bool*)variable.value));
+				}
 				break;
 			}
 			case obf::Types::String: {
 				*(std::string*)variable.value = value;
+				if (print) {
+					printPreferred(*(string*)variable.value);
+				}
 				break;
 			}
 			default: {
@@ -176,6 +192,10 @@ stopParsing:
 		return 1;
 	}
 	return 0;
+}
+
+int parseToml(const string& line) {
+	return parseToml(line, false);
 }
 
 int parseTomlFile(const string& filename) {
@@ -237,7 +257,8 @@ void parseCommand (const string& command) {
 			printPreferred("Invalid argument.");
 			return;
 		}
-		int retcode = parseToml(string(args[1]));
+		string conf = command.substr(7);
+		int retcode = parseToml(conf, true);
 		switch (retcode) {
 			case 1:
 				printPreferred("Invalid key.");
