@@ -49,6 +49,7 @@ inline double delta = 1.0 / 60.0,
 	gen_firstPlanetDistance = 120000.0, gen_minNextRadius = 1.2, gen_maxNextRadius = 1.7, gen_minPlanetRadius = 600.0, gen_maxPlanetRadius = 9000.0,
 	gen_baseDensity = 2.9e13, gen_moonFactor = gen_maxPlanetRadius * 0.24, gen_minMoonDistance = 2.0, gen_maxMoonDistance = 9.0,
 	gen_minMoonRadius = 120.0, gen_maxMoonRadiusFrac = 1.0 / 6.0,
+	shipSpawnDistanceMin = 2000.0, shipSpawnDistanceMax = 6000.0,
 	syncCullThreshold = 0.6, syncCullOffset = 100000.0, sweepThreshold = 10e6 * 10e6,
 	predictSpacing = 0.2, predictDelta = 0.1,
 	extraQuadAllocation = 2.0, quadReallocateThreshold = 0.6, quadtreeShrinkThreshold = 0.2,
@@ -125,6 +126,9 @@ inline std::map<std::string, Var> vars {
 
 	{"deltaOverride", {Double, &deltaOverride}},
 	{"timescale", {Double, &timescale}},
+
+	{"shipSpawnDistanceMin", {Double, &shipSpawnDistanceMin}},
+	{"shipSpawnDistanceMax", {Double, &shipSpawnDistanceMax}},
 
 	{"gen_baseDensity", {Double, &gen_baseDensity}},
 	{"gen_baseMinPlanets", {Int, &gen_baseMinPlanets}},

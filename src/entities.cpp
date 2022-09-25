@@ -27,7 +27,7 @@ void setupShip(Entity* ship, bool sync) {
 		return;
 	}
 	CelestialBody* planet = planets[(int)rand_f(0, planets.size())];
-	double spawnDst = planet->radius + rand_f(2000.f, 6000.f);
+	double spawnDst = planet->radius + rand_f(shipSpawnDistanceMin, shipSpawnDistanceMax);
 	float spawnAngle = rand_f(-PI, PI);
 	ship->setPosition(planet->x + spawnDst * std::cos(spawnAngle), planet->y + spawnDst * std::sin(spawnAngle));
 	double vel = sqrt(G * planet->mass / spawnDst);
@@ -780,21 +780,14 @@ void CelestialBody::collide(Entity* with, bool specialOnly) {
 		return;
 	}
 	if (authority && star && with->type() == Entities::Triangle) [[unlikely]] {
-		bool found = false;
-		if (isServer) {
-			for (Player* p : playerGroup) {
-				if (p->entity == with) [[unlikely]] {
-					sf::Packet chatPacket;
-					std::string sendMessage;
-					sendMessage.append("<").append(p->name()).append("> has been incinerated.");
-					relayMessage(sendMessage);
-					setupShip(p->entity, isServer);
-					found = true;
-					break;
-				}
+		if (with->player || !isServer || with == ownEntity) {
+			if (isServer) {
+				std::string sendMessage;
+				sendMessage.append("<").append(((Triangle*)with)->name).append("> has been incinerated.");
+				relayMessage(sendMessage);
 			}
-		}
-		if (!found) {
+			setupShip((Triangle*)with, isServer);
+		} else {
 			with->active = false;
 		}
 	} else if (authority && with->type() == Entities::CelestialBody) [[unlikely]] {
