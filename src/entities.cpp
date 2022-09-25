@@ -380,14 +380,11 @@ void Quad::collideAttract(Entity* e, bool doGravity, bool checkCollide) {
 				entity->collide(e, true);
 				entity->collided.push_back(e->id);
 			} else if (std::abs(e->x - entity->x) - radiusSum < std::abs(dVx) && std::abs(e->y - entity->y) - radiusSum < std::abs(dVy) && 2.0 * (std::abs(dVx) + std::abs(dVy)) > radiusSum) {
-				printf("raytracing: dvx %g, dvy %g", dVx, dVy);
 				double vel = dst(dVx, dVy);
 				int ticks = std::ceil((vel + radiusSum) / std::max(entity->radius, e->radius) * 2.0); // 2.0 here is the accuracy factor
-				printf(" dx %g, dy %g, ticks %u, ", e->x - entity->x, e->y - entity->y, ticks);
 				double mulby = (vel + radiusSum) / (ticks * vel);
 				dVx *= mulby;
 				dVy *= mulby;
-				printf("svx %g, svy %g\n", dVx, dVy);
 				double x = entity->x;
 				double y = entity->y;
 				bool dVx_s = std::signbit(dVx), dVy_s = std::signbit(dVy);
@@ -399,7 +396,6 @@ void Quad::collideAttract(Entity* e, bool doGravity, bool checkCollide) {
 						e->collide(entity, false);
 						entity->collide(e, true);
 						entity->collided.push_back(e->id);
-						printf("hit\n");
 						break;
 					}
 					x += dVx;
