@@ -109,7 +109,7 @@ void MiscInfoUI::update() {
     if (lastTrajectoryRef) {
         info.append("\nDistance: ").append(std::to_string((int64_t)(dst(ownX - lastTrajectoryRef->x, ownY - lastTrajectoryRef->y))));
         if (ownEntity) [[likely]] {
-            info.append("\nVelocity: ").append(std::to_string((int64_t)(dst(ownEntity->velX - lastTrajectoryRef->velX, ownEntity->velY - lastTrajectoryRef->velY) * 60.0)));
+            info.append("\nVelocity: ").append(std::to_string((int64_t)dst(ownEntity->velX - lastTrajectoryRef->velX, ownEntity->velY - lastTrajectoryRef->velY)));
         }
     }
     wrapText(info, text, width - padding * 2.f);

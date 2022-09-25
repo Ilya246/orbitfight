@@ -359,7 +359,7 @@ int main(int argc, char** argv) {
 			g_camera.bindWorld();
 			g_camera.pos.x = 0;
 			g_camera.pos.y = 0;
-			trajectoryOffset = floor((globalTime - lastPredict) / predictDelta * 60.0);
+			trajectoryOffset = floor((globalTime - lastPredict) / predictDelta);
 			for (size_t i = 0; i < ghostTrajectories.size(); i++) {
 				std::vector<Point>& traj = ghostTrajectories[i];
 				if (lastTrajectoryRef && traj.size() > 0) [[likely]] {
@@ -564,7 +564,7 @@ int main(int argc, char** argv) {
 			}
 			for (int i = 0; i < predictSteps; i++) {
 				predictingFor = predictDelta * predictSteps;
-				globalTime += predictDelta / 60.0;
+				globalTime += predictDelta;
 				buildQuadtree();
 				for (Entity* e : updateGroup) {
 					e->update1();
@@ -711,7 +711,7 @@ int main(int argc, char** argv) {
 		if (deltaOverride > 0.0) {
 			delta = deltaOverride;
 		} else {
-			delta *= 60.0 * timescale;
+			delta *= timescale;
 		}
 		globalTime = globalClock.getElapsedTime().asSeconds();
 	}

@@ -551,8 +551,8 @@ void Triangle::simReset() {
 void Triangle::control(movement& cont) {
 	float rotationRad = rotation * degToRad;
 	double xMul = std::cos(rotationRad), yMul = -std::sin(rotationRad);
-	boostProgress += delta / 60.0;
-	reloadProgress += delta / 60.0;
+	boostProgress += delta;
+	reloadProgress += delta;
 	if (cont.hyperboost || burning) {
 		hyperboostCharge += delta * (burning ? -2 : 1);
 		hyperboostCharge = std::min(hyperboostCharge, 2.0 * hyperboostTime);
