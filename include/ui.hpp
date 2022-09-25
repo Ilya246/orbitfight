@@ -40,20 +40,25 @@ struct TextElement : UIElement {
 };
 
 // width and height should be set by owning struct
-struct TextBoxElement : TextElement, KeyPressListener, TextEnteredListener {
+struct TextBoxElement : TextElement, KeyPressListener, TextEnteredListener, MousePressListener {
+    TextBoxElement();
+
     void update() override;
     void resized() override;
 
     void stringChanged();
+    void eraseSelection();
 
     void onKeyPress(sf::Keyboard::Key k) override;
     void onTextEntered(uint32_t c) override;
-    void handleMousePress();
+    void onMousePress(sf::Mouse::Button b) override;
 
     std::string fullString;
-    size_t viewPos = 0, cursorPos = 0, maxChars = std::numeric_limits<size_t>::max();
+    size_t viewPos = 0, cursorPos = 0, selectionStart = 0, selectionEnd = 0,
+    maxChars = std::numeric_limits<size_t>::max();
+    bool clickDragged = false, selectionActive = false;
 
-    sf::RectangleShape cursor;
+    sf::RectangleShape cursor, selection;
 };
 
 struct MiscInfoUI : UIElement {

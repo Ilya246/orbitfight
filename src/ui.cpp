@@ -41,6 +41,34 @@ size_t fitText(std::string& string, sf::Text& text, float maxWidth) {
     return 0;
 }
 
+size_t findMouseAt(sf::Text text) {
+    size_t strsize = text.getString().getSize();
+    uint16_t searchBy = (uint16_t)strsize;
+    if (searchBy == 0) {
+        return 0;
+    }
+    uint16_t at = 0x8000;
+    while ((at & searchBy) == 0) {
+        at = at >> 1;
+    }
+    searchBy = at;
+    at = 0;
+    bool add;
+    float lastX;
+    while (searchBy > 0) {
+        lastX = text.findCharacterPos(at + searchBy).x;
+        add = lastX <= mousePos.x;
+        if (add) {
+            at += searchBy;
+        }
+        searchBy /= 2;
+    }
+    if (text.findCharacterPos(at + 2).x - mousePos.x > mousePos.x - lastX) {
+        return at + 1;
+    }
+    return at;
+}
+
 UIElement::UIElement() {
     body.setOutlineThickness(2.f);
     body.setOutlineColor(sf::Color(32, 32, 32, 192));
@@ -123,7 +151,7 @@ void ChatUI::resized() {
     body.setSize(sf::Vector2f(width, height));
     textbox.position(0, g_camera.h - textbox.height);
     textbox.width = width;
-    textbox.body.setSize(sf::Vector2f(textbox.width, textbox.height));
+    textbox.resized();
     string = "";
     size_t displayMessageCount = std::min((size_t)((height - textbox.padding * 2.f - textbox.height) / (textCharacterSize + 3)), storedMessageCount);
     messageCursorPos = std::max((size_t)0, std::min(messageCursorPos, storedMessageCount - displayMessageCount));
@@ -215,18 +243,41 @@ void TextElement::position(float x, float y) {
     text.setPosition(x + padding, y + padding);
 }
 
+TextBoxElement::TextBoxElement() {
+    cursor.setSize(sf::Vector2f(1.f, textCharacterSize));
+    selection.setFillColor(sf::Color(196, 196, 196, 128));
+}
+
 void TextBoxElement::update() {
+    if (activeTextbox == this) {
+        if (clickDragged) {
+            selectionEnd = viewPos + findMouseAt(text);
+            cursorPos = selectionEnd;
+            clickDragged = sf::Mouse::isButtonPressed(sf::Mouse::Button::Left);
+        }
+        if (selectionActive) {
+            if (selectionStart == selectionEnd) {
+                if (!clickDragged) {
+                    selectionActive = false;
+                }
+            } else {
+                sf::Vector2f startpos = text.findCharacterPos(selectionStart - viewPos), endpos = text.findCharacterPos(selectionEnd - viewPos);
+                selection.setSize(sf::Vector2f(endpos.x - startpos.x, textCharacterSize + 2));
+                selection.setPosition(startpos.x, startpos.y);
+                window->draw(selection);
+            }
+        }
+    }
     TextElement::update();
-    if (activeTextbox == this && std::sin(globalTime * TAU * 1.5) > 0.0) {
-        cursor.setSize(sf::Vector2f(1.f, textCharacterSize));
-        cursor.setPosition(text.findCharacterPos(cursorPos - viewPos).x, y + padding);
-        window->draw(cursor);
+    if (activeTextbox == this) {
+        if (std::sin(globalTime * TAU * 1.5) > 0.0) {
+            cursor.setPosition(text.findCharacterPos(cursorPos - viewPos).x, y + padding);
+            window->draw(cursor);
+        }
     }
 }
 
 void TextBoxElement::resized() {
-    width = width + padding * 2.f;
-    height = height + padding * 2.f;
     body.setSize(sf::Vector2f(width, height));
 }
 
@@ -249,6 +300,16 @@ void TextBoxElement::stringChanged() {
     }
 }
 
+void TextBoxElement::eraseSelection() {
+    size_t chars = std::max(selectionStart, selectionEnd) - std::min(selectionStart, selectionEnd);
+    fullString.erase(std::min(selectionStart, selectionEnd), chars);
+    cursorPos = std::min(cursorPos, std::max(selectionStart, cursorPos - chars)); // the substraction here can underflow but it wouldn't matter
+    stringChanged();
+    selectionActive = false;
+    selectionStart = std::min(std::max(fullString.size(), (size_t)1) - 1, selectionStart);
+    selectionEnd = std::min(fullString.size(), selectionEnd);
+}
+
 void TextBoxElement::onKeyPress(sf::Keyboard::Key k) {
     if (activeTextbox != this) {
         return;
@@ -261,10 +322,11 @@ void TextBoxElement::onKeyPress(sf::Keyboard::Key k) {
             break;
         }
         case sf::Keyboard::BackSpace: {
-            if (fullString.size() > 0 && cursorPos > 0) {
+            if (selectionActive) {
+                eraseSelection();
+            } else if (fullString.size() > 0 && cursorPos > 0) {
                 fullString.erase(cursorPos - 1, 1);
-                cursorPos = std::max((size_t)0, cursorPos - 1);
-                viewPos = viewPos == 0 ? 0 : viewPos - 1;
+                cursorPos = std::max(cursorPos, (size_t)1) - 1;
                 stringChanged();
             }
             break;
@@ -280,13 +342,31 @@ void TextBoxElement::onKeyPress(sf::Keyboard::Key k) {
             stringChanged();
             break;
         }
+        case sf::Keyboard::A: {
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::LControl)) {
+                selectionActive = true;
+                selectionStart = 0;
+                selectionEnd = fullString.size();
+            }
+            break;
+        }
+        case sf::Keyboard::C: {
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::LControl) && selectionActive) {
+                sf::Clipboard::setString(fullString.substr(std::min(selectionStart, selectionEnd), std::max(selectionStart, selectionEnd) - std::min(selectionStart, selectionEnd)));
+            }
+            break;
+        }
         case sf::Keyboard::V: {
             if (sf::Keyboard::isKeyPressed(sf::Keyboard::LControl)) {
+                if (selectionActive) {
+                    eraseSelection();
+                }
                 std::string pasted = sf::Clipboard::getString();
                 if (fullString.size() + pasted.size() > maxChars) {
                     pasted = pasted.substr(0, maxChars - fullString.size());
                 }
-                fullString += pasted;
+                fullString.insert(cursorPos, pasted);
+                cursorPos += pasted.size();
                 stringChanged();
             }
             break;
@@ -298,14 +378,23 @@ void TextBoxElement::onKeyPress(sf::Keyboard::Key k) {
 
 void TextBoxElement::onTextEntered(uint32_t c) {
     if (activeTextbox == this && c > 31 && c < 128 && fullString.size() < maxChars) {
+        if (selectionActive) {
+            eraseSelection();
+        }
         fullString.insert(cursorPos, 1, (char)c);
         cursorPos++;
         stringChanged();
     }
 }
 
-void TextBoxElement::handleMousePress() {
-    activeTextbox = this;
+void TextBoxElement::onMousePress(sf::Mouse::Button b) {
+    if (isMousedOver() && b == sf::Mouse::Button::Left) {
+        activeTextbox = this;
+        cursorPos = viewPos + findMouseAt(text);
+        clickDragged = true;
+        selectionStart = cursorPos;
+        selectionActive = true;
+    }
 }
 
 MenuUI::MenuUI() {
@@ -381,8 +470,8 @@ void MenuUI::setState(uint8_t state) {
             buttons[3] = new TextElement();
             buttons[0]->active = false;
             buttons[1]->body.setFillColor(sf::Color(64, 64, 64, 192));
-            buttons[1]->width = connectBoxWidth;
-            buttons[1]->height = textCharacterSize + 2.f;
+            buttons[1]->width = connectBoxWidth + buttons[1]->padding * 2.f;
+            buttons[1]->height = textCharacterSize + 2.f + buttons[1]->padding * 2.f;
             buttons[2]->string = "Connect";
             buttons[3]->string = "Cancel";
             for (TextElement* b : buttons) {
@@ -479,9 +568,7 @@ void MenuUI::onMousePress(sf::Mouse::Button b) {
             break;
         }
         case MenuStates::ConnectMenu: {
-            if (buttons[1]->isMousedOver()) {
-                ((TextBoxElement*)buttons[1])->handleMousePress();
-            } else if (buttons[2]->isMousedOver()) {
+            if (buttons[2]->isMousedOver()) {
                 connect();
             } else if (buttons[3]->isMousedOver()) {
                 setState(MenuStates::Main);
