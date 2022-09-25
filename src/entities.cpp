@@ -168,15 +168,7 @@ Entity* idLookup(uint32_t id) {
 }
 
 std::string Player::name() {
-	if (username.size()) return username;
-
-	std::string ret;
-	ret.append(ip);
-	if (port != 0) {
-		ret.append(":").append(std::to_string(port));
-	}
-
-	return ret;
+	return username;
 }
 Player::~Player() {
 	for (size_t i = 0; i < playerGroup.size(); i++) {
@@ -925,7 +917,7 @@ void Projectile::collide(Entity* with, bool specialOnly) {
 			if (!simulating && (with->player || !isServer || with == ownEntity)) {
 				if (isServer) {
 					std::string sendMessage;
-					sendMessage.append("<").append(with->player->name()).append("> has been killed.");
+					sendMessage.append("<").append(((Triangle*)with)->name).append("> has been killed.");
 					relayMessage(sendMessage);
 				}
 				setupShip((Triangle*)with, isServer);
