@@ -286,6 +286,7 @@ void TextBoxElement::stringChanged() {
     if (fullString.size() > 0) {
         sub = fullString.substr(viewPos);
         cursorPos = std::min((size_t)cursorPos, fullString.size());
+        viewPos = std::min(std::max(cursorPos, lastCharsFit) - lastCharsFit, viewPos);
     } else {
         sub = "";
         cursorPos = 0;
@@ -293,9 +294,9 @@ void TextBoxElement::stringChanged() {
         text.setString(sub);
         return;
     }
-    size_t chars = fullString.size() - viewPos - fitText(sub, text, width - padding * 2.f);
-    if (cursorPos - viewPos > chars) {
-        viewPos = cursorPos - chars;
+    lastCharsFit = fullString.size() - viewPos - fitText(sub, text, width - padding * 2.f);
+    if (cursorPos - viewPos > lastCharsFit) {
+        viewPos = cursorPos - lastCharsFit;
         stringChanged();
     }
 }

@@ -54,7 +54,7 @@ struct TextBoxElement : TextElement, KeyPressListener, TextEnteredListener, Mous
     void onMousePress(sf::Mouse::Button b) override;
 
     std::string fullString;
-    size_t viewPos = 0, cursorPos = 0, selectionStart = 0, selectionEnd = 0,
+    size_t viewPos = 0, cursorPos = 0, selectionStart = 0, selectionEnd = 0, lastCharsFit = 0,
     maxChars = std::numeric_limits<size_t>::max();
     bool clickDragged = false, selectionActive = false;
 
