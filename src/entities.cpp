@@ -23,6 +23,9 @@ bool operator ==(movement& mov1, movement& mov2) {
 }
 
 void setupShip(Entity* ship, bool sync) {
+	if (planets.size() == 0) {
+		return;
+	}
 	CelestialBody* planet = planets[(int)rand_f(0, planets.size())];
 	double spawnDst = planet->radius + rand_f(2000.f, 6000.f);
 	float spawnAngle = rand_f(-PI, PI);
@@ -791,11 +794,11 @@ void CelestialBody::collide(Entity* with, bool specialOnly) {
 				}
 			}
 		}
-		if (!found && authority) {
+		if (!found) {
 			with->active = false;
 		}
-	} else if (with->type() == Entities::CelestialBody) [[unlikely]] {
-		if (mass >= with->mass && authority) {
+	} else if (authority && with->type() == Entities::CelestialBody) [[unlikely]] {
+		if (mass >= with->mass) {
 			if (!simulating && printPlanetMerges) {
 				printf("Planetary collision: %u absorbed %u\n", id, with->id);
 			}
@@ -808,6 +811,10 @@ void CelestialBody::collide(Entity* with, bool specialOnly) {
 				for (Player* p : playerGroup) {
 					p->tcpSocket.send(collisionPacket);
 				}
+			}
+			if (!headless && !simulating) {
+				shape->setRadius(radius);
+	            shape->setOrigin(radius, radius);
 			}
 			with->active = false;
 		}
