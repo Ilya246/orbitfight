@@ -334,12 +334,14 @@ void TextBoxElement::onKeyPress(sf::Keyboard::Key k) {
         case sf::Keyboard::Left: {
             cursorPos = cursorPos == 0 ? 0 : cursorPos - 1;
             viewPos = std::min(cursorPos, viewPos);
+            selectionActive = false;
             stringChanged();
             break;
         }
         case sf::Keyboard::Right: {
             cursorPos = std::min(cursorPos + 1, fullString.size());
             stringChanged();
+            selectionActive = false;
             break;
         }
         case sf::Keyboard::A: {
