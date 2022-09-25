@@ -195,7 +195,7 @@ struct Projectile: public Entity {
 	Entity* target = nullptr;
 	Entity* owner = nullptr;
 
-	double accel = 0.04, rotateSpeed = 6.0 / 60.0, maxThrustAngle = 45.0 * degToRad, easeInFactor = 1.0 / 90.0;
+	double accel = 0.04, rotateSpeed = 6.0 / 60.0, maxThrustAngle = 45.0 * degToRad, easeInFactor = 1.0 / 60.0;
 
 	std::unique_ptr<sf::CircleShape> shape, warning;
 };

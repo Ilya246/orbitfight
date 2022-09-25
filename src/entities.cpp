@@ -876,7 +876,8 @@ void Projectile::update2() {
 		double velHeading = std::atan2(dVy, dVx);
 		double tangentVel = dst(dVx, dVy) * std::cos(deltaAngleRad(tangentHeading, velHeading));
 		double dtaccel = delta * accel;
-		double targetRotation = inHeading + (std::abs(tangentVel) * easeInFactor > dtaccel ? (tangentVel > 0.0 ? 0.5 * PI : 0.5 * -PI) : std::atan2(tangentVel * easeInFactor, accel));
+		double targetRotation = inHeading + (std::abs(tangentVel) < dtaccel ? std::atan2(tangentVel, dtaccel - std::abs(tangentVel))
+		: (std::abs(tangentVel) * easeInFactor > accel ? (tangentVel > 0.0 ? 0.5 * PI : 0.5 * -PI) : std::atan2(tangentVel * easeInFactor, accel)));
 		rotateVel += delta * (deltaAngleRad((rotation + 1.5 * (rotateVel > 0.0 ? rotateVel : -rotateVel) * rotateVel / rotateSpeed) * degToRad, targetRotation) > 0.0 ? rotateSpeed : -rotateSpeed);
 		double thrustDirection = rotation * degToRad + std::max(-maxThrustAngle, std::min(maxThrustAngle, deltaAngleRad(rotation * degToRad, targetRotation)));
 		if (std::abs(deltaAngleRad(targetRotation, rotation * degToRad)) < 0.5 * PI) {
