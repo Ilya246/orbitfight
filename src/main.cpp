@@ -539,6 +539,8 @@ int main(int argc, char** argv) {
 		if (!headless && globalTime - lastPredict > predictSpacing && trajectoryRef) [[unlikely]] {
 			double resdelta = delta;
 			double resTime = globalTime;
+			bool resAuthority = authority;
+			authority = true;
 			std::vector<Entity*> retUpdateGroup(updateGroup);
 			delta = predictDelta;
 			simulating = true;
@@ -609,6 +611,7 @@ int main(int argc, char** argv) {
 			}
 			delta = resdelta;
 			simulating = false;
+			authority = resAuthority;
 			globalTime = resTime;
 			lastPredict = globalTime;
 			lastTrajectoryRef = trajectoryRef;

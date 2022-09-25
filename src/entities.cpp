@@ -630,7 +630,7 @@ void Triangle::control(movement& cont) {
 		}
 	}
 	if (cont.primaryfire && reloadProgress > reload) {
-		if (authority || simulating) {
+		if (authority) {
 			Projectile* proj = new Projectile();
 			if (simulating) {
 				simCleanupBuffer.push_back(proj);
@@ -922,7 +922,7 @@ void Projectile::collide(Entity* with, bool specialOnly) {
 			printf("of type triangle\n");
 		}
 		if (authority) {
-			if (!simulating && (with->player || !isServer)) {
+			if (!simulating && (with->player || !isServer || with == ownEntity)) {
 				if (isServer) {
 					std::string sendMessage;
 					sendMessage.append("<").append(with->player->name()).append("> has been killed.");
