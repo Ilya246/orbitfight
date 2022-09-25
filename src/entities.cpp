@@ -389,13 +389,13 @@ void Quad::collideAttract(Entity* e, bool doGravity, bool checkCollide) {
 				double y = entity->y;
 				bool dVx_s = std::signbit(dVx), dVy_s = std::signbit(dVy);
 				for (int i = 0; i < ticks; i++) {
-					if (std::signbit(e->x - x) != dVx_s && std::signbit(e->y - y) != dVy_s) {
-						break;
-					}
 					if (dst2(e->x - x, e->y - y) <= radiusSum * radiusSum) {
 						e->collide(entity, false);
 						entity->collide(e, true);
 						entity->collided.push_back(e->id);
+						break;
+					}
+					if (std::signbit(e->x - x) != dVx_s && std::signbit(e->y - y) != dVy_s) {
 						break;
 					}
 					x += dVx;
