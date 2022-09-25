@@ -513,13 +513,13 @@ Triangle::Triangle() : Entity() {
 }
 
 void Triangle::loadCreatePacket(sf::Packet& packet) {
-	packet << type() << id << x << y << velX << velY << rotation;
+	packet << type() << id << x << y << velX << velY << rotation << name;
 	if (debug) {
 		printf("Sent id %d: %g %g %g %g\n", id, x, y, velX, velY);
 	}
 }
 void Triangle::unloadCreatePacket(sf::Packet& packet) {
-	packet >> id >> x >> y >> velX >> velY >> rotation;
+	packet >> id >> x >> y >> velX >> velY >> rotation >> name;
 	if (debug) {
 		printf("Received id %d: %g %g %g %g\n", id, x, y, velX, velY);
 	}

@@ -26,6 +26,13 @@ void onServerConnection() {
     serverSocket->send(resize);
 }
 
+void setAuthority(bool to) {
+    authority = to;
+    if (menuUI && menuUI->state == MenuStates::Main) {
+        menuUI->setState(MenuStates::Main);
+    }
+}
+
 void clientParsePacket(sf::Packet& packet) {
     uint16_t type;
     packet >> type;
@@ -202,6 +209,10 @@ void serverParsePacket(sf::Packet& packet, Player* player) {
         for (Player* p : playerGroup) {
             p->tcpSocket.send(colorPacket);
             p->tcpSocket.send(namePacket);
+        }
+        if (player->entity) {
+            ((Triangle*)player->entity)->name = player->username;
+            player->entity->setColor(color[0], color[1], color[2]);
         }
         std::string sendMessage;
         sendMessage.append("<").append(player->name()).append("> has joined.");

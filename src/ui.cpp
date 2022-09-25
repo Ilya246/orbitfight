@@ -519,7 +519,11 @@ void MenuUI::setState(uint8_t state) {
             buttons[0]->string = "Freeplay";
             buttons[1]->string = "Connect To Server";
             buttons[2]->string = "Settings";
-            buttons[3]->string = "Disconnect";
+            buttons[3]->string = authority ? "Clear Simulation" : "Disconnect";
+            if (authority) {
+                buttons.push_back(new TextElement());
+                buttons[4]->string = isServer ? "Stop Hosting" : "Host";
+            }
             float maxHeight = 0.f;
             for (TextElement* b : buttons) {
                 b->padding = buttonPadding;
@@ -622,7 +626,7 @@ void MenuUI::onMousePress(sf::Mouse::Button b) {
     }
     switch (state) {
         case MenuStates::Main: {
-            if (buttons[0]->isMousedOver()) {
+            if (buttons[0]->isMousedOver()) { // Freeplay button
                 fullClear(true);
                 generateSystem();
                 ownEntity = new Triangle();
@@ -630,16 +634,34 @@ void MenuUI::onMousePress(sf::Mouse::Button b) {
                 setupShip(ownEntity, false);
                 delete serverSocket;
                 serverSocket = nullptr;
-                authority = true;
+                setAuthority(true);
                 active = false;
-            } else if (buttons[1]->isMousedOver()) {
+            } else if (buttons[1]->isMousedOver()) { // Connect button
                 setState(MenuStates::ConnectMenu);
-            } else if (buttons[2]->isMousedOver()) {
+            } else if (buttons[2]->isMousedOver()) { // Settings button
                 printPreferred("Not implemented yet");
-            } else if (buttons[3]->isMousedOver()) {
-                fullClear(true);
+            } else if (buttons[3]->isMousedOver()) { // Clear simulation / disconnect button
                 delete serverSocket;
                 serverSocket = nullptr;
+                delete connectListener;
+                connectListener = nullptr;
+                fullClear(true);
+                setState(MenuStates::Main);
+            } else if (buttons.size() == 5 && buttons[4]->isMousedOver()) { // Unhost/host button
+                if (isServer) {
+                    delete connectListener;
+                    connectListener = nullptr;
+                    isServer = false;
+                } else {
+                    connectListener = new sf::TcpListener;
+                    connectListener->setBlocking(false);
+                    if (connectListener->listen(port) != sf::Socket::Done) {
+                        printPreferred("Could not host server on port " + to_string(port) + ". To change port, type /config port=<port>.");
+                        break;
+                    }
+                    isServer = true;
+                }
+                setState(MenuStates::Main);
             }
             break;
         }

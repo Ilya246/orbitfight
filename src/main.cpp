@@ -112,7 +112,8 @@ int main(int argc, char** argv) {
 
 		uiGroup.push_back(new MiscInfoUI());
 		uiGroup.push_back(new ChatUI());
-		uiGroup.push_back(new MenuUI());
+		menuUI = new MenuUI();
+		uiGroup.push_back(menuUI);
 		for (UIElement* e : uiGroup) {
 			e->resized();
 		}
@@ -196,18 +197,13 @@ int main(int argc, char** argv) {
 			if (status == sf::Socket::Done) {
 				sparePlayer->ip = sparePlayer->tcpSocket.getRemoteAddress().toString();
 				sparePlayer->port = sparePlayer->tcpSocket.getRemotePort();
-				printPreferred(sparePlayer->name() + " has connected.");
+				printPreferred(sparePlayer->ip + ":" + to_string(sparePlayer->port) + " has connected.");
 				sparePlayer->lastAck = globalTime;
 				for (Entity* e : updateGroup) {
 					sf::Packet packet;
 					packet << Packets::CreateEntity;
 					e->loadCreatePacket(packet);
 					sparePlayer->tcpSocket.send(packet);
-				}
-				for (Player* p : playerGroup) {
-					sf::Packet namePacket;
-					namePacket << Packets::Name << p->entity->id << p->username;
-					sparePlayer->tcpSocket.send(namePacket);
 				}
 				playerGroup.push_back(sparePlayer);
 
@@ -441,13 +437,12 @@ int main(int argc, char** argv) {
 					sf::Packet packet;
 					serverSocket->setBlocking(false);
 					status = serverSocket->receive(packet);
-
 					serverSocket->setBlocking(true);
 					if (status == sf::Socket::Done) {
 						clientParsePacket(packet);
 					} else if (status == sf::Socket::Disconnected) {
-						printPreferred("Connection to server closed.\n");
-						fullClear(true);
+						printPreferred("Connection to server closed. Continuing simulation locally.");
+						setAuthority(true);
 						delete serverSocket;
 						serverSocket = nullptr;
 						break;

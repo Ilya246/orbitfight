@@ -6,6 +6,8 @@
 namespace obf {
     void onServerConnection();
 
+    void setAuthority(bool);
+
     void clientParsePacket(sf::Packet&);
     void serverParsePacket(sf::Packet&, Player*);
 

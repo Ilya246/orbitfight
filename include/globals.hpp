@@ -24,6 +24,7 @@ inline obf::TextBoxElement* activeTextbox = nullptr;
 inline std::vector<Entity*> updateGroup;
 inline std::vector<Player*> playerGroup;
 inline std::vector<UIElement*> uiGroup;
+inline obf::MenuUI* menuUI = nullptr;
 inline std::vector<Entity*> simCleanupBuffer;
 inline std::vector<CelestialBody*> planets;
 inline std::vector<std::vector<Point>> ghostTrajectories;
