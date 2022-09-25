@@ -374,26 +374,37 @@ void Quad::collideAttract(Entity* e, bool doGravity, bool checkCollide) {
 		}
 		if (checkCollide && std::find(e->collided.begin(), e->collided.end(), entity->id) == e->collided.end()) {
 			double dVx = entity->dVelX - e->dVelX, dVy = entity->dVelY - e->dVelY;
-			if (2.0 * (dVx + dVy) > e->radius + entity->radius) {
-				int ticks = std::ceil(dst(dVx, dVy) / std::max(entity->radius, e->radius) * 2.0);
-				dVx /= ticks;
-				dVy /= ticks;
+			double radiusSum = e->radius + entity->radius;
+			if (dst2(e->x - entity->x, e->y - entity->y) <= radiusSum * radiusSum) {
+				e->collide(entity, false);
+				entity->collide(e, true);
+				entity->collided.push_back(e->id);
+			} else if (std::abs(e->x - entity->x) - radiusSum < std::abs(dVx) && std::abs(e->y - entity->y) - radiusSum < std::abs(dVy) && 2.0 * (std::abs(dVx) + std::abs(dVy)) > radiusSum) {
+				printf("raytracing: dvx %g, dvy %g", dVx, dVy);
+				double vel = dst(dVx, dVy);
+				int ticks = std::ceil((vel + radiusSum) / std::max(entity->radius, e->radius) * 2.0); // 2.0 here is the accuracy factor
+				printf(" dx %g, dy %g, ticks %u, ", e->x - entity->x, e->y - entity->y, ticks);
+				double mulby = (vel + radiusSum) / (ticks * vel);
+				dVx *= mulby;
+				dVy *= mulby;
+				printf("svx %g, svy %g\n", dVx, dVy);
 				double x = entity->x;
 				double y = entity->y;
+				bool dVx_s = std::signbit(dVx), dVy_s = std::signbit(dVy);
 				for (int i = 0; i < ticks; i++) {
-					if (dst2(e->x - x, e->y - y) <= (e->radius + entity->radius) * (e->radius + entity->radius)) {
+					if (std::signbit(e->x - x) != dVx_s && std::signbit(e->y - y) != dVy_s) {
+						break;
+					}
+					if (dst2(e->x - x, e->y - y) <= radiusSum * radiusSum) {
 						e->collide(entity, false);
 						entity->collide(e, true);
 						entity->collided.push_back(e->id);
+						printf("hit\n");
 						break;
 					}
 					x += dVx;
 					y += dVy;
 				}
-			} else if (dst2(e->x - entity->x, e->y - entity->y) <= (e->radius + entity->radius) * (e->radius + entity->radius)) {
-				e->collide(entity, false);
-				entity->collide(e, true);
-				entity->collided.push_back(e->id);
 			}
 		}
 		if (doGravity) {

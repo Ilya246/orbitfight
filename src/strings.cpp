@@ -301,7 +301,7 @@ void parseCommand (const string& command) {
 		return;
 	} else if (args[0] == "reset") {
 		if (!authority) {
-			displayMessage("This command only works if you're the server.");
+			printPreferred("This command only works if you're the server.");
 			return;
 		}
 		delta = 0.0;
@@ -330,7 +330,7 @@ void parseCommand (const string& command) {
 		return;
 	} else if (args[0] == "players") {
 		if (!isServer) {
-			displayMessage("This command only works if you're the server.");
+			printPreferred("This command only works if you're the server.");
 			return;
 		}
 		printf("%llu players:\n", playerGroup.size());
