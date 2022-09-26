@@ -101,7 +101,7 @@ void generateSystem() {
 			angle += angleSpacing;
 		}
 	}
-	double spawnDst = gen_firstPlanetDistance + starsN * gen_starRadius * 2.0 * rand_f(1.f, 1.5f);
+	double spawnDst = gen_firstPlanetDistance * rand_f(gen_minNextRadius, gen_maxNextRadius) + dist + gen_starRadius;
 	int planets = (int)(rand_f(gen_baseMinPlanets, gen_baseMaxPlanets) * sqrt(starsN));
 	printf("Generated system: %u stars, %u planets, %u moons\n", starsN, planets, generateOrbitingPlanets(planets, 0.0, 0.0, 0.0, 0.0, starsMass, gen_minPlanetRadius, gen_maxPlanetRadius, spawnDst));
 }
