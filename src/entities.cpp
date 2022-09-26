@@ -50,8 +50,7 @@ int generateOrbitingPlanets(int amount, double x, double y, double velx, double 
 		double factor = sqrt(spawnDst) / maxFactor; // makes planets further outward generate larger
 		float spawnAngle = rand_f(-PI, PI);
 		float radius = rand_f(minradius, maxradius * factor);
-		double density = gen_baseDensity / pow(radius, 1.0 / 3.0); // makes smaller planets denser
-		CelestialBody* planet = new CelestialBody(radius, radius * radius * density);
+		CelestialBody* planet = new CelestialBody(radius, gen_baseDensity * pow(radius, gen_densityFactor));
 		planet->setPosition(x + spawnDst * std::cos(spawnAngle), y + spawnDst * std::sin(spawnAngle));
 		double vel = sqrt(G * parentmass / spawnDst);
 		planet->addVelocity(velx + vel * std::cos(spawnAngle + PI / 2.0), vely + vel * std::sin(spawnAngle + PI / 2.0));
