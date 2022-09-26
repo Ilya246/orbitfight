@@ -27,7 +27,7 @@ void setupShip(Entity* ship, bool sync) {
 		return;
 	}
 	CelestialBody* planet = planets[(int)rand_f(0, planets.size())];
-	double spawnDst = planet->radius + rand_f(shipSpawnDistanceMin, shipSpawnDistanceMax);
+	double spawnDst = planet->radius * rand_f(shipSpawnDistanceMin, shipSpawnDistanceMax);
 	float spawnAngle = rand_f(-PI, PI);
 	ship->setPosition(planet->x + spawnDst * std::cos(spawnAngle), planet->y + spawnDst * std::sin(spawnAngle));
 	double vel = sqrt(G * planet->mass / spawnDst);
