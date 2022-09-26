@@ -372,7 +372,6 @@ void Quad::collideAttract(Entity* e, bool doGravity, bool checkCollide) {
 			dx = e->x - entity->x, dy = e->y - entity->y;
 			double radiusSum = e->radius + entity->radius;
 			if (dst2(dx, dy) <= radiusSum * radiusSum) {
-				printf("hit1\n");
 				e->collide(entity, false);
 				entity->collide(e, true);
 				entity->collided.push_back(e->id);
@@ -381,9 +380,7 @@ void Quad::collideAttract(Entity* e, bool doGravity, bool checkCollide) {
 				// calculate closest approach and at what x it will happen to check whether velocity is big enough to reach said closest approach
 				cApproach = (dx * dVy - dy * dVx) * ivel,
 				cApproachAtX = dx - cApproach * dVy * ivel;
-				printf("rt: dx %g dy %g d %g dvx %g dvy %g v%g ca %g cax %g\n", dx, dy, dst(dx, dy), dVx, dVy, 1.0 / ivel, cApproach, cApproachAtX);
 				if ((std::abs(cApproach) < radiusSum && std::abs(cApproachAtX) <= std::abs(dVx) && std::signbit(cApproachAtX) == std::signbit(dVx)) || dst2(dx + dVx, dy + dVy) < radiusSum * radiusSum) {
-					printf("hit2\n");
 					e->collide(entity, false);
 					entity->collide(e, true);
 					entity->collided.push_back(e->id);

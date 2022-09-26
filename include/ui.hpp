@@ -90,7 +90,7 @@ namespace MenuStates {
 constexpr uint8_t Main = 0,
 	ConnectMenu = 1,
 	SettingsMenu = 2;
-};
+}
 
 struct MenuUI : UIElement, MousePressListener, KeyPressListener {
     MenuUI();
