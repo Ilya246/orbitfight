@@ -708,7 +708,9 @@ int main(int argc, char** argv) {
 			framerate = measureFrames;
 			measureFrames = 0;
 		}
-		sf::sleep(sf::seconds(std::max((1.0 / targetFramerate - delta), 0.0)));
+		double actualDelta = actualDeltaClock.restart().asSeconds();
+		sf::sleep(sf::seconds(std::max((1.0 / targetFramerate - actualDelta), 0.0)));
+		actualDeltaClock.restart();
 		if (deltaOverride > 0.0) {
 			delta = deltaOverride;
 		} else {

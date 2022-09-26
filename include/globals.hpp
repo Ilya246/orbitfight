@@ -30,7 +30,7 @@ inline std::vector<CelestialBody*> planets;
 inline std::vector<std::vector<Point>> ghostTrajectories;
 inline std::vector<sf::Color> ghostTrajectoryColors;
 inline sf::Vector2i mousePos;
-inline sf::Clock deltaClock, globalClock;
+inline sf::Clock actualDeltaClock, deltaClock, globalClock;
 inline std::future<void> inputReader;
 inline std::vector<std::thread*> updateThreads;
 inline std::string serverAddress = "", name = "",
