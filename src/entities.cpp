@@ -368,33 +368,25 @@ void Quad::collideAttract(Entity* e, bool doGravity, bool checkCollide) {
 			return;
 		}
 		if (checkCollide && std::find(e->collided.begin(), e->collided.end(), entity->id) == e->collided.end()) {
-			double dVx = entity->dVelX - e->dVelX, dVy = entity->dVelY - e->dVelY;
+			double dVx = entity->dVelX - e->dVelX, dVy = entity->dVelY - e->dVelY,
+			dx = e->x - entity->x, dy = e->y - entity->y;
 			double radiusSum = e->radius + entity->radius;
-			if (dst2(e->x - entity->x, e->y - entity->y) <= radiusSum * radiusSum) {
+			if (dst2(dx, dy) <= radiusSum * radiusSum) {
+				printf("hit1\n");
 				e->collide(entity, false);
 				entity->collide(e, true);
 				entity->collided.push_back(e->id);
-			} else if (std::abs(e->x - entity->x) - radiusSum < std::abs(dVx) && std::abs(e->y - entity->y) - radiusSum < std::abs(dVy) && 2.0 * (std::abs(dVx) + std::abs(dVy)) > radiusSum) {
-				double vel = dst(dVx, dVy);
-				int ticks = std::ceil((vel + radiusSum) / std::max(entity->radius, e->radius) * 2.0); // 2.0 here is the accuracy factor
-				double mulby = (vel + radiusSum) / (ticks * vel);
-				dVx *= mulby;
-				dVy *= mulby;
-				double x = entity->x;
-				double y = entity->y;
-				bool dVx_s = std::signbit(dVx), dVy_s = std::signbit(dVy);
-				for (int i = 0; i < ticks; i++) {
-					if (dst2(e->x - x, e->y - y) <= radiusSum * radiusSum) {
-						e->collide(entity, false);
-						entity->collide(e, true);
-						entity->collided.push_back(e->id);
-						break;
-					}
-					if (std::signbit(e->x - x) != dVx_s && std::signbit(e->y - y) != dVy_s) {
-						break;
-					}
-					x += dVx;
-					y += dVy;
+			} else if (std::abs(dx) - radiusSum < std::abs(dVx) && std::abs(dy) - radiusSum < std::abs(dVy)) { // possibly colliding before next frame?
+				double ivel = 1.0 / dst(dVx, dVy),
+				// calculate closest approach and at what x it will happen to check whether velocity is big enough to reach said closest approach
+				cApproach = (dx * dVy - dy * dVx) * ivel,
+				cApproachAtX = dx - cApproach * dVy * ivel;
+				printf("rt: dx %g dy %g d %g dvx %g dvy %g v%g ca %g cax %g\n", dx, dy, dst(dx, dy), dVx, dVy, 1.0 / ivel, cApproach, cApproachAtX);
+				if ((std::abs(cApproach) < radiusSum && std::abs(cApproachAtX) <= std::abs(dVx) && std::signbit(cApproachAtX) == std::signbit(dVx)) || dst2(dx + dVx, dy + dVy) < radiusSum * radiusSum) {
+					printf("hit2\n");
+					e->collide(entity, false);
+					entity->collide(e, true);
+					entity->collided.push_back(e->id);
 				}
 			}
 		}
