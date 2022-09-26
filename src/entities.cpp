@@ -214,7 +214,9 @@ void Entity::syncCreation() {
 	}
 }
 
-void Entity::control(movement& cont) {}
+void Entity::control(movement&) {
+	return;
+}
 void Entity::update1() {
 	dVelX = velX * delta;
 	dVelY = velY * delta;
@@ -733,7 +735,7 @@ CelestialBody::CelestialBody(double radius, double mass) : Entity() {
 		warning->setOutlineThickness(1.f);
 	}
 }
-CelestialBody::CelestialBody(bool ghost) {
+CelestialBody::CelestialBody(bool) {
 	for (size_t i = 0; i < updateGroup.size(); i++) {
 		Entity* e = updateGroup[i];
 		if (e == this) [[unlikely]] {

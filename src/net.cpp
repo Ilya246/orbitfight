@@ -166,6 +166,7 @@ void clientParsePacket(sf::Packet& packet) {
     }
     case Packets::FullClear: {
         fullClear(false);
+        break;
     }
     default:
         printf("Unknown packet %d received\n", type);
