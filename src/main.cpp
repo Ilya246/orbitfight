@@ -276,6 +276,7 @@ int main(int argc, char** argv) {
 					for (size_t i = 0; i < MousePressListener::listeners.size(); i++) {
 						MousePressListener::listeners[i]->onMousePress(event.mouseButton.button);
 					}
+					break;
 				}
 				case sf::Event::KeyPressed: {
 					for (size_t i = 0; i < KeyPressListener::listeners.size(); i++) {
