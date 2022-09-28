@@ -34,7 +34,8 @@ inline sf::Clock actualDeltaClock, deltaClock, globalClock;
 inline std::future<void> inputReader;
 inline std::vector<std::thread*> updateThreads;
 inline std::string serverAddress = "", name = "",
-inputBuffer = "";
+inputBuffer = "",
+assetsFolder = "assets";
 inline unsigned short port = 7817;
 inline movement lastControls, controls;
 inline double delta = 1.0 / 60.0,
@@ -96,6 +97,8 @@ inline std::map<std::string, Var> vars {
 	{"name", {String, &name}},
 	{"port", {Int, &port}},
 	{"serverAddress", {String, &serverAddress}},
+
+	{"assetsFolder", {String, &assetsFolder}},
 
 	{"predictDelta", {Double, &predictDelta}},
 	{"predictSpacing", {Double, &predictSpacing}},

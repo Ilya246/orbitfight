@@ -1,7 +1,6 @@
 #include "camera.hpp"
 #include "entities.hpp"
 #include "events.hpp"
-#include "font.hpp"
 #include "globals.hpp"
 #include "math.hpp"
 #include "net.hpp"
@@ -70,7 +69,6 @@ int main(int argc, char** argv) {
 			return 0;
 		}
 	}
-
 	std::ofstream out;
 	out.open(configFile, std::ios::app);
 	if (headless) {
@@ -94,22 +92,17 @@ int main(int argc, char** argv) {
 			printf("Could not host server on port %u.\n", port);
 			return 0;
 		}
-
 		printf("Hosted server on port %u.\n", port);
-
 		generateSystem();
 	} else {
 		window = new sf::RenderWindow(sf::VideoMode(800, 800), "Orbitfight");
-
 		g_camera.scale = 1;
 		g_camera.resize();
-
 		font = new sf::Font;
-		if (!font->loadFromMemory(font_ttf, font_ttf_len)) [[unlikely]] {
+		if (!font->loadFromFile(assetsFolder + "/font.ttf")) [[unlikely]] {
 			puts("Failed to load font");
 			return 1;
 		}
-
 		uiGroup.push_back(new MiscInfoUI());
 		uiGroup.push_back(new ChatUI());
 		menuUI = new MenuUI();
@@ -117,9 +110,7 @@ int main(int argc, char** argv) {
 		for (UIElement* e : uiGroup) {
 			e->resized();
 		}
-
 		systemCenter = new CelestialBody(true);
-
 		if (autoConnect && !serverAddress.empty()) {
 			std::vector<std::string> addressPort;
 			splitString(serverAddress, addressPort, ':');
@@ -206,7 +197,6 @@ int main(int argc, char** argv) {
 					sparePlayer->tcpSocket.send(packet);
 				}
 				playerGroup.push_back(sparePlayer);
-
 				sparePlayer->entity = new Triangle();
 				setupShip(sparePlayer->entity, false);
 				sparePlayer->entity->player = sparePlayer;
