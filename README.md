@@ -32,6 +32,7 @@ To compile orbitfight, you have to:
 - make sure `include/*.hpp` is accounted for
 - make sure SFML `graphics`, `window`, `network` and `system` modules are accounted for
 - make sure you're using at least C++20
+- if you plan on running the game in client mode, put the assets folder next to the game executable after compiling
 
 # Font
 Using Hack font, not owned by us
