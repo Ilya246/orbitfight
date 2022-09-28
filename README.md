@@ -1,10 +1,9 @@
 # orbitfight
-A very in-development game where you're a spaceship shooting other spaceships in a very large solar system, other mechanics might possibly be added later
-<br>Currently you have to join a server to play the game, singleplayer is not available
+A very in-development game where you're a spaceship shooting other spaceships in a very large solar system simulated as a N-body gravity simulation, other mechanics might possibly be added later
 
 Development progress is posted in the matrix server: https://matrix.to/#/#orbitfight:matrix.org
 
-This game is more of a learning project than a real game and is not really intended to be particularly interesting, another side effect of which is that the code may be rather cursed in places
+This game is more of a learning project (and is also my (Ilya246) first "real" C++ program) than a real game and is not really intended to be particularly interesting, another side effect of which is that the code may be rather cursed in places
 
 On screenshot: myself orbiting a moon in a planetary system after having shot a projectile, trajectories selected to be drawn relative to the main planet
 
@@ -25,7 +24,7 @@ On screenshot: myself orbiting a moon in a planetary system after having shot a 
 `orbitfight.exe --headless`
 
 # Config
-Config documentation should generate upon starting the executable if a config file is not detected
+Config documentation should generate upon starting the executable if a config file is not detected. If you want to regenerate it, `orbitfight.exe --regenerate-help`
 
 # Compiling
 To compile orbitfight, you have to:
