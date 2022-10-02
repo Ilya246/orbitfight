@@ -380,6 +380,8 @@ void Quad::collideAttract(Entity* e, bool doGravity, bool checkCollide) {
 				double ivel = 1.0 / dst(dVx, dVy),
 				// calculate closest approach and at what x it will happen to check whether velocity is big enough to reach said closest approach
 				cApproach = (dx * dVy - dy * dVx) * ivel,
+				// cApproachAt = sqrt(dst2(dx, dy) - cApproach * cApproach); // distance the body will pass before closest approach
+				// collideAt = cApproachAt - sqrt(radiusSum * radiusSum - cApproach * cApproach); // distance the body will pass before colliding if abs(radiusSum) > abs(cApproach)
 				cApproachAtX = dx - cApproach * dVy * ivel;
 				if ((std::abs(cApproach) < radiusSum && std::abs(cApproachAtX) <= std::abs(dVx) && std::signbit(cApproachAtX) == std::signbit(dVx)) || dst2(dx + dVx, dy + dVy) < radiusSum * radiusSum) {
 					e->collide(entity, false);
