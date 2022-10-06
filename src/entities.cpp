@@ -161,12 +161,17 @@ void updateEntities() {
 }
 
 Entity* idLookup(uint32_t id) {
-	for (Entity* e : updateGroup) {
-		if (e->id == id) [[unlikely]] {
-			return e;
+	size_t searchBy = 0;
+	for (size_t i = 1; i > 0; i = i << 1) {
+		searchBy = std::max(searchBy, updateGroup.size() & i);
+	}
+	size_t at = 0;
+	for (size_t i = searchBy; i > 0; i = i >> 1) {
+		if (at + i < updateGroup.size() && updateGroup[at + i]->id <= id) {
+			at += i;
 		}
 	}
-	return nullptr;
+	return updateGroup[at]->id == id ? updateGroup[at] : nullptr;
 }
 
 std::string Player::name() {

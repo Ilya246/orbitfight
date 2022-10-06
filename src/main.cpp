@@ -484,8 +484,7 @@ int main(int argc, char** argv) {
 		for (size_t i = 0; i < updateGroup.size(); i++) {
 			if (!updateGroup[i]->active) [[unlikely]] {
 				deleted.push_back(updateGroup[i]);
-				updateGroup[i] = updateGroup[updateGroup.size() - 1];
-				updateGroup.pop_back();
+				updateGroup.erase(updateGroup.begin() + i);
 				i--;
 			}
 		}
@@ -577,16 +576,11 @@ int main(int argc, char** argv) {
 				if (ownEntity) {
 					ownEntity->control(controls);
 				}
-				for (Entity* en : updateGroup) {
-					if (!en->active) {
-						for (size_t i = 0; i < updateGroup.size(); i++) {
-							Entity* e = updateGroup[i];
-							if (e == en) [[unlikely]] {
-								updateGroup[i] = updateGroup[updateGroup.size() - 1];
-								updateGroup.pop_back();
-							}
-						}
-						en->active = true;
+				for (size_t i = 0; i < updateGroup.size(); i++) {
+					if (!updateGroup[i]->active) [[unlikely]] {
+						updateGroup[i]->active = true;
+						updateGroup.erase(updateGroup.begin() + i);
+						i--;
 					}
 				}
 			}
