@@ -354,7 +354,7 @@ void parseCommand (const string& command) {
 			printPreferred("This command only works if you're the server.");
 			return;
 		}
-		printf("%llu players:\n", playerGroup.size());
+		printf("%lu players:\n", playerGroup.size());
 		for (Player* p : playerGroup) {
 			cout << "	<" << p->name() << ">" << endl;
 		}
