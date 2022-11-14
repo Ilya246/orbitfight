@@ -1,35 +1,72 @@
-CXX ?= g++
-STRIP := strip
+OBJS :=	main.o \
+	ui.o \
+	net.o \
+	math.o \
+	camera.o \
+	strings.o \
+	entities.o
 
-STANDARD ?= c++20
-CXXFLAGS ?= -O3 -Wall -Wextra -pedantic -g
-override CXXFLAGS += -std=$(STANDARD) -c -Iinclude
-LDFLAGS := $(shell pkg-config --libs sfml-window sfml-graphics sfml-system sfml-network) -pthread
+LIBS :=	sfml-window \
+	sfml-system \
+	sfml-network \
+	sfml-graphics
 
-sources := $(shell find src -type f -name "*.cpp")
-objects := $(sources:src/%.cpp=build/%.o)
-depends := $(sources:src/%.cpp=build/%.d)
+INCLUDES :=	-I./include
 
+CXX		?= g++
+CXXSTANDARD	?= c++20
+CXXWARNS	?= -Wall -Wextra -pedantic
+CXXFLAGS	?= -O3
+override \
+  CXXFLAGS	+= $(CXXWARNS) -std=$(CXXSTANDARD) $(INCLUDES)
+LD		:= $(CXX)
+LDFLAGS		?= -pthread
+override \
+  LDFLAGS	+= $(shell pkg-config --libs $(LIBS))
+STRIP		?= strip
+RM		?= rm -f
+
+.PHONY: all
 all: orbitfight
 
-build/%.o: src/%.cpp
-	@printf "CC\t%s\n" $@
-	@mkdir -p $(@D)
-	@$(CXX) $(CXXFLAGS) -MMD -MP $< -o $@
-
--include $(depends)
-
-orbitfight: $(objects)
-	@printf "LD\t%s\n" $@
-	@$(CXX) $^ -o $@ $(LDFLAGS)
-
-clean:
-	rm -rf build
-
-strip: all
-	$(STRIP) orbitfight
-
+.PHONY: run
 run: all
 	@./orbitfight
 
-.PHONY: all clean strip run
+.PHONY: clean
+clean:
+	$(RM) orbitfight
+	@$(RM) $(OBJS) $(DEPS)
+
+.PHONY: rebuild
+rebuild: clean all | clean
+
+.PHONY: analyze
+analyze: CXXFLAGS += -g -Og -fanalyzer -Werror -Wno-inline -Wno-suggest-attribute={pure,noreturn}
+analyze: rebuild
+
+.PHONY: debug
+debug: CXXFLAGS += -DDEBUG -g -Og
+debug: analyze
+
+.PHONY: release
+release: CXXFLAGS += -DNDEBUG
+release: DO_STRIP = 1
+release: rebuild
+
+#####
+
+OBJS := $(addprefix build/, $(OBJS))
+
+orbitfight: $(OBJS)
+	@echo "  LD		$@"
+	@$(LD) $(LDFLAGS) -o $@ $^
+	@if [[ "$(DO_STRIP)" ]]; then echo "  STRIP		$@"; $(STRIP) $(STRIPFLAGS) $@; fi
+
+DEPS := $(join $(dir $(OBJS)), $(addprefix ., $(notdir $(OBJS:.o=.d~))))
+-include $(DEPS)
+
+build/%.o: src/%.cpp
+	@echo "  CXX		$@"
+	@mkdir -p $(dir $@)
+	@$(CXX) $(CXXFLAGS) -MMD -MP -MF $(join $(dir $@), $(addprefix ., $(notdir $(@:.o=.d~)))) -c -o $@ $<
