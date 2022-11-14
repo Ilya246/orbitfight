@@ -33,9 +33,4 @@ T absMax(T a, T b) {
 }
 float lerpRotation(float, float, float);
 
-bool AABB_collides(double x1, double y1, double sx1, double sy1, double x2, double y2, double sx2, double sy2);
-double linesCollideX(double x11, double y11, double x21, double y21, double x12, double y12, double x22, double y22);
-bool pointInAABB(double x, double y, double x1, double y1, double sx, double sy);
-bool AABB_collideLine(double xr, double yr, double sx, double sy, double x1, double y1, double x2, double y2);
-
 }
