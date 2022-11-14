@@ -1,5 +1,7 @@
 **.o
 **.d~
+**.ttf
 build/
 orbitfight
+config*.txt
 build*.bat
