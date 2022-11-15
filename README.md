@@ -35,4 +35,4 @@ To compile orbitfight, you have to:
 - if you plan on running the game in client mode, put the assets folder next to the game executable after compiling
 
 # Font
-Using Hack font, not owned by us
+Using Hack font. Download it manually and place at `assets/font.ttf`.

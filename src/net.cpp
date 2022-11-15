@@ -37,7 +37,7 @@ void clientParsePacket(sf::Packet& packet) {
     uint16_t type;
     packet >> type;
     if (debug && type != Packets::SyncEntity) [[unlikely]] {
-        printf("Got packet %d, size %llu\n", type, packet.getDataSize());
+        printf("Got packet %d, size %lu\n", type, packet.getDataSize());
     }
     switch (type) {
     case Packets::Ping: {
@@ -178,7 +178,7 @@ void serverParsePacket(sf::Packet& packet, Player* player) {
     uint16_t type;
     packet >> type;
     if (debug) {
-        printf("Got packet %d from %s, size %llu\n", type, player->name().c_str(), packet.getDataSize());
+        printf("Got packet %d from %s, size %lu\n", type, player->name().c_str(), packet.getDataSize());
     }
     switch(type) {
     case Packets::Ping: {

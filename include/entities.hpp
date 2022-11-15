@@ -93,7 +93,6 @@ struct Entity : EntityDeleteListener {
 
 	std::vector<Point> trajectory;
 
-	std::vector<Point> shape;
 	virtual uint8_t type() = 0;
 	Player* player = nullptr;
 	double x = 0.0, y = 0.0, velX = 0.0, velY = 0.0, rotation = 0.0, rotateVel = 0.0,
@@ -109,21 +108,6 @@ struct Entity : EntityDeleteListener {
 };
 
 Entity* idLookup(uint32_t);
-
-struct CollideQuad {
-	double collide(CollideQuad* q, double x, double y, double vx, double vy, double deltarot, const vector<Point>& otherShape);
-	double closestLineCollision(double x1, double y1, double x2, double y2, bool inv, const vector<Point>& shape);
-	void put(uint32_t pid, const vector<Point>& shape);
-	CollideQuad* getChild(double x, double y);
-	CollideQuad* unstaircasize();
-
-	void draw();
-
-	CollideQuad* children[4] = {nullptr, nullptr, nullptr, nullptr};
-	uint32_t point;
-	double size, x, y, bx, xsize = 0.0, by, ysize = 0.0; // size is the actual size of the quad, bx, xsize, by and ysize are the bounding box of the vertices inside
-	bool used = false;
-};
 
 struct Quad {
 	void collideAttract(Entity* e, bool, bool);
