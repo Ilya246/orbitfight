@@ -100,7 +100,7 @@ int main(int argc, char** argv) {
 		g_camera.scale = 1;
 		g_camera.resize();
 		font = new sf::Font;
-		if (!font->loadFromFile(std::filesystem::canonical(std::filesystem::path(argv[0])).parent_path()/"assets"/"font.ttf")) [[unlikely]] {
+		if (!font->loadFromFile((std::filesystem::canonical(std::filesystem::path(argv[0])).parent_path()/"assets"/"font.ttf").string())) [[unlikely]] {
 			puts("Failed to load font");
 			return 1;
 		}

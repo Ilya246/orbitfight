@@ -260,7 +260,7 @@ void Entity::collide(Entity* with, bool specialOnly) {
 	}
 	double massFactorThis = 1.0 / (1.0 + mass / with->mass);
 	double massFactorOther = 1.0 / (1.0 + with->mass / mass); // for conservation of momentum
-	double inHeading = std::atan2(y - with->y, x - with->x); // heading of vector from other to this
+	double inHeading = std::atan2(y - with->y, x - with->x); // heading of std::vector from other to this
 	double inX = std::cos(inHeading);
 	double inY = std::sin(inHeading);
 	double newX = x + (with->x - x + (radius + with->radius) * inX) * massFactorThis;
@@ -322,7 +322,7 @@ CollideQuad* CollideQuad::getChild(double cx, double cy) {
 	}
 	return children[at];
 }
-void CollideQuad::put(uin32_t pid, const vector<Point>& shape) {
+void CollideQuad::put(uint32_t pid, const std::vector<Point>& shape) {
 	Point p = shape[pid];
 	if (p.x < bx) {
 		sizex += bx - p.x;
@@ -332,12 +332,12 @@ void CollideQuad::put(uin32_t pid, const vector<Point>& shape) {
 		sizey += by - p.y;
 		by = p.y;
 	}
-	sizex = max(sizex, p.x - bx);
-	sizey = max(sizey, p.y - by);
+	sizex = std::max(sizex, p.x - bx);
+	sizey = std::max(sizey, p.y - by);
 	if (used) {
-		getChild(p.x, p.y).put(pid, shape);
-		if (point) {
-			getChild(point.x, point.y).put(point, shape);
+		getChild(p.x, p.y)->put(pid, shape);
+		if (point != std::numeric_limits<uint32_t>::max()) {
+			getChild(shape[point].x, shape[point].y)->put(point, shape);
 		}
 	} else {
 		point = pid;
@@ -347,7 +347,7 @@ void CollideQuad::put(uin32_t pid, const vector<Point>& shape) {
 CollideQuad* CollideQuad::unstaircasize() {
 	for (CollideQuad*& c : children) {
 		if (c) {
-			uint32_t retcode = c->unstaircasize();
+			CollideQuad* retcode = c->unstaircasize();
 			if (c->bx == bx && c->sizex == sizex && c->by == by && c->sizey == sizey) {
 				return retcode == nullptr ? c : retcode;
 			} else if (retcode) {
@@ -357,46 +357,52 @@ CollideQuad* CollideQuad::unstaircasize() {
 	}
 	return nullptr;
 }
-double CollideQuad::closestLineCollision(double x1, double y1, double x2, double y2, bool inv, const vector<Point>& shape) {
+LineCollision CollideQuad::closestLineCollision(double x1, double y1, double x2, double y2, bool inv, const std::vector<Point>& shape) {
 	if (sizex != 0.0 || sizey != 0.0) {
-		double mindist = inv ? -INFINITY : INFINITY;
+		LineCollision mincoll = {inv ? -INFINITY : INFINITY, 0.0, 0.0, 0.0, 0.0};
 		for (CollideQuad* c : children) {
 			if (c && ((c->sizex == 0.0 && c->sizey == 0.0) || AABB_collideLine(c->bx, c->by, c->sizex, c->sizey, x1, y1, x2, y2))) {
-				mindist = inv ? std::max(mindist, c->closestLineCollision(x1, y1, x2, y2, inv, shape)) : std::min(mindist, c->closestLineCollision(x1, y1, x2, y2, inv, shape));
+				LineCollision coll = c->closestLineCollision(x1, y1, x2, y2, inv, shape);
+				if ((inv && coll.cd > mincoll.cd) || (!inv && coll.cd < mincoll.cd)) {
+					mincoll = coll;
+				}
 			}
 		}
-		return mindist;
+		return mincoll;
 	} else {
-		double cx1 = linesCollideX(x1, y1, x2, y2, shape[point].x, shape[point].y, shape[(point + 1) % shape.size()].x, cx2 = shape[(point + 1) % shape.size()].y), linesCollideX(x1, y1, x2, y2, shape[point].x, shape[point].y, shape[(point - 1) % shape.size()].x, shape[(point - 1) % shape.size()].y);
-		return inv ? max(cx1, cx2) : min(cx1, cx2);
+		return {linesCollideX(x1, y1, x2, y2, shape[point].x, shape[point].y, shape[(point + 1) % shape.size()].x, shape[(point + 1) % shape.size()].y), x1, y1, x2, y2};
 	}
 }
-double CollideQuad::collide(CollideQuad* q, double x, double y, double vx, double vy, double deltarot, const vector<Point>& otherShape) {
+LineCollision CollideQuad::collide(CollideQuad* q, const std::vector<Point>& shape, const std::vector<Point>& otherShape, double x, double y, double vx, double vy, double deltarot) {
 	double cosf = std::cos(deltarot), sinf = std::sin(deltarot);
 	if (sizex != 0.0 || sizey != 0.0) {
 		double xp1 = bx * cosf - by * sinf, xp2 = (bx + sizex) * cosf - by * sinf, xp3 = bx * cosf - (by + sizey) * sinf, xp4 = (bx + sizex) * cosf - (by + sizey) * sinf,
 		yp1 = by * cosf + bx * sinf, yp2 = by * cosf + (bx + sizex) * sinf, yp3 = (by + sizey) * cosf + bx * sinf, yp4 = (by + sizey) * cosf + (bx + sizex) * sinf;
 		double actx = std::min(std::min(xp1, xp2), std::min(xp3, xp4)), acty = std::min(std::min(yp1, yp2), std::min(yp3, yp4));
 		double actsx = std::max(std::max(xp1, xp2), std::max(xp3, xp4)) - actx, actsy = std::max(std::max(yp1, yp2), std::max(yp3, yp4)) - acty;
-		if (!AABB_collides(actx + std::min(vx, 0), acty + std::min(vy, 0), actsx + std::max(vx, 0), actsy + std::max(vy, 0), q->bx, q->by, q->sizex, q->sizey)) {
-			return INFINITY;
+		if (!AABB_collides(actx + std::min(vx, 0.0), acty + std::min(vy, 0.0), actsx + std::max(vx, 0.0), actsy + std::max(vy, 0.0), q->bx, q->by, q->sizex, q->sizey)) {
+			return {INFINITY, 0.0, 0.0, 0.0, 0.0};
 		}
-		double mindist = INFINITY;
+		LineCollision mincoll = {INFINITY, 0.0, 0.0, 0.0, 0.0};
 		for (CollideQuad* c : children) {
 			if (c) {
-				mindist = std::min(mindist, c->collide(q, shape, x, y, vx, vy, deltarot, otherShape));
+				LineCollision coll = c->collide(q, shape, otherShape, x, y, vx, vy, deltarot);
+				if (coll.cd < mincoll.cd) {
+					mincoll = coll;
+				}
 			}
 		}
+		return mincoll;
 	} else {
 		double rx = x + bx * std::cos(deltarot), ry = y + by * std::sin(deltarot);
 		if (!AABB_collideLine(q->bx, q->by, q->sizex, q->sizey, rx, ry, rx + vx, ry + vy)) {
-			return INFINITY;
+			return {INFINITY, 0.0, 0.0, 0.0, 0.0};
 		}
-		double cx = q->closestLineCollision(rx, ry, rx + vx, ry + vy);
-		if (cx == INFINITY) {
-			return INFINITY;
+		LineCollision cx = q->closestLineCollision(rx, ry, rx + vx, ry + vy, false, otherShape);
+		if (cx.cd == INFINITY) {
+			return {INFINITY, 0.0, 0.0, 0.0, 0.0};
 		}
-		return dst(vx, vy) * (cx - rx) / vx;
+		return {dst(vx, vy) * (cx.cd - rx) / vx, cx.x1, cx.y1, cx.x2, cx.y2};
 	}
 }
 void CollideQuad::draw() {

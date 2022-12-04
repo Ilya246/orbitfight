@@ -110,18 +110,21 @@ struct Entity : EntityDeleteListener {
 
 Entity* idLookup(uint32_t);
 
+struct LineCollision {
+	double cd, x1, y1, x2, y2;
+};
 struct CollideQuad {
-	double collide(CollideQuad* q, double x, double y, double vx, double vy, double deltarot, const vector<Point>& otherShape);
-	double closestLineCollision(double x1, double y1, double x2, double y2, bool inv, const vector<Point>& shape);
-	void put(uint32_t pid, const vector<Point>& shape);
+	LineCollision collide(CollideQuad* q, const std::vector<Point>& shape, const std::vector<Point>& otherShape, double x, double y, double vx, double vy, double deltarot);
+	LineCollision closestLineCollision(double x1, double y1, double x2, double y2, bool inv, const std::vector<Point>& shape);
+	void put(uint32_t pid, const std::vector<Point>& shape);
 	CollideQuad* getChild(double x, double y);
 	CollideQuad* unstaircasize();
 
 	void draw();
 
 	CollideQuad* children[4] = {nullptr, nullptr, nullptr, nullptr};
-	uint32_t point;
-	double size, x, y, bx, xsize = 0.0, by, ysize = 0.0; // size is the actual size of the quad, bx, xsize, by and ysize are the bounding box of the vertices inside
+	uint32_t point = std::numeric_limits<uint32_t>::max();
+	double size, x, y, bx, sizex = 0.0, by, sizey = 0.0; // size is the actual size of the quad, bx, xsize, by and ysize are the bounding box of the vertices inside
 	bool used = false;
 };
 
