@@ -250,7 +250,6 @@ void Entity::draw() {
 		}
 		window->draw(lines);
 	}
-	collider->draw(x, y);
 }
 
 void Entity::collide(Entity* with, bool specialOnly) {
