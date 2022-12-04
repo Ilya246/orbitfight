@@ -28,7 +28,8 @@ bool AABB_collides(double x1, double y1, double sx1, double sy1, double x2, doub
 	return x1 + sx1 > x2 && y1 + sy1 > y2 && x1 < x2 + sx2 && y1 < y2 + sy2;
 }
 double linesCollideX(double x11, double y11, double x21, double y21, double x12, double y12, double x22, double y22) {
-	double collx = x12 - x11 + (y12 - y11) / ((y21 - y11) / (x21 - x11) - (y22 - y12) / (x22 - x12));
+	double slope1 = (y21 - y11) / (x21 - x11), slope2 = (y22 - y12) / (x22 - x12);
+	double collx = (y12 - y11 + x11 * slope1 - x12 * slope2) / (slope1 - slope2);
 	return (collx > x11 && collx < x21 && collx > x12 && collx < x22) ? collx : INFINITY;
 }
 bool pointInAABB(double x, double y, double x1, double y1, double sx, double sy) {

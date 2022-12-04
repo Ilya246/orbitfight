@@ -207,6 +207,7 @@ Entity::~Entity() noexcept {
 	if (debug) {
 		printf("Deleting entity id %u\n", this->id);
 	}
+	delete collider;
 }
 
 void Entity::syncCreation() {
@@ -249,6 +250,7 @@ void Entity::draw() {
 		}
 		window->draw(lines);
 	}
+	collider->draw(x, y);
 }
 
 void Entity::collide(Entity* with, bool specialOnly) {
@@ -307,6 +309,16 @@ void Entity::onEntityDelete(Entity* d) {
 	}
 }
 
+void Entity::setupCollider() {
+	collider = new CollideQuad();
+	collider->size = radius * 2;
+	collider->x = -radius;
+	collider->y = -radius;
+	for (size_t i = 0; i < shape.size(); i++) {
+		collider->put(i, shape);
+	}
+}
+
 CollideQuad* CollideQuad::getChild(double cx, double cy) {
 	uint8_t at = (cx > x + size * 0.5) + 2 * (cy > y + size * 0.5);
 	if (children[at] == nullptr) {
@@ -338,9 +350,13 @@ void CollideQuad::put(uint32_t pid, const std::vector<Point>& shape) {
 		getChild(p.x, p.y)->put(pid, shape);
 		if (point != std::numeric_limits<uint32_t>::max()) {
 			getChild(shape[point].x, shape[point].y)->put(point, shape);
+			point = std::numeric_limits<uint32_t>::max();
 		}
 	} else {
 		point = pid;
+		bx = p.x;
+		by = p.y;
+		sizex = sizey = 0.0;
 		used = true;
 	}
 }
@@ -370,7 +386,9 @@ LineCollision CollideQuad::closestLineCollision(double x1, double y1, double x2,
 		}
 		return mincoll;
 	} else {
-		return {linesCollideX(x1, y1, x2, y2, shape[point].x, shape[point].y, shape[(point + 1) % shape.size()].x, shape[(point + 1) % shape.size()].y), x1, y1, x2, y2};
+		LineCollision coll1 = {linesCollideX(x1, y1, x2, y2, shape[point].x, shape[point].y, shape[(point + 1) % shape.size()].x, shape[(point + 1) % shape.size()].y), shape[point].x, shape[point].y, shape[(point + 1) % shape.size()].x, shape[(point + 1) % shape.size()].y};
+		LineCollision coll2 = {linesCollideX(x1, y1, x2, y2, shape[point].x, shape[point].y, shape[(point - 1) % shape.size()].x, shape[(point - 1) % shape.size()].y), shape[point].x, shape[point].y, shape[(point - 1) % shape.size()].x, shape[(point - 1) % shape.size()].y};
+		return inv ? (coll1.cd > coll2.cd ? coll1 : coll2) : (coll1.cd < coll2.cd ? coll1 : coll2);
 	}
 }
 LineCollision CollideQuad::collide(CollideQuad* q, const std::vector<Point>& shape, const std::vector<Point>& otherShape, double x, double y, double vx, double vy, double deltarot) {
@@ -394,7 +412,7 @@ LineCollision CollideQuad::collide(CollideQuad* q, const std::vector<Point>& sha
 		}
 		return mincoll;
 	} else {
-		double rx = x + bx * std::cos(deltarot), ry = y + by * std::sin(deltarot);
+		double rx = x + bx * cosf - by * sinf, ry = y + by * cosf + bx * sinf;
 		if (!AABB_collideLine(q->bx, q->by, q->sizex, q->sizey, rx, ry, rx + vx, ry + vy)) {
 			return {INFINITY, 0.0, 0.0, 0.0, 0.0};
 		}
@@ -402,20 +420,27 @@ LineCollision CollideQuad::collide(CollideQuad* q, const std::vector<Point>& sha
 		if (cx.cd == INFINITY) {
 			return {INFINITY, 0.0, 0.0, 0.0, 0.0};
 		}
+		printf("cx %f", cx.cd);
 		return {dst(vx, vy) * (cx.cd - rx) / vx, cx.x1, cx.y1, cx.x2, cx.y2};
 	}
 }
-void CollideQuad::draw() {
-	sf::RectangleShape quad(sf::Vector2f(size / g_camera.scale, size / g_camera.scale));
-	quad.setPosition(g_camera.w * 0.5 + (x - ownX) / g_camera.scale, g_camera.h * 0.5 + (y - ownY) / g_camera.scale);
+void CollideQuad::draw(double x, double y) {
+	sf::RectangleShape quad(sf::Vector2f(size, size));
+	quad.setPosition(x + this->x + drawShiftX, y + this->y + drawShiftY);
 	quad.setFillColor(sf::Color(0, 0, 0, 0));
 	quad.setOutlineColor(sf::Color(0, 255, 0, 255));
 	quad.setOutlineThickness(1);
 	window->draw(quad);
 	for (CollideQuad* c : children) {
 		if (c) {
-			c->draw();
+			c->draw(x, y);
 		}
+	}
+}
+void createCircleShape(std::vector<Point>& points, uint32_t count, double radius) {
+	double portion = TAU / count;
+	for (uint32_t i = 0; i < count; i += 1) {
+		points.push_back({radius * cos(portion * i), radius * sin(portion * i)});
 	}
 }
 
@@ -489,11 +514,7 @@ void Quad::collideAttract(Entity* e, bool doGravity, bool checkCollide) {
 			double dVx = entity->dVelX - e->dVelX, dVy = entity->dVelY - e->dVelY,
 			dx = e->x - entity->x, dy = e->y - entity->y;
 			double radiusSum = e->radius + entity->radius;
-			if (dst2(dx, dy) <= radiusSum * radiusSum) {
-				e->collide(entity, false);
-				entity->collide(e, true);
-				entity->collided.push_back(e->id);
-			} else if (std::abs(dx) - radiusSum < std::abs(dVx) && std::abs(dy) - radiusSum < std::abs(dVy)) { // possibly colliding before next frame?
+			if (std::abs(dx) - radiusSum < std::abs(dVx) && std::abs(dy) - radiusSum < std::abs(dVy)) { // possibly colliding before next frame?
 				double ivel = 1.0 / dst(dVx, dVy),
 				// calculate closest approach and at what x it will happen to check whether velocity is big enough to reach said closest approach
 				cApproach = (dx * dVy - dy * dVx) * ivel,
@@ -501,9 +522,21 @@ void Quad::collideAttract(Entity* e, bool doGravity, bool checkCollide) {
 				// collideAt = cApproachAt - sqrt(radiusSum * radiusSum - cApproach * cApproach); // distance the body will pass before colliding if abs(radiusSum) > abs(cApproach)
 				cApproachAtX = dx - cApproach * dVy * ivel;
 				if ((std::abs(cApproach) < radiusSum && std::abs(cApproachAtX) <= std::abs(dVx) && std::signbit(cApproachAtX) == std::signbit(dVx)) || dst2(dx + dVx, dy + dVy) < radiusSum * radiusSum) {
-					e->collide(entity, false);
-					entity->collide(e, true);
-					entity->collided.push_back(e->id);
+					LineCollision coll = e->collider->collide(entity->collider, e->shape, entity->shape, dx * std::cos(entity->rotation * degToRad) - dy * std::sin(entity->rotation * degToRad), -dy * std::cos(entity->rotation * degToRad) - dx * std::sin(entity->rotation * degToRad), dVx * std::cos(entity->rotation * degToRad) - dVy * std::sin(entity->rotation * degToRad), dVy * std::cos(entity->rotation * degToRad) + dVx * std::sin(entity->rotation * degToRad), (e->rotation - entity->rotation) * degToRad);
+					if (coll.cd != INFINITY) {
+						printf("dst %f\n", coll.cd);
+						e->collide(entity, false);
+						entity->collide(e, true);
+						entity->collided.push_back(e->id);
+					} else {
+						coll = entity->collider->collide(e->collider, entity->shape, e->shape, -dx * std::cos(e->rotation * degToRad) + dy * std::sin(e->rotation * degToRad), dy * std::cos(e->rotation * degToRad) + dx * std::sin(e->rotation * degToRad), -dVx * std::cos(e->rotation * degToRad) + dVy * std::sin(e->rotation * degToRad), -dVy * std::cos(e->rotation * degToRad) - dVx * std::sin(e->rotation * degToRad), (entity->rotation - e->rotation) * degToRad);
+						if (coll.cd != INFINITY) {
+							printf("dst %f\n", coll.cd);
+							e->collide(entity, false);
+							entity->collide(e, true);
+							entity->collided.push_back(e->id);
+						}
+					}
 				}
 			}
 		}
@@ -612,6 +645,8 @@ void buildQuadtree() {
 Triangle::Triangle() : Entity() {
 	mass = 1000000.0;
 	radius = 16.0;
+	createCircleShape(Entity::shape, 3, radius);
+	setupCollider();
 	if (!headless && !simulating) {
 		shape = std::make_unique<sf::CircleShape>(radius, 3);
 		shape->setOrigin(radius, radius);
@@ -826,6 +861,8 @@ uint8_t Triangle::type() {
 CelestialBody::CelestialBody(double radius) : Entity() {
 	this->radius = radius;
 	this->mass = 1.0e18;
+	createCircleShape(Entity::shape, std::max(4, (int)(sqrt(radius))), radius);
+	setupCollider();
 	if (!headless) {
 		shape = std::make_unique<sf::CircleShape>(radius, std::max(4, (int)(sqrt(radius))));
 		shape->setOrigin(radius, radius);
@@ -841,6 +878,8 @@ CelestialBody::CelestialBody(double radius) : Entity() {
 CelestialBody::CelestialBody(double radius, double mass) : Entity() {
 	this->radius = radius;
 	this->mass = mass;
+	createCircleShape(Entity::shape, std::max(4, (int)(sqrt(radius))), radius);
+	setupCollider();
 	if (!headless) {
 		shape = std::make_unique<sf::CircleShape>(radius, std::max(4, (int)(sqrt(radius))));
 		shape->setOrigin(radius, radius);
@@ -954,6 +993,8 @@ Projectile::Projectile() : Entity() {
 	this->color[0] = 180;
 	this->color[1] = 0;
 	this->color[2] = 0;
+	createCircleShape(Entity::shape, 3, radius);
+	setupCollider();
 	if (!headless && !simulating) {
 		shape = std::make_unique<sf::CircleShape>(radius, 3);
 		shape->setOrigin(radius, radius);

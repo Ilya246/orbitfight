@@ -16,6 +16,8 @@ struct Player;
 
 struct Entity;
 
+struct CollideQuad;
+
 void setupShip(Entity* ship, bool sync);
 
 void generateSystem();
@@ -42,6 +44,8 @@ struct Point {
 	double x;
 	double y;
 };
+
+void createCircleShape(std::vector<Point>& points, uint32_t count, double radius);
 
 bool operator ==(movement& mov1, movement& mov2);
 
@@ -70,6 +74,8 @@ struct Entity : EntityDeleteListener {
 
 	void onEntityDelete(Entity* d) override;
 
+	void setupCollider();
+
 	inline void setPosition(double x, double y) {
 		this->x = x;
 		this->y = y;
@@ -94,6 +100,8 @@ struct Entity : EntityDeleteListener {
 	std::vector<Point> trajectory;
 
 	std::vector<Point> shape;
+	
+	CollideQuad* collider;
 	virtual uint8_t type() = 0;
 	Player* player = nullptr;
 	double x = 0.0, y = 0.0, velX = 0.0, velY = 0.0, rotation = 0.0, rotateVel = 0.0,
@@ -120,7 +128,7 @@ struct CollideQuad {
 	CollideQuad* getChild(double x, double y);
 	CollideQuad* unstaircasize();
 
-	void draw();
+	void draw(double x, double y);
 
 	CollideQuad* children[4] = {nullptr, nullptr, nullptr, nullptr};
 	uint32_t point = std::numeric_limits<uint32_t>::max();
