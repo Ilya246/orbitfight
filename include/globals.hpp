@@ -46,10 +46,10 @@ inline double delta = 1.0 / 60.0,
 	syncSpacing = 0.2, fullsyncSpacing = 5.0, projectileSweepSpacing = 30.0,
 	collideRestitution = 1.6, // how "bouncy" collisions should be
 	friction = 0.002, // friction of colliding bodies, stops infinite sliding
-	gen_extraStarChance = 0.3, gen_blackholeChance = 1.0 / 3.0, gen_starMass = 4.0e22, gen_starRadius = 4.5e5,
-	gen_firstPlanetDistance = 6.0e4, gen_minNextRadius = 1.15, gen_maxNextRadius = 1.33, gen_minPlanetRadius = 300.0, gen_maxPlanetRadius = 12000.0,
+	gen_extraStarChance = 0.3, gen_blackholeChance = 1.0 / 3.0, gen_starMass = 4.0e22, gen_starRadius = 4.5e4,
+	gen_firstPlanetDistance = 3.0e4, gen_minNextRadius = 1.15, gen_maxNextRadius = 1.33, gen_minPlanetRadius = 300.0, gen_maxPlanetRadius = 18000.0,
 	gen_starMassReq = 0.1,
-	gen_baseDensity = 2.0e9, gen_densityFactor = 3.0,
+	gen_baseDensity = 2.0e9, gen_densityFactor = 3.0, gen_starDensityFactor = 1.25, gen_starColorFactor = 0.2,
 	gen_moonFactor = gen_maxPlanetRadius * 0.2, gen_moonPower = 1.5, gen_minMoonDistance = 1.5, gen_maxMoonDistance = 9.0,
 	gen_minMoonRadius = 120.0, gen_maxMoonRadiusFrac = 1.0 / 6.0,
 	shipSpawnDistanceMin = 1.4, shipSpawnDistanceMax = 3.0,
@@ -137,6 +137,7 @@ inline std::map<std::string, Var> vars {
 
 	{"gen_baseDensity", {Double, &gen_baseDensity}},
 	{"gen_densityFactor", {Double, &gen_densityFactor}},
+	{"gen_starDensityFactor", {Double, &gen_starDensityFactor}},
 	{"gen_baseMinPlanets", {Int, &gen_baseMinPlanets}},
 	{"gen_baseMaxPlanets", {Int, &gen_baseMaxPlanets}},
 	{"gen_blackholeChance", {Double, &gen_blackholeChance}},
@@ -153,6 +154,7 @@ inline std::map<std::string, Var> vars {
 	{"gen_starMass", {Double, &gen_starMass}},
 	{"gen_starRadius", {Double, &gen_starRadius}},
 	{"gen_starMassReq", {Double, &gen_starMassReq}},
+	{"gen_starColorFactor", {Double, &gen_starColorFactor}},
 	
 	{"projectile_mass", {Double, &Projectile::mass}},
 	{"projectile_accel", {Double, &Projectile::accel}},

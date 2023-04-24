@@ -52,12 +52,12 @@ int generateOrbitingPlanets(int amount, double x, double y, double velx, double 
 		float radius = rand_f(minradius, maxradius * factor);
 		double mass = gen_baseDensity * pow(radius, gen_densityFactor);
 		bool star = mass > gen_starMass * gen_starMassReq;
-		CelestialBody* planet = new CelestialBody(star ? gen_starRadius * pow(mass / gen_starMass, 1.0 / gen_densityFactor) : radius, gen_baseDensity * pow(radius, gen_densityFactor));
+		CelestialBody* planet = new CelestialBody(star ? gen_starRadius * pow(mass / gen_starMass, 1.0 / gen_starDensityFactor) : radius, gen_baseDensity * pow(radius, gen_densityFactor));
 		planet->setPosition(x + spawnDst * std::cos(spawnAngle), y + spawnDst * std::sin(spawnAngle));
 		double vel = sqrt(G * parentmass / spawnDst);
 		planet->addVelocity(velx + vel * std::cos(spawnAngle + PI / 2.0), vely + vel * std::sin(spawnAngle + PI / 2.0));
 		if (star) {
-			planet->setColor(255, 229, 97);
+			planet->setColor((int)(255.0 * std::max(0.0, std::min(1.0, 1.0 - (pow(gen_starMass / mass, gen_starColorFactor))))), (int)(255.0 * std::max(0.0, std::min(1.0, (pow(gen_starMass / mass, gen_starColorFactor) - 0.1)))), (int)(255.0 * std::max(0.0, std::min(1.0, (pow(gen_starMass / mass, gen_starColorFactor) - 0.72)))));
 			planet->star = true;
 			stars.push_back(planet);
 		} else {
