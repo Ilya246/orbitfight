@@ -179,7 +179,7 @@ Projectile::accel = 196.0,
 Projectile::rotateSpeed = 240.0,
 Projectile::maxThrustAngle = 45.0 * degToRad,
 Projectile::easeInFactor = 0.8,
-Projectile::startingFuel = 120.0;
+Projectile::startingFuel = 80.0;
 
 double Triangle::mass = 1.0e6,
 Triangle::accel = 96.0,
@@ -917,10 +917,19 @@ void Projectile::unloadCreatePacket(sf::Packet& packet) {
 	}
 }
 void Projectile::loadSyncPacket(sf::Packet& packet) {
-	packet << id << x << y << velX << velY << rotation;
+	packet << id << x << y << velX << velY << rotation << fuel;
 }
 void Projectile::unloadSyncPacket(sf::Packet& packet) {
-	packet >> syncX >> syncY >> syncVelX >> syncVelY >> rotation;
+	packet >> syncX >> syncY >> syncVelX >> syncVelY >> rotation >> fuel;
+}
+
+void Projectile::simSetup() {
+	Entity::simSetup();
+	resFuel = fuel;
+}
+void Projectile::simReset() {
+	Entity::simReset();
+	fuel = resFuel;
 }
 
 void Projectile::collide(Entity* with, bool specialOnly) {

@@ -187,6 +187,9 @@ struct Projectile: public Entity {
 	void unloadCreatePacket(sf::Packet& packet) override;
 	void loadSyncPacket(sf::Packet& packet) override;
 	void unloadSyncPacket(sf::Packet& packet) override;
+	
+	void simSetup() override;
+	void simReset() override;
 
 	void onEntityDelete(Entity* d) override;
 
@@ -196,7 +199,8 @@ struct Projectile: public Entity {
 	Entity* owner = nullptr;
 
 	static double mass, accel, rotateSpeed, maxThrustAngle, easeInFactor, startingFuel;
-	double fuel;
+	double fuel,
+	resFuel;
 
 	std::unique_ptr<sf::CircleShape> shape, warning;
 };
