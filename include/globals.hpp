@@ -149,7 +149,27 @@ inline std::map<std::string, Var> vars {
 	{"gen_maxMoonDistance", {Double, &gen_maxMoonDistance}},
 	{"gen_moonFactor", {Double, &gen_moonFactor}},
 	{"gen_starMass", {Double, &gen_starMass}},
-	{"gen_starRadius", {Double, &gen_starRadius}}};
+	{"gen_starRadius", {Double, &gen_starRadius}},
+	
+	{"projectile_mass", {Double, &Projectile::mass}},
+	{"projectile_accel", {Double, &Projectile::accel}},
+	{"projectile_rotateSpeed", {Double, &Projectile::rotateSpeed}},
+	{"projectile_maxThrustAngle", {Double, &Projectile::maxThrustAngle}},
+	{"projectile_easeInFactor", {Double, &Projectile::easeInFactor}},
+	{"projectile_startingFuel", {Double, &Projectile::startingFuel}},
+	{"triangle_mass", {Double, &Triangle::mass}},
+	{"triangle_accel", {Double, &Triangle::accel}},
+	{"triangle_rotateSlowSpeedMult", {Double, &Triangle::rotateSlowSpeedMult}},
+	{"triangle_rotateSpeed", {Double, &Triangle::rotateSpeed}},
+	{"triangle_boostCooldown", {Double, &Triangle::boostCooldown}},
+	{"triangle_boostStrength", {Double, &Triangle::boostStrength}},
+	{"triangle_reload", {Double, &Triangle::reload}},
+	{"triangle_shootPower", {Double, &Triangle::shootPower}},
+	{"triangle_hyperboostStrength", {Double, &Triangle::hyperboostStrength}},
+	{"triangle_hyperboostTime", {Double, &Triangle::hyperboostTime}},
+	{"triangle_hyperboostRotateSpeed", {Double, &Triangle::hyperboostRotateSpeed}},
+	{"triangle_afterburnStrength", {Double, &Triangle::afterburnStrength}},
+	{"triangle_minAfterburn", {Double, &Triangle::minAfterburn}}};
 
 inline std::vector<CelestialBody*> stars;
 inline Entity* trajectoryRef = nullptr;
