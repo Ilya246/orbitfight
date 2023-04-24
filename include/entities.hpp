@@ -141,8 +141,8 @@ struct Triangle: public Entity {
 	void onEntityDelete(Entity* d) override;
 
 	uint8_t type() override;
-	double accel = 96, rotateSlowSpeedMult = 2.0 / 3.0, rotateSpeed = 180.0, boostCooldown = 12.0, boostStrength = 240, reload = 8.0, shootPower = 120, hyperboostStrength = 432, hyperboostTime = 20.0, hyperboostRotateSpeed = rotateSpeed * 0.02, afterburnStrength = 1080, minAfterburn = hyperboostTime + 8.0,
-	boostProgress = 0.0, reloadProgress = 0.0, hyperboostCharge = 0.0,
+	static double mass, accel, rotateSlowSpeedMult, rotateSpeed, boostCooldown, boostStrength, reload, shootPower, hyperboostStrength, hyperboostTime, hyperboostRotateSpeed, afterburnStrength, minAfterburn;
+	double boostProgress = 0.0, reloadProgress = 0.0, hyperboostCharge = 0.0,
 	resBoostProgress = 0.0, resReloadProgress = 0.0, resHyperboostCharge = 0.0;
 
 	bool burning = false, resBurning;
@@ -195,7 +195,8 @@ struct Projectile: public Entity {
 	Entity* target = nullptr;
 	Entity* owner = nullptr;
 
-	double accel = 196, rotateSpeed = 240.0, maxThrustAngle = 45.0 * degToRad, easeInFactor = 0.8;
+	static double mass, accel, rotateSpeed, maxThrustAngle, easeInFactor, startingFuel;
+	double fuel;
 
 	std::unique_ptr<sf::CircleShape> shape, warning;
 };

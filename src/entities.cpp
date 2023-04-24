@@ -174,6 +174,27 @@ Entity* idLookup(uint32_t id) {
 	return updateGroup[at]->id == id ? updateGroup[at] : nullptr;
 }
 
+double Projectile::mass = 2.0e5,
+Projectile::accel = 196.0,
+Projectile::rotateSpeed = 240.0,
+Projectile::maxThrustAngle = 45.0 * degToRad,
+Projectile::easeInFactor = 0.8,
+Projectile::startingFuel = 120.0;
+
+double Triangle::mass = 1.0e6,
+Triangle::accel = 96.0,
+Triangle::rotateSlowSpeedMult = 2.0 / 3.0,
+Triangle::rotateSpeed = 180.0,
+Triangle::boostCooldown = 12.0,
+Triangle::boostStrength = 320.0,
+Triangle::reload = 8.0,
+Triangle::shootPower = 120.0,
+Triangle::hyperboostStrength = 432.0,
+Triangle::hyperboostTime = 20.0,
+Triangle::hyperboostRotateSpeed = Triangle::rotateSpeed * 0.02,
+Triangle::afterburnStrength = 1080.0,
+Triangle::minAfterburn = Triangle::hyperboostTime + 8.0;
+
 std::string Player::name() {
 	return username;
 }
@@ -498,7 +519,7 @@ void buildQuadtree() {
 }
 
 Triangle::Triangle() : Entity() {
-	mass = 1000000.0;
+	this->Entity::mass = Triangle::mass;
 	radius = 16.0;
 	if (!headless && !simulating) {
 		shape = std::make_unique<sf::CircleShape>(radius, 3);
@@ -838,7 +859,8 @@ uint8_t CelestialBody::type() {
 
 Projectile::Projectile() : Entity() {
 	radius = 4.0;
-	this->mass = 20000.0;
+	fuel = startingFuel;
+	this->Entity::mass = Projectile::mass;
 	this->color[0] = 180;
 	this->color[1] = 0;
 	this->color[2] = 0;
@@ -864,6 +886,7 @@ void Projectile::update2() {
 		double inHeading = std::atan2(dY, dX), tangentHeading = inHeading + 0.5 * PI;
 		double velHeading = std::atan2(dVy, dVx);
 		double tangentVel = dst(dVx, dVy) * std::cos(deltaAngleRad(tangentHeading, velHeading));
+		double accel = this->accel * fuel / startingFuel;
 		double dtaccel = delta * accel;
 		double targetRotation = inHeading + (std::abs(tangentVel) < dtaccel ? std::atan2(tangentVel, dtaccel - std::abs(tangentVel))
 		: (std::abs(tangentVel) * easeInFactor > accel ? (tangentVel > 0.0 ? 0.5 * PI : 0.5 * -PI) : std::atan2(tangentVel * easeInFactor, accel)));
@@ -871,6 +894,7 @@ void Projectile::update2() {
 		double thrustDirection = rotation * degToRad + std::max(-maxThrustAngle, std::min(maxThrustAngle, deltaAngleRad(rotation * degToRad, targetRotation)));
 		if (std::abs(deltaAngleRad(targetRotation, rotation * degToRad)) < 0.5 * PI) {
 			addVelocity(dtaccel * std::cos(thrustDirection), dtaccel * std::sin(thrustDirection));
+			fuel -= delta * fuel / startingFuel;
 		}
 	}
 	Entity::update2();
