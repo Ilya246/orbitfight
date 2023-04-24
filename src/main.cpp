@@ -474,7 +474,7 @@ int main(int argc, char** argv) {
 						break;
 					}
 				}
-				if (closest * e->fuel / e->startingFuel > sweepThreshold) {
+				if (closest * ((Projectile*)e)->fuel / ((Projectile*)e)->startingFuel > sweepThreshold) {
 					e->active = false;
 				}
 			}
