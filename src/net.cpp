@@ -156,9 +156,8 @@ void clientParsePacket(sf::Packet& packet) {
         packet >> entityID;
         CelestialBody* e = (CelestialBody*)idLookup(entityID);
         if (e) [[likely]] {
-            packet >> e->mass >> e->radius;
-            e->shape->setRadius(e->radius);
-            e->shape->setOrigin(e->radius, e->radius);
+            packet >> e->mass;
+            e->postMassUpdate();
         } else {
             printf("Server has referred to invalid entity %u in packet of type %u.\n", entityID, type);
         }

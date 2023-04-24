@@ -56,11 +56,8 @@ int generateOrbitingPlanets(int amount, double x, double y, double velx, double 
 		planet->setPosition(x + spawnDst * std::cos(spawnAngle), y + spawnDst * std::sin(spawnAngle));
 		double vel = sqrt(G * parentmass / spawnDst);
 		planet->addVelocity(velx + vel * std::cos(spawnAngle + PI / 2.0), vely + vel * std::sin(spawnAngle + PI / 2.0));
-		if (star) {
-			planet->setColor((int)(255.0 * std::max(0.0, std::min(1.0, 1.0 - (pow(gen_starMass / mass, gen_starColorFactor))))), (int)(255.0 * std::max(0.0, std::min(1.0, (pow(gen_starMass / mass, gen_starColorFactor) - 0.1)))), (int)(255.0 * std::max(0.0, std::min(1.0, (pow(gen_starMass / mass, gen_starColorFactor) - 0.72)))));
-			planet->star = true;
-			stars.push_back(planet);
-		} else {
+		planet->postMassUpdate();
+		if (!star) {
 			planet->setColor((int)rand_f(64.f, 255.f), (int)rand_f(64.f, 255.f), (int)rand_f(64.f, 255.f));
 		}
 		int moons = (int)(rand_f(0.f, 1.f) * pow(radius / gen_moonFactor, gen_moonPower));
@@ -800,6 +797,29 @@ void CelestialBody::unloadSyncPacket(sf::Packet& packet) {
 	packet >> syncX >> syncY >> syncVelX >> syncVelY;
 }
 
+void CelestialBody::postMassUpdate() {
+	if (blackhole) {
+		radius = 2.0 * G * mass / (CC);
+	} else if (mass > gen_starMass * gen_starMassReq) {
+		if (!simulating) {
+			double colorFactor = pow(gen_starMass / mass, gen_starColorFactor);
+			setColor((int)(255.0 * std::max(0.0, std::min(1.0, 2.0 - colorFactor))), (int)(255.0 * std::max(0.0, std::min(1.0, 1.9 - colorFactor))), (int)(255.0 * std::max(0.0, std::min(1.0, colorFactor - 0.72))));
+			printf("New color: %u, %u, %u\n", color[0], color[1], color[2]);
+			if (!star) {
+				stars.push_back(this);
+				star = true;
+			}
+		}
+		radius = gen_starRadius * pow(mass / gen_starMass, 1.0 / gen_starDensityFactor);
+	} else {
+		radius = pow(mass / gen_baseDensity, 1.0 / gen_densityFactor);
+	}
+	if (!headless && !simulating) {
+		shape->setRadius(radius);
+		shape->setOrigin(radius, radius);
+	}
+}
+
 void CelestialBody::collide(Entity* with, bool specialOnly) {
 	Entity::collide(with, specialOnly);
 	if (!with->active) [[unlikely]] {
@@ -821,19 +841,14 @@ void CelestialBody::collide(Entity* with, bool specialOnly) {
 			if (!simulating && printPlanetMerges) {
 				printf("Planetary collision: %u absorbed %u\n", id, with->id);
 			}
-			double radiusMul = sqrt((mass + with->mass) / mass);
 			mass += with->mass;
-			radius *= radiusMul;
+			postMassUpdate();
 			if (isServer) {
 				sf::Packet collisionPacket;
-				collisionPacket << Packets::PlanetCollision << id << mass << radius;
+				collisionPacket << Packets::PlanetCollision << id << mass;
 				for (Player* p : playerGroup) {
 					p->tcpSocket.send(collisionPacket);
 				}
-			}
-			if (!headless && !simulating) {
-				shape->setRadius(radius);
-	            shape->setOrigin(radius, radius);
 			}
 			with->active = false;
 		}

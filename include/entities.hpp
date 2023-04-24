@@ -168,6 +168,8 @@ struct CelestialBody: public Entity {
 	void unloadSyncPacket(sf::Packet& packet) override;
 
 	uint8_t type() override;
+	
+	void postMassUpdate();
 
 	bool star = false, blackhole = false;
 
