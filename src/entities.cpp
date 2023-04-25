@@ -798,13 +798,20 @@ void CelestialBody::unloadSyncPacket(sf::Packet& packet) {
 }
 
 void CelestialBody::postMassUpdate() {
-	if (blackhole) {
+	if (mass > gen_chandrasekharLimit) {
+		setColor(0, 0, 0);
+		blackhole = true;
+		/*if (!star) { // prevent bouncy black holes
+			stars.push_back(this);
+			star = true;
+		}*/
 		radius = 2.0 * G * mass / (CC);
 	} else if (mass > gen_starMass * gen_starMassReq) {
 		if (!simulating) {
 			double colorFactor = pow(gen_starMass / mass, gen_starColorFactor);
 			setColor((int)(255.0 * std::max(0.0, std::min(1.0, 2.0 - colorFactor))), (int)(255.0 * std::max(0.0, std::min(1.0, 1.9 - colorFactor))), (int)(255.0 * std::max(0.0, std::min(1.0, colorFactor - 0.72))));
-			printf("New color: %u, %u, %u\n", color[0], color[1], color[2]);
+			if (debug)
+				printf("New color: %u, %u, %u\n", color[0], color[1], color[2]);
 			if (!star) {
 				stars.push_back(this);
 				star = true;
