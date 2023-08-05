@@ -55,6 +55,7 @@ inline double delta = 1.0 / 60.0,
 	shipSpawnDistanceMin = 1.4, shipSpawnDistanceMax = 3.0,
 	syncCullThreshold = 0.6, syncCullOffset = 100000.0, sweepThreshold = 2.0e7 * 2.0e7,
 	predictSpacing = 0.25, predictDelta = 0.2,
+	predictBaseScale = 200.0,
 	extraQuadAllocation = 2.0, quadReallocateThreshold = 0.6, quadtreeShrinkThreshold = 0.2,
 	autorestartSpacing = 30.0 * 60.0 + 1, autorestartNotifSpacing = 5.0 * 60.0,
 	G = 6.67e-11,
@@ -103,6 +104,7 @@ inline std::map<std::string, Var> vars {
 
 	{"predictDelta", {Double, &predictDelta}},
 	{"predictSpacing", {Double, &predictSpacing}},
+	{"predictBaseScale", {Double, &predictBaseScale}},
 	{"predictSteps", {Int, &predictSteps}},
 
 	{"autoConnect", {Bool, &autoConnect}},

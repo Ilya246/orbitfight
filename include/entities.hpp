@@ -15,6 +15,7 @@ namespace obf {
 struct Player;
 
 struct Entity;
+struct Point;
 
 void setupShip(Entity* ship, bool sync);
 
@@ -23,6 +24,8 @@ void generateSystem();
 void fullClear(bool clearTriangles);
 
 void updateEntities();
+
+void drawTrajectory(sf::Color& color, std::vector<Point>& traj);
 
 void reallocateQuadtree();
 void buildQuadtree();

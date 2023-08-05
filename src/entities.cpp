@@ -165,6 +165,29 @@ void updateEntities() {
 	updateThreads.clear();
 }
 
+void drawTrajectory(sf::Color& color, std::vector<Point>& traj) {
+	size_t to = traj.size();
+	size_t by = std::max((size_t)1, (size_t)(g_camera.scale / predictBaseScale));
+	if (by > to / 2) {
+		return;
+	}
+	if (lastTrajectoryRef && to > 0) [[likely]] {
+		sf::VertexArray lines(sf::Lines, to / by + (size_t)(to % by != 0));
+		float lastAlpha = 255.f;
+		float decBy = (255.f - 64.f) / to;
+		size_t i = 0;
+		for (size_t j = 0; j < to; j += by) {
+			Point point = traj[j];
+			lines[i].position = sf::Vector2f(lastTrajectoryRef->x + point.x + drawShiftX, lastTrajectoryRef->y + point.y + drawShiftY);
+			lines[i].color = color;
+			lines[i].color.a = (uint8_t)lastAlpha;
+			lastAlpha -= decBy;
+			++i;
+		}
+		window->draw(lines);
+	}
+}
+
 Entity* idLookup(uint32_t id) {
 	size_t searchBy = 0;
 	for (size_t i = 1; i > 0; i = i << 1) {
@@ -261,20 +284,7 @@ void Entity::update2() {
 
 void Entity::draw() {
 	sf::Color trajColor(color[0], color[1], color[2]);
-	if (lastTrajectoryRef && trajectory.size() > trajectoryOffset) [[likely]] {
-		size_t to = trajectory.size() - trajectoryOffset;
-		sf::VertexArray lines(sf::LineStrip, to);
-		float lastAlpha = 255;
-		float decBy = (255.f - 64.f) / (to);
-		for (size_t i = 0; i < to; i++){
-			Point point = trajectory[i + trajectoryOffset];
-			lines[i].position = sf::Vector2f(lastTrajectoryRef->x + point.x + drawShiftX, lastTrajectoryRef->y + point.y + drawShiftY);
-			lines[i].color = trajColor;
-			lines[i].color.a = (uint8_t)lastAlpha;
-			lastAlpha -= decBy;
-		}
-		window->draw(lines);
-	}
+	drawTrajectory(trajColor, trajectory);
 }
 
 void Entity::collide(Entity* with, bool specialOnly) {

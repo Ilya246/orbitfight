@@ -352,21 +352,7 @@ int main(int argc, char** argv) {
 			g_camera.pos.y = 0;
 			trajectoryOffset = floor((globalTime - lastPredict) / predictDelta);
 			for (size_t i = 0; i < ghostTrajectories.size(); i++) {
-				std::vector<Point>& traj = ghostTrajectories[i];
-				if (lastTrajectoryRef && traj.size() > 0) [[likely]] {
-					sf::Color trajColor = ghostTrajectoryColors[i];
-					sf::VertexArray lines(sf::LineStrip, traj.size());
-					float lastAlpha = 255;
-					float decBy = (255.f - 64.f) / traj.size();
-					for (size_t i = 0; i < traj.size(); i++) {
-						Point point = traj[i];
-						lines[i].position = sf::Vector2f(lastTrajectoryRef->x + point.x + drawShiftX, lastTrajectoryRef->y + point.y + drawShiftY);
-						lines[i].color = trajColor;
-						lines[i].color.a = lastAlpha;
-						lastAlpha -= decBy;
-					}
-					window->draw(lines);
-				}
+				drawTrajectory(ghostTrajectoryColors[i], ghostTrajectories[i]);
 			}
 			if (!stars.empty()) {
 				double x = 0.0, y = 0.0;
