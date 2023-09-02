@@ -5,6 +5,7 @@
 #include "net.hpp"
 #include "types.hpp"
 
+#include <chrono>
 #include <cmath>
 #include <cstring>
 #include <exception>
@@ -138,32 +139,83 @@ void fullClear(bool clearTriangles) {
 	lastTrajectoryRef = nullptr;
 }
 
-void updateEntities2(size_t from, size_t to) {
-	for (size_t i = from; i < to; i++) {
-		updateGroup[i]->update2();
+void updateEntities2(size_t id) {
+	std::unique_lock rangesLock(updateRangesMutex, std::defer_lock);
+	std::shared_lock waitLock(waitMutex, std::defer_lock);
+	waitLock.lock();
+	std::shared_lock updateLock(updateMutex, std::defer_lock);
+	std::shared_lock postLock(postUpdateMutex, std::defer_lock);
+	std::shared_lock preLock(preUpdateMutex, std::defer_lock);
+	preLock.lock();
+	while (true) {
+		postLock.lock();
+		waitLock.unlock();
+		preLock.unlock();
+		updateLock.lock();
+		if (id >= (size_t)updateThreadsActual) {
+			updateLock.unlock();
+			postLock.unlock();
+			return;
+		}
+		rangesLock.lock();
+		size_t from = updateThreadRanges[id * 2];
+		size_t to = updateThreadRanges[id * 2 + 1];
+		rangesLock.unlock();
+		for (size_t i = from; i < to; i++) {
+			updateGroup[i]->update2();
+		}
+		preLock.lock();
+		updateLock.unlock();
+		postLock.unlock();
+		waitLock.lock();
 	}
-} // in a function for multithreading purposes
+}
 
 void updateEntities() {
-	if (updateThreadCount == 1 || updateGroup.size() <= minThreadEntities) {
-		updateEntities2(0, updateGroup.size());
+	updateThreadsActual = std::min((size_t)(updateGroup.size() / minThreadEntities), (size_t)updateThreadCount);
+	if (updateThreadsActual <= 1 || updateGroup.size() <= minThreadEntities) {
+		for (Entity* e : updateGroup) {
+			e->update2();
+		}
 		return;
 	}
+	while (updateThreads.size() < (size_t)updateThreadsActual) {
+		updateThreadRanges.push_back(0);
+		updateThreadRanges.push_back(0);
+		updateThreads.push_back(std::thread(updateEntities2, updateThreads.size()));
+	}
 	size_t prev = 0;
-	for (int i = 0; i < updateThreadCount; i++) {
-		size_t to = i == updateThreadCount - 1 ? updateGroup.size() : (size_t)((float)(updateGroup.size() * (i + 1)) / (float)updateThreadCount);
-		if (to - prev < minThreadEntities && i != updateThreadCount - 1) {
-			continue;
-		}
-		updateThreads.push_back(new std::thread(updateEntities2, prev, to));
+	for (size_t i = 0; i < updateThreadRanges.size(); i += 2) {
+		size_t to = (size_t)((double)(updateGroup.size() * (i / 2 + 1)) / (double)updateThreadsActual);
+		updateThreadRanges[i] = prev;
+		updateThreadRanges[i + 1] = to;
 		prev = to;
 	}
-	for (int i = updateThreads.size() - 1; i >= 0; i--) {
-		updateThreads[i]->join();
-		delete updateThreads[i];
+	updateThreadRanges[updateThreadRanges.size() - 1] = updateGroup.size();
+	uPreLock.lock();
+	uPreLock.unlock();
+	uWaitLock.lock();
+	uUpdateLock.unlock();
+	while (updateThreads.size() > (size_t)updateThreadsActual) {
+		updateThreads[updateThreads.size() - 1].join();
+		updateThreads.pop_back();
+		updateThreadRanges.pop_back();
+		updateThreadRanges.pop_back();
 	}
-	updateThreads.clear();
+	uPostLock.lock();
+	uPostLock.unlock();
+	uUpdateLock.lock();
+	uWaitLock.unlock();
 }
+
+/*steps:
+	1) wait for all threads to be waiting for updateMutex to unlock (threads will unlock preLock, main thread will attempt to lock it)
+	2) lock waitMutex so threads don't loop and update several times
+	3) allow threads to update by unlocking updateMutex
+	4) wait for all threads to be waiting for waitMutex to unlock (threads will unlock postLock, main thread will attempt to lock it)
+	5) lock updateMutex so threads don't update when not needed
+	6) allow threads to prepare for updating by unlocking waitMutex
+*/
 
 void drawTrajectory(sf::Color& color, std::vector<Point>& traj) {
 	size_t to = traj.size();

@@ -6,6 +6,7 @@
 
 #include <future>
 #include <map>
+#include <shared_mutex>
 #include <thread>
 #include <vector>
 
@@ -32,7 +33,11 @@ inline std::vector<sf::Color> ghostTrajectoryColors;
 inline sf::Vector2i mousePos;
 inline sf::Clock actualDeltaClock, deltaClock, globalClock;
 inline std::future<void> inputReader;
-inline std::vector<std::thread*> updateThreads;
+inline std::vector<std::thread> updateThreads;
+inline std::vector<size_t> updateThreadRanges;
+inline std::mutex updateRangesMutex;
+inline std::shared_mutex waitMutex, updateMutex, postUpdateMutex, preUpdateMutex;
+inline std::unique_lock uWaitLock(waitMutex, std::defer_lock_t()), uUpdateLock(updateMutex), uPostLock(postUpdateMutex, std::defer_lock_t()), uPreLock(preUpdateMutex, std::defer_lock_t());
 inline std::string serverAddress = "", name = "",
 inputBuffer = "",
 assetsFolder = "assets";
@@ -73,7 +78,7 @@ gen_baseMinPlanets = 10,
 gen_baseMaxPlanets = 15,
 quadsConstructed = 100, minQuadtreeSize = 80,
 quadsAllocated = (int)(quadsConstructed * extraQuadAllocation),
-updateThreadCount = 1;
+updateThreadCount = 1, updateThreadsActual = 0;
 inline size_t minThreadEntities = 100,
 messageLimit = 50, usernameLimit = 24;
 inline long long measureFrames = 0, framerate = 0;
