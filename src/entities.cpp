@@ -271,9 +271,9 @@ Triangle::boostCooldown = 12.0,
 Triangle::boostStrength = 320.0,
 Triangle::reload = 8.0,
 Triangle::shootPower = 120.0,
-Triangle::secondaryRegen = 1.0,
-Triangle::secondaryReload = 0.2,
-Triangle::secondaryStockpile = 40.0,
+Triangle::secondaryRegen = 5.0,
+Triangle::secondaryReload = 0.05,
+Triangle::secondaryStockpile = 120.0,
 Triangle::secondaryShootPower = 15000.0,
 Triangle::slowRotateSpeed = 0.02;
 
@@ -419,6 +419,7 @@ void Quad::put(Entity* e) {
 	mass += e->mass;
 	comx += e->mass * e->x;
 	comy += e->mass * e->y;
+	hasGravitators = hasGravitators || e->gravitates;
 	if (used) {
 		getChild((e->x > x + size * 0.5) + 2 * (e->y > y + size * 0.5)).put(e);
 		if (entity) {
@@ -495,7 +496,7 @@ void Quad::collideAttract(Entity* e, bool doGravity, bool checkCollide) {
 	}
 	if (doGravity) {
 		double halfsize = size * 0.5, midx = x + halfsize, midy = y + halfsize;
-		if (invsize * (std::abs(e->x - midx) + std::abs(e->y - midy)) > gravityAccuracy) {
+		if (!hasGravitators || invsize * (std::abs(e->x - midx) + std::abs(e->y - midy)) > gravityAccuracy) {
 			double xdiff = comx - e->x, ydiff = comy - e->y;
 			double dist = dst(xdiff, ydiff);
 			double factor = delta * mass * G / (dist * dist * dist);
@@ -797,6 +798,7 @@ uint8_t Triangle::type() {
 CelestialBody::CelestialBody(double radius) : Entity() {
 	this->radius = radius;
 	this->mass = 1.0e18;
+	this->gravitates = true;
 	if (!headless) {
 		shape = std::make_unique<sf::CircleShape>(radius, std::max(4, (int)(sqrt(radius))));
 		shape->setOrigin(radius, radius);
@@ -812,6 +814,7 @@ CelestialBody::CelestialBody(double radius) : Entity() {
 CelestialBody::CelestialBody(double radius, double mass) : Entity() {
 	this->radius = radius;
 	this->mass = mass;
+	this->gravitates = true;
 	if (!headless) {
 		shape = std::make_unique<sf::CircleShape>(radius, std::max(4, (int)(sqrt(radius))));
 		shape->setOrigin(radius, radius);

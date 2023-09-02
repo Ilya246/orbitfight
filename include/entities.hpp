@@ -104,7 +104,7 @@ struct Entity : EntityDeleteListener {
 	mass = 0.0,
 	resX = 0.0, resY = 0.0, resVelX = 0.0, resVelY = 0.0, resRotation = 0.0, resRotateVel = 0.0, resMass = 0.0, resRadius = 0.0,
 	syncX = 0.0, syncY = 0.0, syncVelX = 0.0, syncVelY = 0.0;
-	bool ghost = false, ai = false, synced = false, active = true;
+	bool ghost = false, ai = false, synced = false, active = true, gravitates = false;
 	Entity* simRelBody = nullptr;
 	unsigned char color[3]{255, 255, 255};
 	uint32_t id, parent_id = std::numeric_limits<uint32_t>::max();
@@ -124,7 +124,7 @@ struct Quad {
 	uint32_t children[4] = {0, 0, 0, 0};
 	Entity* entity = nullptr;
 	double size, invsize, x, y, comx = 0.0, comy = 0.0, mass = 0.0;
-	bool used = false;
+	bool used = false, hasGravitators = false;
 };
 
 struct Triangle: public Entity {
