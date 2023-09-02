@@ -443,7 +443,7 @@ int main(int argc, char** argv) {
 
 		if (authority && lastSweep + projectileSweepSpacing < globalTime) {
 			for (Entity* e : updateGroup) {
-				if (e->type() != Entities::Missile) {
+				if (e->type() != Entities::Projectile || e->type() != Entities::Missile) {
 					continue;
 				}
 				double closest = DBL_MAX;
@@ -461,7 +461,7 @@ int main(int argc, char** argv) {
 						break;
 					}
 				}
-				if (closest * ((Missile*)e)->fuel / ((Missile*)e)->startingFuel > sweepThreshold) {
+				if (closest > sweepThreshold) {
 					e->active = false;
 				}
 			}

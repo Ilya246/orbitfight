@@ -254,7 +254,7 @@ Entity* idLookup(uint32_t id) {
 	return updateGroup[at]->id == id ? updateGroup[at] : nullptr;
 }
 
-double Projectile::mass = 2.0e3;
+double Projectile::mass = 5.0e3;
 
 double Missile::mass = 1.0e3,
 Missile::accel = 196.0,
@@ -271,10 +271,10 @@ Triangle::boostCooldown = 12.0,
 Triangle::boostStrength = 320.0,
 Triangle::reload = 8.0,
 Triangle::shootPower = 120.0,
-Triangle::secondaryRegen = 0.5,
-Triangle::secondaryReload = 0.4,
-Triangle::secondaryStockpile = 20.0,
-Triangle::secondaryShootPower = 10000.0,
+Triangle::secondaryRegen = 1.0,
+Triangle::secondaryReload = 0.2,
+Triangle::secondaryStockpile = 40.0,
+Triangle::secondaryShootPower = 15000.0,
 Triangle::slowRotateSpeed = 0.02;
 
 std::string Player::name() {
@@ -638,7 +638,7 @@ void Triangle::simReset() {
 void Triangle::control(movement& cont) {
 	float rotationRad = rotation * degToRad;
 	double xMul = std::cos(rotationRad), yMul = -std::sin(rotationRad);
-	double rotateSpeedMul = 1.0;
+	double rotateSpeed = this->rotateSpeed;
 	bool setDraw = headless;
 	boostProgress += delta;
 	if (reloadProgress < reload) {
@@ -649,7 +649,7 @@ void Triangle::control(movement& cont) {
 	}
 	secondaryCharge = std::min(secondaryStockpile, secondaryCharge + secondaryRegen * delta);
 	if (cont.slowrotate) {
-		rotateSpeedMul *= slowRotateSpeed;
+		rotateSpeed *= slowRotateSpeed;
 		if (!setDraw) {
 			forwards->setFillColor(sf::Color(255, 255, 0));
 			forwards->setRotation(90.f - rotation);
