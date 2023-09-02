@@ -25,7 +25,8 @@ namespace obf::Entities {
 
 constexpr uint8_t Triangle = 1,
  	CelestialBody = 2,
-	Projectile = 3;
+	Projectile = 3,
+	Missile = 4;
 }
 
 namespace obf::Types {

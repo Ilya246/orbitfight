@@ -36,7 +36,7 @@ struct movement {
 	int turnright: 1 = 0;
 	int turnleft: 1 = 0;
 	int boost: 1 = 0;
-	int hyperboost: 1 = 0;
+	int slowrotate: 1 = 0;
 	int primaryfire: 1 = 0;
 	int secondaryfire: 1 = 0;
 };
@@ -144,11 +144,10 @@ struct Triangle: public Entity {
 	void onEntityDelete(Entity* d) override;
 
 	uint8_t type() override;
-	static double mass, accel, rotateSlowSpeedMult, rotateSpeed, boostCooldown, boostStrength, reload, shootPower, hyperboostStrength, hyperboostTime, hyperboostRotateSpeed, afterburnStrength, minAfterburn;
-	double boostProgress = 0.0, reloadProgress = 0.0, hyperboostCharge = 0.0,
-	resBoostProgress = 0.0, resReloadProgress = 0.0, resHyperboostCharge = 0.0;
+	static double mass, accel, rotateSlowSpeedMult, rotateSpeed, boostCooldown, boostStrength, reload, shootPower, secondaryRegen, secondaryReload, secondaryStockpile, secondaryShootPower, slowRotateSpeed;
+	double boostProgress = 0.0, reloadProgress = 0.0, secondaryCharge = 0.0, secondaryProgress = 0.0,
+	resBoostProgress = 0.0, resReloadProgress = 0.0, resSecondaryCharge = 0.0, resSecondaryProgress = 0.0;
 
-	bool burning = false, resBurning;
 	std::string name = "unnamed";
 
 	Entity* target = nullptr;
@@ -182,11 +181,28 @@ struct CelestialBody: public Entity {
 struct Projectile: public Entity {
 	Projectile();
 
-	void update2() override;
-
 	void draw() override;
 
 	void collide(Entity* with, bool collideOther) override;
+
+	void loadCreatePacket(sf::Packet& packet) override;
+	void unloadCreatePacket(sf::Packet& packet) override;
+	void loadSyncPacket(sf::Packet& packet) override;
+	void unloadSyncPacket(sf::Packet& packet) override;
+
+	uint8_t type() override;
+
+	static double mass;
+
+	std::unique_ptr<sf::CircleShape> shape;
+};
+
+struct Missile: public Projectile {
+	Missile();
+
+	void update2() override;
+
+	void draw() override;
 
 	void loadCreatePacket(sf::Packet& packet) override;
 	void unloadCreatePacket(sf::Packet& packet) override;
@@ -207,7 +223,7 @@ struct Projectile: public Entity {
 	double fuel,
 	resFuel;
 
-	std::unique_ptr<sf::CircleShape> shape, warning;
+	std::unique_ptr<sf::CircleShape> warning;
 };
 
 struct Player {

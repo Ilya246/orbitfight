@@ -254,14 +254,16 @@ Entity* idLookup(uint32_t id) {
 	return updateGroup[at]->id == id ? updateGroup[at] : nullptr;
 }
 
-double Projectile::mass = 2.0e5,
-Projectile::accel = 196.0,
-Projectile::rotateSpeed = 240.0,
-Projectile::maxThrustAngle = 45.0 * degToRad,
-Projectile::easeInFactor = 0.8,
-Projectile::startingFuel = 80.0;
+double Projectile::mass = 2.0e3;
 
-double Triangle::mass = 1.0e6,
+double Missile::mass = 1.0e3,
+Missile::accel = 196.0,
+Missile::rotateSpeed = 240.0,
+Missile::maxThrustAngle = 45.0 * degToRad,
+Missile::easeInFactor = 0.8,
+Missile::startingFuel = 80.0;
+
+double Triangle::mass = 1.0e7,
 Triangle::accel = 96.0,
 Triangle::rotateSlowSpeedMult = 2.0 / 3.0,
 Triangle::rotateSpeed = 180.0,
@@ -269,11 +271,11 @@ Triangle::boostCooldown = 12.0,
 Triangle::boostStrength = 320.0,
 Triangle::reload = 8.0,
 Triangle::shootPower = 120.0,
-Triangle::hyperboostStrength = 432.0,
-Triangle::hyperboostTime = 20.0,
-Triangle::hyperboostRotateSpeed = Triangle::rotateSpeed * 0.02,
-Triangle::afterburnStrength = 1080.0,
-Triangle::minAfterburn = Triangle::hyperboostTime + 8.0;
+Triangle::secondaryRegen = 0.5,
+Triangle::secondaryReload = 0.4,
+Triangle::secondaryStockpile = 20.0,
+Triangle::secondaryShootPower = 10000.0,
+Triangle::slowRotateSpeed = 0.02;
 
 std::string Player::name() {
 	return username;
@@ -622,74 +624,57 @@ void Triangle::simSetup() {
 	Entity::simSetup();
 	resBoostProgress = boostProgress;
 	resReloadProgress = reloadProgress;
-	resHyperboostCharge = hyperboostCharge;
-	resBurning = burning;
+	resSecondaryCharge = secondaryCharge;
+	resSecondaryProgress = secondaryProgress;
 }
 void Triangle::simReset() {
 	Entity::simReset();
  	boostProgress = resBoostProgress;
 	reloadProgress = resReloadProgress;
-	hyperboostCharge = resHyperboostCharge;
-	burning = resBurning;
+	secondaryCharge = resSecondaryCharge;
+	secondaryProgress = resSecondaryProgress;
 }
 
 void Triangle::control(movement& cont) {
 	float rotationRad = rotation * degToRad;
 	double xMul = std::cos(rotationRad), yMul = -std::sin(rotationRad);
+	double rotateSpeedMul = 1.0;
+	bool setDraw = headless;
 	boostProgress += delta;
-	reloadProgress += delta;
-	if (cont.hyperboost || burning) {
-		hyperboostCharge += delta * (burning ? -2 : 1);
-		hyperboostCharge = std::min(hyperboostCharge, 2.0 * hyperboostTime);
-		burning = hyperboostCharge > hyperboostTime && (burning || (cont.boost && hyperboostCharge > minAfterburn));
-		if (burning) {
-			addVelocity(afterburnStrength * xMul * delta, afterburnStrength * yMul * delta);
-			if (!headless) {
-				forwards->setFillColor(sf::Color(196, 32, 255));
-				forwards->setRotation(90.f - rotation);
-			}
-			return;
-		}
-		if (cont.turnleft) {
-			rotateVel += hyperboostRotateSpeed * delta;
-		} else if (cont.turnright) {
-			rotateVel -= hyperboostRotateSpeed * delta;
-		}
-		if (rotateVel > 0.0) {
-			rotateVel = std::max(0.0, rotateVel - hyperboostRotateSpeed * delta * rotateSlowSpeedMult);
-		}
-		if (rotateVel < 0.0) {
-			rotateVel = std::min(0.0, rotateVel + hyperboostRotateSpeed * delta * rotateSlowSpeedMult);
-		}
-		if (hyperboostCharge > hyperboostTime) {
-			addVelocity(hyperboostStrength * xMul * delta, hyperboostStrength * yMul * delta);
-			if (!headless) {
-				forwards->setFillColor(sf::Color(64, 64, 255));
-				forwards->setRotation(90.f - rotation);
-			}
-		} else if (!headless) {
+	if (reloadProgress < reload) {
+		reloadProgress += delta;
+	}
+	if (secondaryProgress < secondaryReload) {
+		secondaryProgress += delta;
+	}
+	secondaryCharge = std::min(secondaryStockpile, secondaryCharge + secondaryRegen * delta);
+	if (cont.slowrotate) {
+		rotateSpeedMul *= slowRotateSpeed;
+		if (!setDraw) {
 			forwards->setFillColor(sf::Color(255, 255, 0));
 			forwards->setRotation(90.f - rotation);
+			setDraw = true;
 		}
-		return;
-	} else {
-		hyperboostCharge = 0.0;
 	}
 	if (cont.forward) {
 		addVelocity(accel * xMul * delta, accel * yMul * delta);
-		if (!headless) {
+		if (!setDraw) {
 			forwards->setFillColor(sf::Color(255, 196, 0));
 			forwards->setRotation(90.f - rotation);
+			setDraw = true;
 		}
 	} else if (cont.backward) {
 		addVelocity(-accel * xMul * delta, -accel * yMul * delta);
-		if (!headless) {
+		if (!setDraw) {
 			forwards->setFillColor(sf::Color(255, 64, 64));
 			forwards->setRotation(270.f - rotation);
+			setDraw = true;
 		}
-	} else if (!headless) {
+	}
+	if (!setDraw) {
 		forwards->setFillColor(sf::Color::White);
 		forwards->setRotation(90.f - rotation);
+		setDraw = true;
 	}
 	if (cont.turnleft) {
 		rotateVel += rotateSpeed * delta;
@@ -709,9 +694,9 @@ void Triangle::control(movement& cont) {
 			forwards->setRotation(90.f - rotation);
 		}
 	}
-	if (cont.primaryfire && reloadProgress > reload) {
+	if (cont.primaryfire && reloadProgress >= reload) {
 		if (authority) {
-			Projectile* proj = new Projectile();
+			Missile* proj = new Missile();
 			if (simulating) {
 				simCleanupBuffer.push_back(proj);
 			}
@@ -726,7 +711,25 @@ void Triangle::control(movement& cont) {
 				proj->syncCreation();
 			}
 		}
-		reloadProgress = 0.0;
+		reloadProgress -= reload;
+	}
+	if (cont.secondaryfire && secondaryCharge >= 1.0 && secondaryProgress >= secondaryReload) {
+		if (authority) {
+			Projectile* proj = new Projectile();
+			if (simulating) {
+				simCleanupBuffer.push_back(proj);
+			}
+			proj->setPosition(x + (radius + proj->radius * 3.0) * xMul, y + (radius + proj->radius * 3.0) * yMul);
+			addVelocity(-secondaryShootPower * xMul * proj->mass / mass, -secondaryShootPower * yMul * proj->mass / mass);
+			proj->setVelocity(velX + secondaryShootPower * xMul, velY + secondaryShootPower * yMul);
+			proj->rotation = rotation;
+			proj->rotateVel = rotateVel;
+			if (isServer) {
+				proj->syncCreation();
+			}
+		}
+		secondaryCharge -= 1.0;
+		secondaryProgress -= secondaryReload;
 	}
 }
 
@@ -742,6 +745,7 @@ void Triangle::draw() {
 	forwards->setPosition(uiX + 14.0 * cos(rotationRad), uiY - 14.0 * sin(rotationRad));
 	if (ownEntity == this) {
 		float reloadProgress = (-this->reloadProgress / reload + 1.0) * 40.f,
+		secondaryChargeProgress = (-this->secondaryCharge / secondaryStockpile + 1.0) * 40.f,
 		boostProgress = (-this->boostProgress / boostCooldown + 1.0) * 40.f;
 		if (reloadProgress > 0.0) {
 			sf::RectangleShape reloadBar(sf::Vector2f(reloadProgress, 4.f));
@@ -749,26 +753,17 @@ void Triangle::draw() {
 			reloadBar.setPosition(g_camera.w * 0.5f - reloadProgress / 2.f, g_camera.h * 0.5f + 40.f);
 			window->draw(reloadBar);
 		}
+		if (secondaryChargeProgress > 0.0) {
+			sf::RectangleShape reloadBar(sf::Vector2f(secondaryChargeProgress, 4.f));
+			reloadBar.setFillColor(sf::Color(255, 64, 255));
+			reloadBar.setPosition(g_camera.w * 0.5f - secondaryChargeProgress / 2.f, g_camera.h * 0.5f + 46.f);
+			window->draw(reloadBar);
+		}
 		if (boostProgress > 0.0) {
 			sf::RectangleShape boostReloadBar(sf::Vector2f(boostProgress, 4.f));
 			boostReloadBar.setFillColor(sf::Color(64, 255, 64));
 			boostReloadBar.setPosition(g_camera.w * 0.5f - boostProgress / 2.f, g_camera.h * 0.5f - 40.f);
 			window->draw(boostReloadBar);
-		}
-		if (hyperboostCharge > 0.0) {
-			float hyperboostProgress = (1.0 - hyperboostCharge / hyperboostTime) * 40.f;
-			if (hyperboostProgress > 0.0) {
-				sf::RectangleShape hyperboostBar(sf::Vector2f(hyperboostProgress, 4.f));
-				hyperboostBar.setFillColor(sf::Color(64, 64, 255));
-				hyperboostBar.setPosition(g_camera.w * 0.5f - hyperboostProgress / 2.f, g_camera.h * 0.5f + 36.f);
-				window->draw(hyperboostBar);
-			}
-			if (hyperboostProgress < 0.0) {
-				sf::RectangleShape hyperboostBar(sf::Vector2f(-hyperboostProgress, 4.f));
-				hyperboostBar.setFillColor(sf::Color(255, 255, 64));
-				hyperboostBar.setPosition(g_camera.w * 0.5f + hyperboostProgress / 2.f, g_camera.h * 0.5f + 36.f);
-				window->draw(hyperboostBar);
-			}
 		}
 	}
 	window->draw(*forwards);
@@ -951,77 +946,17 @@ uint8_t CelestialBody::type() {
 
 Projectile::Projectile() : Entity() {
 	radius = 4.0;
-	fuel = startingFuel;
 	this->Entity::mass = Projectile::mass;
 	this->color[0] = 180;
-	this->color[1] = 0;
-	this->color[2] = 0;
+	this->color[1] = 60;
+	this->color[2] = 60;
 	if (!headless && !simulating) {
-		shape = std::make_unique<sf::CircleShape>(radius, 3);
+		shape = std::make_unique<sf::CircleShape>(radius, 6);
 		shape->setOrigin(radius, radius);
-		icon = std::make_unique<sf::CircleShape>(2.f, 3);
+		icon = std::make_unique<sf::CircleShape>(2.f, 6);
 		icon->setOrigin(2.f, 2.f);
-		icon->setFillColor(sf::Color(255, 0, 0));
-		warning = std::make_unique<sf::CircleShape>(4.f, 4);
-		warning->setOrigin(4.f, 4.f);
-		warning->setFillColor(sf::Color(0, 0, 0, 0));
-		warning->setOutlineColor(sf::Color(255, 0, 0, 255));
-		warning->setOutlineThickness(1.f);
-		warning->setRotation(45.f);
+		icon->setFillColor(sf::Color(255, 60, 60));
 	}
-}
-
-void Projectile::update2() {
-	if (target) {
-		double dVx = target->velX - velX, dVy = target->velY - velY;
-		double dX = target->x - x, dY = target->y - y;
-		double inHeading = std::atan2(dY, dX), tangentHeading = inHeading + 0.5 * PI;
-		double velHeading = std::atan2(dVy, dVx);
-		double tangentVel = dst(dVx, dVy) * std::cos(deltaAngleRad(tangentHeading, velHeading));
-		double accel = this->accel * fuel / startingFuel;
-		double dtaccel = delta * accel;
-		double targetRotation = inHeading + (std::abs(tangentVel) < dtaccel ? std::atan2(tangentVel, dtaccel - std::abs(tangentVel))
-		: (std::abs(tangentVel) * easeInFactor > accel ? (tangentVel > 0.0 ? 0.5 * PI : 0.5 * -PI) : std::atan2(tangentVel * easeInFactor, accel)));
-		rotateVel += delta * (deltaAngleRad((rotation + 1.5 * (rotateVel > 0.0 ? rotateVel : -rotateVel) * rotateVel / rotateSpeed) * degToRad, targetRotation) > 0.0 ? rotateSpeed : -rotateSpeed);
-		double thrustDirection = rotation * degToRad + std::max(-maxThrustAngle, std::min(maxThrustAngle, deltaAngleRad(rotation * degToRad, targetRotation)));
-		if (std::abs(deltaAngleRad(targetRotation, rotation * degToRad)) < 0.5 * PI) {
-			addVelocity(dtaccel * std::cos(thrustDirection), dtaccel * std::sin(thrustDirection));
-			fuel -= delta * fuel / startingFuel;
-		}
-	}
-	Entity::update2();
-}
-
-void Projectile::loadCreatePacket(sf::Packet& packet) {
-	packet << type() << id << x << y << velX << velY << rotation << (target == nullptr ? std::numeric_limits<uint32_t>::max() : target->id) << (owner == nullptr ? std::numeric_limits<uint32_t>::max() : owner->id);
-	if (debug) {
-		printf("Sent id %d: %g %g %g %g\n", id, x, y, velX, velY);
-	}
-}
-void Projectile::unloadCreatePacket(sf::Packet& packet) {
-	packet >> id >> x >> y >> velX >> velY >> rotation;
-	uint32_t entityID, ownerID;
-	packet >> entityID >> ownerID;
-	target = entityID == std::numeric_limits<uint32_t>::max() ? nullptr : idLookup(entityID);
-	owner = ownerID == std::numeric_limits<uint32_t>::max() ? nullptr : idLookup(ownerID);
-	if (debug) {
-		printf(", id %d: %g %g %g %g\n", id, x, y, velX, velY);
-	}
-}
-void Projectile::loadSyncPacket(sf::Packet& packet) {
-	packet << id << x << y << velX << velY << rotation << fuel;
-}
-void Projectile::unloadSyncPacket(sf::Packet& packet) {
-	packet >> syncX >> syncY >> syncVelX >> syncVelY >> rotation >> fuel;
-}
-
-void Projectile::simSetup() {
-	Entity::simSetup();
-	resFuel = fuel;
-}
-void Projectile::simReset() {
-	Entity::simReset();
-	fuel = resFuel;
 }
 
 void Projectile::collide(Entity* with, bool specialOnly) {
@@ -1029,9 +964,6 @@ void Projectile::collide(Entity* with, bool specialOnly) {
 		printf("bullet collision: %u-%u ", id, with->id);
 	}
 	if (with->type() == Entities::Triangle) {
-		if (owner && owner->player) {
-			owner->player->kills++;
-		}
 		if (debug) {
 			printf("of type triangle\n");
 		}
@@ -1055,9 +987,9 @@ void Projectile::collide(Entity* with, bool specialOnly) {
 		if (authority) {
 			active = false;
 		}
-	} else if (with->type() == Entities::Projectile) {
+	} else if (with->type() == Entities::Projectile && with->type() == Entities::Missile) {
 		if (debug) {
-			printf("of type Projectile\n");
+			printf("of type Missile\n");
 		}
 		if (authority) {
 			active = false;
@@ -1071,7 +1003,120 @@ void Projectile::collide(Entity* with, bool specialOnly) {
 	}
 }
 
+void Projectile::loadCreatePacket(sf::Packet& packet) {
+	packet << type() << id << x << y << velX << velY;
+	if (debug) {
+		printf("Sent id %d: %g %g %g %g\n", id, x, y, velX, velY);
+	}
+}
+void Projectile::unloadCreatePacket(sf::Packet& packet) {
+	packet >> id >> x >> y >> velX >> velY;
+	if (debug) {
+		printf(", id %d: %g %g %g %g\n", id, x, y, velX, velY);
+	}
+}
+void Projectile::loadSyncPacket(sf::Packet& packet) {
+	packet << id << x << y << velX << velY;
+}
+void Projectile::unloadSyncPacket(sf::Packet& packet) {
+	packet >> syncX >> syncY >> syncVelX >> syncVelY;
+}
+
 void Projectile::draw() {
+	Entity::draw();
+	shape->setPosition(x + drawShiftX, y + drawShiftY);
+	shape->setRotation(90.f + rotation);
+	shape->setFillColor(sf::Color(color[0], color[1], color[2]));
+	window->draw(*shape);
+	if (g_camera.scale > radius) {
+		g_camera.bindUI();
+		icon->setPosition(g_camera.w * 0.5 + (x - ownX) / g_camera.scale, g_camera.h * 0.5 + (y - ownY) / g_camera.scale);
+		icon->setRotation(90.f + rotation);
+		window->draw(*icon);
+		g_camera.bindWorld();
+	}
+}
+
+uint8_t Projectile::type() {
+	return Entities::Projectile;
+}
+
+Missile::Missile() : Projectile() {
+	radius = 4.0;
+	fuel = startingFuel;
+	this->Entity::mass = Missile::mass;
+	this->color[0] = 180;
+	this->color[1] = 0;
+	this->color[2] = 0;
+	if (!headless && !simulating) {
+		shape = std::make_unique<sf::CircleShape>(radius, 3);
+		shape->setOrigin(radius, radius);
+		icon = std::make_unique<sf::CircleShape>(2.f, 3);
+		icon->setOrigin(2.f, 2.f);
+		icon->setFillColor(sf::Color(255, 0, 0));
+		warning = std::make_unique<sf::CircleShape>(4.f, 4);
+		warning->setOrigin(4.f, 4.f);
+		warning->setFillColor(sf::Color(0, 0, 0, 0));
+		warning->setOutlineColor(sf::Color(255, 0, 0, 255));
+		warning->setOutlineThickness(1.f);
+		warning->setRotation(45.f);
+	}
+}
+
+void Missile::update2() {
+	if (target) {
+		double dVx = target->velX - velX, dVy = target->velY - velY;
+		double dX = target->x - x, dY = target->y - y;
+		double inHeading = std::atan2(dY, dX), tangentHeading = inHeading + 0.5 * PI;
+		double velHeading = std::atan2(dVy, dVx);
+		double tangentVel = dst(dVx, dVy) * std::cos(deltaAngleRad(tangentHeading, velHeading));
+		double accel = this->accel * fuel / startingFuel;
+		double dtaccel = delta * accel;
+		double targetRotation = inHeading + (std::abs(tangentVel) < dtaccel ? std::atan2(tangentVel, dtaccel - std::abs(tangentVel))
+		: (std::abs(tangentVel) * easeInFactor > accel ? (tangentVel > 0.0 ? 0.5 * PI : 0.5 * -PI) : std::atan2(tangentVel * easeInFactor, accel)));
+		rotateVel += delta * (deltaAngleRad((rotation + 1.5 * (rotateVel > 0.0 ? rotateVel : -rotateVel) * rotateVel / rotateSpeed) * degToRad, targetRotation) > 0.0 ? rotateSpeed : -rotateSpeed);
+		double thrustDirection = rotation * degToRad + std::max(-maxThrustAngle, std::min(maxThrustAngle, deltaAngleRad(rotation * degToRad, targetRotation)));
+		if (std::abs(deltaAngleRad(targetRotation, rotation * degToRad)) < 0.5 * PI) {
+			addVelocity(dtaccel * std::cos(thrustDirection), dtaccel * std::sin(thrustDirection));
+			fuel -= delta * fuel / startingFuel;
+		}
+	}
+	Entity::update2();
+}
+
+void Missile::loadCreatePacket(sf::Packet& packet) {
+	packet << type() << id << x << y << velX << velY << rotation << (target == nullptr ? std::numeric_limits<uint32_t>::max() : target->id) << (owner == nullptr ? std::numeric_limits<uint32_t>::max() : owner->id);
+	if (debug) {
+		printf("Sent id %d: %g %g %g %g\n", id, x, y, velX, velY);
+	}
+}
+void Missile::unloadCreatePacket(sf::Packet& packet) {
+	packet >> id >> x >> y >> velX >> velY >> rotation;
+	uint32_t entityID, ownerID;
+	packet >> entityID >> ownerID;
+	target = entityID == std::numeric_limits<uint32_t>::max() ? nullptr : idLookup(entityID);
+	owner = ownerID == std::numeric_limits<uint32_t>::max() ? nullptr : idLookup(ownerID);
+	if (debug) {
+		printf(", id %d: %g %g %g %g\n", id, x, y, velX, velY);
+	}
+}
+void Missile::loadSyncPacket(sf::Packet& packet) {
+	packet << id << x << y << velX << velY << rotation << fuel;
+}
+void Missile::unloadSyncPacket(sf::Packet& packet) {
+	packet >> syncX >> syncY >> syncVelX >> syncVelY >> rotation >> fuel;
+}
+
+void Missile::simSetup() {
+	Entity::simSetup();
+	resFuel = fuel;
+}
+void Missile::simReset() {
+	Entity::simReset();
+	fuel = resFuel;
+}
+
+void Missile::draw() {
 	Entity::draw();
 	shape->setPosition(x + drawShiftX, y + drawShiftY);
 	shape->setRotation(90.f + rotation);
@@ -1090,18 +1135,18 @@ void Projectile::draw() {
 	}
 }
 
-void Projectile::onEntityDelete(Entity* d) {
+void Missile::onEntityDelete(Entity* d) {
 	Entity::onEntityDelete(d);
 	if (owner == d) {
 		owner = nullptr;
 	}
 	if (target == d) {
-		target = d->type() == Entities::Projectile && ((Projectile*)d)->owner != owner ? ((Projectile*)d)->owner : nullptr;
+		target = d->type() == Entities::Missile && ((Missile*)d)->owner != owner ? ((Missile*)d)->owner : nullptr;
 	}
 }
 
-uint8_t Projectile::type() {
-	return Entities::Projectile;
+uint8_t Missile::type() {
+	return Entities::Missile;
 }
 
 }

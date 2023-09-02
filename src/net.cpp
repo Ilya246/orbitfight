@@ -73,8 +73,8 @@ void clientParsePacket(sf::Packet& packet) {
             }
             break;
         }
-        case Entities::Projectile: {
-            Projectile* e = new Projectile;
+        case Entities::Missile: {
+            Missile* e = new Missile;
             e->unloadCreatePacket(packet);
             break;
         }

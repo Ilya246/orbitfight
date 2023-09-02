@@ -219,6 +219,7 @@ int main(int argc, char** argv) {
 					controls.turnright = sf::Keyboard::isKeyPressed(sf::Keyboard::D);
 					controls.boost = sf::Keyboard::isKeyPressed(sf::Keyboard::LControl);
 					controls.primaryfire = sf::Keyboard::isKeyPressed(sf::Keyboard::Space);
+					controls.secondaryfire = sf::Keyboard::isKeyPressed(sf::Keyboard::X);
 				}
 			}
 			sf::Event event;
@@ -305,7 +306,7 @@ int main(int argc, char** argv) {
 								serverSocket->send(targetPacket);
 							}
 						} else if (event.key.code == sf::Keyboard::LShift && ownEntity) {
-							controls.hyperboost = !controls.hyperboost;
+							controls.slowrotate = !controls.slowrotate;
 						}
 					}
 					if (event.key.code == sf::Keyboard::Tab) {
@@ -442,7 +443,7 @@ int main(int argc, char** argv) {
 
 		if (authority && lastSweep + projectileSweepSpacing < globalTime) {
 			for (Entity* e : updateGroup) {
-				if (e->type() != Entities::Projectile) {
+				if (e->type() != Entities::Missile) {
 					continue;
 				}
 				double closest = DBL_MAX;
@@ -460,7 +461,7 @@ int main(int argc, char** argv) {
 						break;
 					}
 				}
-				if (closest * ((Projectile*)e)->fuel / ((Projectile*)e)->startingFuel > sweepThreshold) {
+				if (closest * ((Missile*)e)->fuel / ((Missile*)e)->startingFuel > sweepThreshold) {
 					e->active = false;
 				}
 			}

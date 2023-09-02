@@ -165,11 +165,12 @@ inline std::map<std::string, Var> vars {
 	{"gen_chandrasekharLimit", {Double, &gen_chandrasekharLimit}},
 
 	{"projectile_mass", {Double, &Projectile::mass}},
-	{"projectile_accel", {Double, &Projectile::accel}},
-	{"projectile_rotateSpeed", {Double, &Projectile::rotateSpeed}},
-	{"projectile_maxThrustAngle", {Double, &Projectile::maxThrustAngle}},
-	{"projectile_easeInFactor", {Double, &Projectile::easeInFactor}},
-	{"projectile_startingFuel", {Double, &Projectile::startingFuel}},
+	{"missile_mass", {Double, &Missile::mass}},
+	{"missile_accel", {Double, &Missile::accel}},
+	{"missile_rotateSpeed", {Double, &Missile::rotateSpeed}},
+	{"missile_maxThrustAngle", {Double, &Missile::maxThrustAngle}},
+	{"missile_easeInFactor", {Double, &Missile::easeInFactor}},
+	{"missile_startingFuel", {Double, &Missile::startingFuel}},
 	{"triangle_mass", {Double, &Triangle::mass}},
 	{"triangle_accel", {Double, &Triangle::accel}},
 	{"triangle_rotateSlowSpeedMult", {Double, &Triangle::rotateSlowSpeedMult}},
@@ -178,11 +179,10 @@ inline std::map<std::string, Var> vars {
 	{"triangle_boostStrength", {Double, &Triangle::boostStrength}},
 	{"triangle_reload", {Double, &Triangle::reload}},
 	{"triangle_shootPower", {Double, &Triangle::shootPower}},
-	{"triangle_hyperboostStrength", {Double, &Triangle::hyperboostStrength}},
-	{"triangle_hyperboostTime", {Double, &Triangle::hyperboostTime}},
-	{"triangle_hyperboostRotateSpeed", {Double, &Triangle::hyperboostRotateSpeed}},
-	{"triangle_afterburnStrength", {Double, &Triangle::afterburnStrength}},
-	{"triangle_minAfterburn", {Double, &Triangle::minAfterburn}}};
+	{"triangle_secondaryShootPower", {Double, &Triangle::secondaryShootPower}},
+	{"triangle_secondaryRegen", {Double, &Triangle::secondaryRegen}},
+	{"triangle_secondaryReload", {Double, &Triangle::secondaryReload}},
+	{"triangle_slowRotateSpeed", {Double, &Triangle::slowRotateSpeed}}};
 
 inline std::vector<CelestialBody*> stars;
 inline Entity* trajectoryRef = nullptr;
