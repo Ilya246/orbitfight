@@ -78,6 +78,11 @@ void clientParsePacket(sf::Packet& packet) {
             e->unloadCreatePacket(packet);
             break;
         }
+		case Entities::Projectile: {
+			Projectile* e = new Projectile;
+			e->unloadCreatePacket(packet);
+			break;
+		}
         default:
             printf("Received entity of unknown entity type %d\n", entityType);
             break;
