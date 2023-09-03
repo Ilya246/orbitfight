@@ -990,7 +990,7 @@ void Projectile::collide(Entity* with, bool specialOnly) {
 		if (authority) {
 			active = false;
 		}
-	} else if (with->type() == Entities::Projectile && with->type() == Entities::Missile) {
+	} else if (with->type() == Entities::Projectile || with->type() == Entities::Missile) {
 		if (debug) {
 			printf("of type Missile\n");
 		}
