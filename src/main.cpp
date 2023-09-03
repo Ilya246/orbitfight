@@ -443,7 +443,7 @@ int main(int argc, char** argv) {
 
 		if (authority && lastSweep + projectileSweepSpacing < globalTime) {
 			for (Entity* e : updateGroup) {
-				if (e->type() != Entities::Projectile || e->type() != Entities::Missile) {
+				if (e->type() != Entities::Projectile && e->type() != Entities::Missile) {
 					continue;
 				}
 				double closest = DBL_MAX;
