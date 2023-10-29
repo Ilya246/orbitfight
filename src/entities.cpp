@@ -262,7 +262,7 @@ Missile::rotateSpeed = 240.0,
 Missile::maxThrustAngle = 45.0 * degToRad,
 Missile::startingFuel = 80.0,
 Missile::leastItimeDecrease = 0.4,
-Missile::fullThrustThreshold = 1.1;
+Missile::fullThrustThreshold = 0.95;
 
 double Triangle::mass = 1.0e7,
 Triangle::accel = 96.0,
@@ -1116,11 +1116,13 @@ void Missile::update2() {
 		double projY     = dY * std::cos(refRot) - dX * std::sin(refRot);
 		double accel     = this->accel * fuel / startingFuel;
 		double halfaccel = accel * 0.5;
-		double itime     = guessItime(0.0, -projX, -vel, projY, halfaccel);
-		       itime     = guessItime(itime, -projX, -vel, projY, accelAt(itime, fuel, halfaccel));
+		double itimef    = guessItime(0.0, -projX, -vel, projY, halfaccel);
+		double itime     = guessItime(itimef, -projX, -vel, projY, accelAt(itimef, fuel, halfaccel));
 		       itime     = guessItime(itime, -projX, -vel, projY, accelAt(itime, fuel, halfaccel));
 			   itime     = guessItime(itime, -projX, -vel, projY, accelAt(itime, fuel, halfaccel));
-		bool fullthrust  = itime < fuel * fullThrustThreshold;
+			   itimef    = guessItime(itimef, -projX, -vel, projY, halfaccel);
+			   itimef    = guessItime(itimef, -projX, -vel, projY, halfaccel);
+		bool fullthrust  = itimef < fuel * fullThrustThreshold;
 		bool thrust      = ((prevItime - itime) < leastItimeDecrease * delta || fullthrust) && fuel > 0.0;
 		double targetRot = std::atan2(dY + dVy * itime, dX + dVx * itime);
 		double finangle  = degToRad * (rotation + std::abs(rotateVel) * rotateVel / (2.0 * rotateSpeed));
