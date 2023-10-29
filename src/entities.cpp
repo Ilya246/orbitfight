@@ -260,8 +260,9 @@ double Missile::mass = 1.0e3,
 Missile::accel = 196.0,
 Missile::rotateSpeed = 240.0,
 Missile::maxThrustAngle = 45.0 * degToRad,
-Missile::easeInFactor = 0.8,
-Missile::startingFuel = 80.0;
+Missile::startingFuel = 80.0,
+Missile::leastItimeDecrease = 0.4,
+Missile::fullThrustThreshold = 1.5;
 
 double Triangle::mass = 1.0e7,
 Triangle::accel = 96.0,
@@ -415,19 +416,24 @@ Quad& Quad::getChild(uint8_t at) {
 	}
 	return quadtree[children[at]];
 }
-void Quad::put(Entity* e) {
+void Quad::put(Entity* e, int reclevel) {
 	mass += e->mass;
 	comx += e->mass * e->x;
 	comy += e->mass * e->y;
 	hasGravitators = hasGravitators || e->gravitates;
+	if (reclevel > 512) {
+		printf("body {ptr %lli, id %i, type %i, x %f, y %f, vx %f, vy %f, radius %f} exceeded quadtree recursion limit.\n", (size_t)e, e->id, e->type(), e->x, e->y, e->velX, e->velY, e->radius);
+		e->active = false;
+		return;
+	}
 	if (used) {
-		getChild((e->x > x + size * 0.5) + 2 * (e->y > y + size * 0.5)).put(e);
+		getChild((e->x > x + size * 0.5) + 2 * (e->y > y + size * 0.5)).put(e, reclevel + 1);
 		if (entity) {
 			if (entity->ghost && entity->parent_id == e->id) [[unlikely]] {
 				entity = nullptr;
 				return;
 			}
-			getChild((entity->x > x + size * 0.5) + 2 * (entity->y > y + size * 0.5)).put(entity);
+			getChild((entity->x > x + size * 0.5) + 2 * (entity->y > y + size * 0.5)).put(entity, reclevel + 1);
 			entity = nullptr;
 		}
 	} else {
@@ -552,7 +558,7 @@ void buildQuadtree() {
 	quadsConstructed = 1;
 	for (size_t i = 0; i < updateGroup.size(); i++) {
 		try {
-			quadtree[0].put(updateGroup[i]);
+			quadtree[0].put(updateGroup[i], 0);
 		} catch (const std::bad_alloc& except) {
 			free(quadtree);
 			quadsAllocated = (int)(quadsAllocated * extraQuadAllocation);
@@ -892,7 +898,7 @@ void CelestialBody::collide(Entity* with, bool specialOnly) {
 	if (!with->active) [[unlikely]] {
 		return;
 	}
-	if (authority && star && with->type() == Entities::Triangle) [[unlikely]] {
+	if (authority && star && with->type() == Entities::Triangle) {
 		if (with->player || !isServer || with == ownEntity) {
 			if (isServer) {
 				std::string sendMessage;
@@ -1066,23 +1072,49 @@ Missile::Missile() : Projectile() {
 	}
 }
 
+// guesses time to intercept since the actual equation is pretty much unsolvable
+double guessItime(double prev, double x0, double vel, double y0, double halfaccel) {
+	double x  = x0 + vel * prev;
+	double d  = dst(x, y0);
+	double dd = vel * x / d;
+	return (dd + std::sqrt(dd * dd + 4.0 * halfaccel * (d - dd * prev))) / (2 * halfaccel);
+}
+double accelAt(double time, double fuel, double thrust) {
+	double fuel1 = fuel * std::exp(-time / fuel);
+	double dV = thrust * (fuel - fuel1);
+	return dV / time;
+}
 void Missile::update2() {
 	if (target) {
-		double dVx = target->velX - velX, dVy = target->velY - velY;
-		double dX = target->x - x, dY = target->y - y;
-		double inHeading = std::atan2(dY, dX), tangentHeading = inHeading + 0.5 * PI;
-		double velHeading = std::atan2(dVy, dVx);
-		double tangentVel = dst(dVx, dVy) * std::cos(deltaAngleRad(tangentHeading, velHeading));
-		double accel = this->accel * fuel / startingFuel;
-		double dtaccel = delta * accel;
-		double targetRotation = inHeading + (std::abs(tangentVel) < dtaccel ? std::atan2(tangentVel, dtaccel - std::abs(tangentVel))
-		: (std::abs(tangentVel) * easeInFactor > accel ? (tangentVel > 0.0 ? 0.5 * PI : 0.5 * -PI) : std::atan2(tangentVel * easeInFactor, accel)));
-		rotateVel += delta * (deltaAngleRad((rotation + 1.5 * (rotateVel > 0.0 ? rotateVel : -rotateVel) * rotateVel / rotateSpeed) * degToRad, targetRotation) > 0.0 ? rotateSpeed : -rotateSpeed);
-		double thrustDirection = rotation * degToRad + std::max(-maxThrustAngle, std::min(maxThrustAngle, deltaAngleRad(rotation * degToRad, targetRotation)));
-		if (std::abs(deltaAngleRad(targetRotation, rotation * degToRad)) < 0.5 * PI) {
-			addVelocity(dtaccel * std::cos(thrustDirection), dtaccel * std::sin(thrustDirection));
-			fuel -= delta * fuel / startingFuel;
+		double dVx       = target->velX - velX;
+		double dVy       = target->velY - velY;
+		double dX        = target->x - x;
+		double dY        = target->y - y;
+		double refRot    = std::atan2(dVy, dVx);
+		double vel       = dVx / std::cos(refRot);
+		double projX     = dX * std::cos(refRot) + dY * std::sin(refRot);
+		double projY     = dY * std::cos(refRot) - dX * std::sin(refRot);
+		double accel     = this->accel * fuel / startingFuel;
+		double halfaccel = accel * 0.5;
+		double itime     = guessItime(0.0, -projX, -vel, projY, halfaccel);
+		       itime     = guessItime(itime, -projX, -vel, projY, accelAt(itime, fuel, halfaccel));
+		       itime     = guessItime(itime, -projX, -vel, projY, accelAt(itime, fuel, halfaccel));
+			   itime     = guessItime(itime, -projX, -vel, projY, accelAt(itime, fuel, halfaccel));
+		bool fullthrust  = itime < fuel * fullThrustThreshold;
+		bool thrust      = ((prevItime - itime) < leastItimeDecrease * delta || fullthrust) && fuel > 0.0;
+		double targetRot = std::atan2(dY + dVy * itime, dX + dVx * itime);
+		double finangle  = degToRad * (rotation + std::abs(rotateVel) * rotateVel / (2.0 * rotateSpeed));
+		rotateVel += delta * (deltaAngleRad(finangle, targetRot) > 0.0 ? rotateSpeed : -rotateSpeed);
+		if (std::abs(deltaAngleRad(targetRot, rotation * degToRad)) < maxThrustAngle && thrust) {
+			double actaccel = fullthrust ? this->accel : accel;
+			addVelocity(actaccel * delta * std::cos(targetRot), actaccel * delta * std::sin(targetRot));
+			fuel -= delta * (fullthrust ? 1.0 : fuel / startingFuel);
 		}
+		/* if (!simulating) {
+			printf("pX %f pY %f vel %f halfaccel %f g1 %f g2 %f it %f\n", projX, projY, vel, halfaccel, guess1, guess2, itime);
+			printf("dX %f, dY %f, ang %f, target %f\n", dX, dY, radToDeg * std::atan2(dY, dX), radToDeg * targetRot);
+		} */
+		prevItime = itime;
 	}
 	Entity::update2();
 }

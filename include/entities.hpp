@@ -114,7 +114,7 @@ Entity* idLookup(uint32_t);
 
 struct Quad {
 	void collideAttract(Entity* e, bool, bool);
-	void put(Entity* e);
+	void put(Entity* e, int reclevel);
 	Quad& getChild(uint8_t at);
 	uint32_t unstaircasize();
 	void postBuild();
@@ -219,9 +219,11 @@ struct Missile: public Projectile {
 	Entity* target = nullptr;
 	Entity* owner = nullptr;
 
-	static double mass, accel, rotateSpeed, maxThrustAngle, easeInFactor, startingFuel;
+	static double mass, accel, rotateSpeed, maxThrustAngle, startingFuel, leastItimeDecrease, fullThrustThreshold;
 	double fuel,
-	resFuel;
+	resFuel,
+	prevItime = 0.0;
+	bool thrust = true;
 
 	std::unique_ptr<sf::CircleShape> warning;
 };
