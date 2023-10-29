@@ -262,7 +262,7 @@ Missile::rotateSpeed = 240.0,
 Missile::maxThrustAngle = 45.0 * degToRad,
 Missile::startingFuel = 80.0,
 Missile::leastItimeDecrease = 0.4,
-Missile::fullThrustThreshold = 1.5;
+Missile::fullThrustThreshold = 1.1;
 
 double Triangle::mass = 1.0e7,
 Triangle::accel = 96.0,

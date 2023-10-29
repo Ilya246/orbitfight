@@ -517,7 +517,9 @@ int main(int argc, char** argv) {
 			double resdelta = delta;
 			double resTime = globalTime;
 			bool resAuthority = authority;
+			bool resIsServer = isServer;
 			authority = true;
+			isServer = false;
 			std::vector<Entity*> retUpdateGroup(updateGroup);
 			delta = predictDelta;
 			simulating = true;
@@ -584,6 +586,7 @@ int main(int argc, char** argv) {
 			delta = resdelta;
 			simulating = false;
 			authority = resAuthority;
+			isServer = resIsServer;
 			globalTime = resTime;
 			lastPredict = globalTime;
 			lastTrajectoryRef = trajectoryRef;
