@@ -144,7 +144,7 @@ struct Triangle: public Entity {
 	void onEntityDelete(Entity* d) override;
 
 	uint8_t type() override;
-	static double mass, accel, rotateSlowSpeedMult, rotateSpeed, boostCooldown, boostStrength, reload, shootPower, secondaryRegen, secondaryReload, secondaryStockpile, secondaryShootPower, slowRotateSpeed;
+	static double mass, accel, rotateSlowSpeedMult, rotateSpeed, boostCooldown, boostStrength, reload, shootPower, secondaryRegen, secondaryReload, secondaryStockpile, secondaryShootPower, maxSecondaryAngle, slowRotateSpeed;
 	double boostProgress = 0.0, reloadProgress = 0.0, secondaryCharge = 0.0, secondaryProgress = 0.0,
 	resBoostProgress = 0.0, resReloadProgress = 0.0, resSecondaryCharge = 0.0, resSecondaryProgress = 0.0;
 

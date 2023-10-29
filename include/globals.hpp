@@ -183,6 +183,7 @@ inline std::map<std::string, Var> vars {
 	{"triangle_secondaryShootPower", {Double, &Triangle::secondaryShootPower}},
 	{"triangle_secondaryRegen", {Double, &Triangle::secondaryRegen}},
 	{"triangle_secondaryReload", {Double, &Triangle::secondaryReload}},
+	{"triangle_maxSecondaryAngle", {Double, &Triangle::maxSecondaryAngle}},
 	{"triangle_slowRotateSpeed", {Double, &Triangle::slowRotateSpeed}}};
 
 inline std::vector<CelestialBody*> stars;

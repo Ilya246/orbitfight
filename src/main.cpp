@@ -518,6 +518,7 @@ int main(int argc, char** argv) {
 			double resTime = globalTime;
 			bool resAuthority = authority;
 			bool resIsServer = isServer;
+			movement resControls = controls;
 			authority = true;
 			isServer = false;
 			std::vector<Entity*> retUpdateGroup(updateGroup);
@@ -587,6 +588,7 @@ int main(int argc, char** argv) {
 			simulating = false;
 			authority = resAuthority;
 			isServer = resIsServer;
+			controls = resControls;
 			globalTime = resTime;
 			lastPredict = globalTime;
 			lastTrajectoryRef = trajectoryRef;

@@ -272,10 +272,11 @@ Triangle::boostCooldown = 12.0,
 Triangle::boostStrength = 320.0,
 Triangle::reload = 8.0,
 Triangle::shootPower = 120.0,
-Triangle::secondaryRegen = 5.0,
-Triangle::secondaryReload = 0.05,
-Triangle::secondaryStockpile = 120.0,
-Triangle::secondaryShootPower = 15000.0,
+Triangle::secondaryRegen = 0.3,
+Triangle::secondaryReload = 1.0,
+Triangle::secondaryStockpile = 6.0,
+Triangle::secondaryShootPower = 25000.0,
+Triangle::maxSecondaryAngle = 9.0,
 Triangle::slowRotateSpeed = 0.02;
 
 std::string Player::name() {
@@ -644,7 +645,7 @@ void Triangle::simReset() {
 
 void Triangle::control(movement& cont) {
 	float rotationRad = rotation * degToRad;
-	double xMul = std::cos(rotationRad), yMul = -std::sin(rotationRad);
+	double xMul = std::cos(rotationRad), yMul = std::sin(rotationRad);
 	double rotateSpeed = this->rotateSpeed;
 	bool setDraw = headless;
 	boostProgress += delta;
@@ -659,7 +660,7 @@ void Triangle::control(movement& cont) {
 		rotateSpeed *= slowRotateSpeed;
 		if (!setDraw) {
 			forwards->setFillColor(sf::Color(255, 255, 0));
-			forwards->setRotation(90.f - rotation);
+			forwards->setRotation(90.f + rotation);
 			setDraw = true;
 		}
 	}
@@ -667,26 +668,26 @@ void Triangle::control(movement& cont) {
 		addVelocity(accel * xMul * delta, accel * yMul * delta);
 		if (!setDraw) {
 			forwards->setFillColor(sf::Color(255, 196, 0));
-			forwards->setRotation(90.f - rotation);
+			forwards->setRotation(90.f + rotation);
 			setDraw = true;
 		}
 	} else if (cont.backward) {
 		addVelocity(-accel * xMul * delta, -accel * yMul * delta);
 		if (!setDraw) {
 			forwards->setFillColor(sf::Color(255, 64, 64));
-			forwards->setRotation(270.f - rotation);
+			forwards->setRotation(270.f + rotation);
 			setDraw = true;
 		}
 	}
 	if (!setDraw) {
 		forwards->setFillColor(sf::Color::White);
-		forwards->setRotation(90.f - rotation);
+		forwards->setRotation(90.f + rotation);
 		setDraw = true;
 	}
 	if (cont.turnleft) {
-		rotateVel += rotateSpeed * delta;
-	} else if (cont.turnright) {
 		rotateVel -= rotateSpeed * delta;
+	} else if (cont.turnright) {
+		rotateVel += rotateSpeed * delta;
 	}
 	if (rotateVel > 0.0) {
 		rotateVel = std::max(0.0, rotateVel - rotateSpeed * delta * rotateSlowSpeedMult);
@@ -698,7 +699,7 @@ void Triangle::control(movement& cont) {
 		boostProgress = 0.0;
 		if (!headless) {
 			forwards->setFillColor(sf::Color(64, 255, 64));
-			forwards->setRotation(90.f - rotation);
+			forwards->setRotation(90.f + rotation);
 		}
 	}
 	if (cont.primaryfire && reloadProgress >= reload) {
@@ -723,33 +724,52 @@ void Triangle::control(movement& cont) {
 	if (cont.secondaryfire && secondaryCharge >= 1.0 && secondaryProgress >= secondaryReload) {
 		if (authority) {
 			Projectile* proj = new Projectile();
+			proj->setPosition(x + (radius + proj->radius * 3.0) * xMul, y + (radius + proj->radius * 3.0) * yMul);
+			addVelocity(-secondaryShootPower * xMul * proj->mass / mass, -secondaryShootPower * yMul * proj->mass / mass);
+			double shootX = xMul;
+			double shootY = yMul;
+			if (target) {
+				double dX = target->x - x;
+				double dY = target->y - y;
+				double dVx = target->velX - velX;
+				double dVy = target->velY - velY;
+				double headIn = std::atan2(dY, dX);
+				double dVtg = dVy * cos(headIn) - dVx * sin(headIn);
+				double Vin = dVtg >= secondaryShootPower ? 0.0 : std::sqrt(secondaryShootPower * secondaryShootPower - dVtg * dVtg);
+				double targetHeading = std::atan2(dVtg, Vin) + headIn;
+				double angdiff = deltaAngleRad((double)rotationRad, targetHeading);
+				double ang = rotationRad + std::copysign(std::min(std::abs(angdiff), maxSecondaryAngle * degToRad), angdiff);
+				shootX = std::cos(ang);
+				shootY = std::sin(ang);
+			}
+			proj->setVelocity(velX + secondaryShootPower * shootX, velY + secondaryShootPower * shootY);
+			proj->rotation = rotation;
+			proj->rotateVel = rotateVel;
 			if (simulating) {
 				simCleanupBuffer.push_back(proj);
 			}
-			proj->setPosition(x + (radius + proj->radius * 3.0) * xMul, y + (radius + proj->radius * 3.0) * yMul);
-			addVelocity(-secondaryShootPower * xMul * proj->mass / mass, -secondaryShootPower * yMul * proj->mass / mass);
-			proj->setVelocity(velX + secondaryShootPower * xMul, velY + secondaryShootPower * yMul);
-			proj->rotation = rotation;
-			proj->rotateVel = rotateVel;
 			if (isServer) {
 				proj->syncCreation();
 			}
 		}
 		secondaryCharge -= 1.0;
 		secondaryProgress -= secondaryReload;
+		if (simulating && secondaryCharge < 1.0) {
+			cont.secondaryfire = false;
+		}
 	}
 }
 
 void Triangle::draw() {
 	Entity::draw();
 	shape->setPosition(x + drawShiftX, y + drawShiftY);
-	shape->setRotation(90.f - rotation);
+	shape->setRotation(90.f + rotation);
 	shape->setFillColor(sf::Color(color[0], color[1], color[2]));
 	window->draw(*shape);
 	g_camera.bindUI();
 	float rotationRad = rotation * degToRad;
 	double uiX = g_camera.w * 0.5 + (x - ownX) / g_camera.scale, uiY = g_camera.h * 0.5 + (y - ownY) / g_camera.scale;
-	forwards->setPosition(uiX + 14.0 * cos(rotationRad), uiY - 14.0 * sin(rotationRad));
+	forwards->setPosition(uiX + 14.0 * cos(rotationRad), uiY + 14.0 * sin(rotationRad));
 	if (ownEntity == this) {
 		float reloadProgress = (-this->reloadProgress / reload + 1.0) * 40.f,
 		secondaryChargeProgress = (-this->secondaryCharge / secondaryStockpile + 1.0) * 40.f,

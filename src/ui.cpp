@@ -191,9 +191,14 @@ void ChatUI::onKeyPress(sf::Keyboard::Key k) {
             sf::Packet chatPacket;
             chatPacket << Packets::Chat << textbox.fullString;
             serverSocket->send(chatPacket);
-        } else {
+        } else if (!isServer) {
             printPreferred(textbox.fullString);
-        }
+        } else {
+            sf::Packet chatPacket;
+            std::string sendMessage = "";
+            sendMessage.append("[").append(name).append("]: ").append(textbox.fullString); // i probably need to implement an alphanumeric regex here
+            relayMessage(sendMessage);
+		}
         textbox.fullString = "";
         textbox.stringChanged();
     }
