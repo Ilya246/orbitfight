@@ -1,9 +1,11 @@
 # orbitfight
-A very in-development game where you're a spaceship shooting other spaceships in a very large solar system simulated as a N-body gravity simulation, other mechanics might possibly be added later
+A game where you're a spaceship shooting other spaceships in a very large solar system simulated as a N-body gravity simulation, other mechanics might possibly be added later
 
-Development progress is posted in the matrix server: https://matrix.to/#/#orbitfight:matrix.org
+Has a matrix server: https://matrix.to/#/#orbitfight:matrix.org
 
 This game is more of a learning project (and is also my (Ilya246) first "real" C++ program) than a real game and is not really intended to be particularly interesting, another side effect of which is that the code may be rather cursed in places
+
+Development currently halted, full recode planned an unknown amount of time into the future
 
 On screenshot: myself orbiting a moon in a planetary system after having shot a projectile, trajectories selected to be drawn relative to the main planet
 
