@@ -7,9 +7,9 @@ This game is more of a learning project (and is also my (Ilya246) first "real" C
 
 Development currently halted, full recode planned an unknown amount of time into the future
 
-On screenshot: myself orbiting a moon in a planetary system after having shot a projectile, trajectories selected to be drawn relative to the main planet
+On screenshot: missile fight between ships orbiting different planets
 
-![preview](https://user-images.githubusercontent.com/57039557/175764692-c55b948b-7c8f-4055-b6cb-bed32db5f239.png)
+![image](https://github.com/Ilya246/orbitfight/assets/57039557/8e7c2101-0b3e-4d8f-8240-065d2559d608)
 
 # Controls
 - W - forwards
