@@ -355,16 +355,15 @@ int main(int argc, char** argv) {
 			for (size_t i = 0; i < ghostTrajectories.size(); i++) {
 				drawTrajectory(ghostTrajectoryColors[i], ghostTrajectories[i]);
 			}
-			if (!stars.empty()) {
-				double x = 0.0, y = 0.0;
-				for (CelestialBody* star : stars) {
-					x += star->x;
-					y += star->y;
-				}
-				x /= stars.size();
-				y /= stars.size();
-				systemCenter->setPosition(x, y);
+			double x = 0.0, y = 0.0, tmass = 0.0;
+			for (Entity* e : updateGroup) {
+				x += e->x * e->mass;
+				y += e->y * e->mass;
+				tmass += e->mass;
 			}
+			x /= updateGroup.size() * tmass;
+			y /= updateGroup.size() * tmass;
+			systemCenter->setPosition(x, y);
 			for (size_t i = 0; i < updateGroup.size(); i++) {
 				updateGroup[i]->draw();
 			}
@@ -547,16 +546,15 @@ int main(int argc, char** argv) {
 					e->update1();
 				}
 				updateEntities();
-				if (!stars.empty()) [[likely]] {
-					double x = 0.0, y = 0.0;
-					for (CelestialBody* star : stars) {
-						x += star->x;
-						y += star->y;
-					}
-					x /= stars.size();
-					y /= stars.size();
-					systemCenter->setPosition(x, y);
+				double x = 0.0, y = 0.0, tmass = 0.0;
+				for (Entity* e : updateGroup) {
+					x += e->x * e->mass;
+					y += e->y * e->mass;
+					tmass += e->mass;
 				}
+				x /= updateGroup.size() * tmass;
+				y /= updateGroup.size() * tmass;
+				systemCenter->setPosition(x, y);
 				for (Entity* e : updateGroup) {
 					e->trajectory.push_back({e->x - trajectoryRef->x, e->y - trajectoryRef->y});
 				}
