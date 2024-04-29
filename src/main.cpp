@@ -454,12 +454,9 @@ int main(int argc, char** argv) {
 						}
 						closest = std::min(closest, dst2(e->x - p->entity->x, e->y - p->entity->y));
 					}
-				} else {
-					if (ownEntity) {
-						closest = dst2(e->x - ownEntity->x, e->y - ownEntity->y);
-					} else {
-						break;
-					}
+				}
+				if (ownEntity) {
+					closest = std::min(closest, dst2(e->x - ownEntity->x, e->y - ownEntity->y));
 				}
 				if (closest > sweepThreshold) {
 					e->active = false;

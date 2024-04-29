@@ -516,7 +516,7 @@ void Quad::collideAttract(Entity* e, bool doGravity, bool checkCollide) {
 				// cApproachAtX = dx - cApproach * dVy * ivel;
 				if (std::abs(cApproach) <= radiusSum && cApproachAt <= vel) {
 					if (debug) {
-						printf("Collision: dX %d, dY %d, dVx %d, dVy %d, vel %d, cApproach %d, cApproachAt %d\n", dx, dy, dVx, dVy, vel, cApproach, cApproachAt);
+						printf("Collision: dX %f, dY %f, dVx %f, dVy %f, vel %f, cApproach %f, cApproachAt %f\n", dx, dy, dVx, dVy, vel, cApproach, cApproachAt);
 					}
 					e->collide(entity, false);
 					entity->collide(e, true);
