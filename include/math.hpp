@@ -8,6 +8,7 @@ constexpr double PI = atan(1.0) * 4.0;
 constexpr double TAU = atan(1.0) * 8.0;
 constexpr double radToDeg = 180.0 / PI;
 constexpr double degToRad = PI / 180.0;
+constexpr double sqrt2 = sqrt(2);
 
 // physics
 constexpr double C = 3.0e8;

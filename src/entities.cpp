@@ -435,10 +435,10 @@ void Quad::put(Entity* e, int reclevel) {
 	}
 	double nEntX = e->x + e->dVelX;
 	double nEntY = e->y + e->dVelY;
-	x = std::min(x, nEntX);
-	xsize = std::max(xsize, nEntX - x);
-	y = std::min(y, nEntY);
-	ysize = std::max(ysize, nEntY - y); // stretch the quad so that collisions don't break if the entity leaves us this frame
+	x = std::min(x, nEntX - e->radius);
+	xsize = std::max(xsize, nEntX + e->radius - x);
+	y = std::min(y, nEntY - e->radius);
+	ysize = std::max(ysize, nEntY + e->radius - y); // stretch the quad to fit then entity during this and next frames
 	if (used) {
 		getMakeChild((e->x > tX + size * 0.5) + 2 * (e->y > tY + size * 0.5)).put(e, reclevel + 1);
 		if (entity) {
@@ -483,7 +483,8 @@ void Quad::postBuild() {
 	}
 }
 void Quad::collideAttract(Entity* e, bool doGravity, bool checkCollide) {
-	checkCollide = checkCollide && e->x + e->radius + std::abs(e->dVelX) > x && e->y + e->radius + std::abs(e->dVelY) > y && e->x - e->radius + std::abs(e->dVelX) < x + xsize && e->y - e->radius + std::abs(e->dVelY) < y + ysize; // is the entity's next position within the stretched quad?
+	// will the entity during its movement be at least partially within the stretched quad?
+	checkCollide = checkCollide && e->x - e->radius - std::max(e->dVelX, 0.0) < (x + xsize) && e->y - e->radius - std::max(e->dVelY, 0.0) < (y + ysize) && e->x + e->radius + std::max(e->dVelX, 0.0) > x && e->y + e->radius + std::max(e->dVelX, 0.0) > y;
 	if (entity && entity != e) {
 		if (e->parent_id == entity->id || entity->parent_id == e->id) [[unlikely]] {
 			return;
@@ -496,14 +497,18 @@ void Quad::collideAttract(Entity* e, bool doGravity, bool checkCollide) {
 				e->collide(entity, false);
 				entity->collide(e, true);
 				entity->collided.push_back(e->id);
-			} else if (std::abs(dx) - radiusSum < std::abs(dVx) && std::abs(dy) - radiusSum < std::abs(dVy)) { // possibly colliding before next frame?
-				double ivel = 1.0 / dst(dVx, dVy),
+			} else if (std::abs(dx) - radiusSum < std::abs(dVx) * 2.0 && std::abs(dy) - radiusSum < std::abs(dVy) * 2.0) { // possibly colliding before next frame?
+				double vel = dst(dVx, dVy);
+				double ivel = 1.0 / vel,
 				// calculate closest approach and at what x it will happen to check whether velocity is big enough to reach said closest approach
 				cApproach = (dx * dVy - dy * dVx) * ivel,
-				// cApproachAt = sqrt(dst2(dx, dy) - cApproach * cApproach); // distance the body will pass before closest approach
+				cApproachAt = sqrt(dst2(dx, dy) - cApproach * cApproach); // distance the body will pass before closest approach
 				// collideAt = cApproachAt - sqrt(radiusSum * radiusSum - cApproach * cApproach); // distance the body will pass before colliding if abs(radiusSum) > abs(cApproach)
-				cApproachAtX = dx - cApproach * dVy * ivel;
-				if ((std::abs(cApproach) < radiusSum && std::abs(cApproachAtX) <= std::abs(dVx) && std::signbit(cApproachAtX) == std::signbit(dVx)) || dst2(dx + dVx, dy + dVy) < radiusSum * radiusSum) {
+				// cApproachAtX = dx - cApproach * dVy * ivel;
+				if (std::abs(cApproach) <= radiusSum && cApproachAt <= vel) {
+					if (debug) {
+						printf("Collision: dX %d, dY %d, dVx %d, dVy %d, vel %d, cApproach %d, cApproachAt %d\n", dx, dy, dVx, dVy, vel, cApproach, cApproachAt);
+					}
 					e->collide(entity, false);
 					entity->collide(e, true);
 					entity->collided.push_back(e->id);
