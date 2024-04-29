@@ -505,10 +505,10 @@ void Quad::collideAttract(Entity* e, bool doGravity, bool checkCollide) {
 				 *         |  /|
 				 *         | / | = c = ?
 				 *         |/  |              dot_p = r * c * cos(r ^ c)
-				 * --------|--->----          c = r * cos(r ^c) = r * dot_p / (r * c) = dot_p / c
-				 *         |   = v            c⃗ = (v_y, -v_x)
+				 * --------|--->----          c = r * cos(r ^ c) = r * dot_p / r = dot_p / c
+				 *         |   = v            c⃗_dir = (v_y, -v_x)
 				 *         |                  dot_p = r⃗ * c⃗ = r_x * v_y - v_x * r_y
-				 *         |                  c = (r_x * v_y - v_x * r_y) / c
+				 *         |                  c = (r_x * v_y - v_x * r_y) / c_dir = (r_x * v_y - v_x * r_y) / vel
 				*/
 				cApproach = (dx * dVy - dy * dVx) * ivel,
 				cApproachAt = sqrt(dst2(dx, dy) - cApproach * cApproach); // distance the body will pass before closest approach

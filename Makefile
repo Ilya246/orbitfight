@@ -6,7 +6,7 @@ CXXFLAGS ?= -O3 -Wall -Wextra -pedantic -g
 override CXXFLAGS += -std=$(STANDARD) -c -Iinclude
 LDFLAGS := $(shell pkg-config --libs sfml-window sfml-graphics sfml-system sfml-network) -pthread
 
-sources := $(shell find src -type f -name "*.cpp") src/font.cpp
+sources := $(shell find src -type f -name "*.cpp")
 objects := $(sources:src/%.cpp=build/%.o)
 depends := $(sources:src/%.cpp=build/%.d)
 
