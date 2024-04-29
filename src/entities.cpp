@@ -399,7 +399,7 @@ void Entity::onEntityDelete(Entity* d) {
 	}
 }
 
-Quad& Quad::getChild(uint8_t at) {
+Quad& Quad::getMakeChild(uint8_t at) {
 	if (children[at] == 0) {
 		if (quadsConstructed == quadsAllocated) [[unlikely]] {
 			throw std::bad_alloc();
@@ -407,14 +407,20 @@ Quad& Quad::getChild(uint8_t at) {
 		Quad& child = quadtree[quadsConstructed];
 		child = Quad();
 		double halfsize = size * 0.5;
-		child.x = at == 1 || at == 3 ? x + halfsize : x;
-		child.y = at > 1 ? y + halfsize : y;
+		child.tX = at == 1 || at == 3 ? tX + halfsize : tX;
+		child.x = child.tX;
+		child.tY = at > 1 ? tY + halfsize : tY;
+		child.y = child.tY;
 		child.size = halfsize;
-		child.invsize = invsize * 2;
+		child.xsize = halfsize;
+		child.ysize = halfsize;
 		children[at] = quadsConstructed;
 		quadsConstructed++;
 		return child;
 	}
+	return getChild(at);
+}
+Quad& Quad::getChild(uint8_t at) {
 	return quadtree[children[at]];
 }
 void Quad::put(Entity* e, int reclevel) {
@@ -427,14 +433,20 @@ void Quad::put(Entity* e, int reclevel) {
 		e->active = false;
 		return;
 	}
+	double nEntX = e->x + e->dVelX;
+	double nEntY = e->y + e->dVelY;
+	x = std::min(x, nEntX);
+	xsize = std::max(xsize, nEntX - x);
+	y = std::min(y, nEntY);
+	ysize = std::max(ysize, nEntY - y); // stretch the quad so that collisions don't break if the entity leaves us this frame
 	if (used) {
-		getChild((e->x > x + size * 0.5) + 2 * (e->y > y + size * 0.5)).put(e, reclevel + 1);
+		getMakeChild((e->x > tX + size * 0.5) + 2 * (e->y > tY + size * 0.5)).put(e, reclevel + 1);
 		if (entity) {
 			if (entity->ghost && entity->parent_id == e->id) [[unlikely]] {
 				entity = nullptr;
 				return;
 			}
-			getChild((entity->x > x + size * 0.5) + 2 * (entity->y > y + size * 0.5)).put(entity, reclevel + 1);
+			getMakeChild((entity->x > tX + size * 0.5) + 2 * (entity->y > tY + size * 0.5)).put(entity, reclevel + 1);
 			entity = nullptr;
 		}
 	} else {
@@ -442,12 +454,12 @@ void Quad::put(Entity* e, int reclevel) {
 		used = true;
 	}
 }
-uint32_t Quad::unstaircasize() {
+uint32_t Quad::unstaircasize() { // makes children which are "staircases" of identical quads just point to the lowest non-identical children instead
 	for (uint32_t& c : children) {
 		if (c != 0) {
-			Quad& quad = quadtree[c];
-			uint32_t retcode = quad.unstaircasize();
-			if (quad.comx == comx && quad.comy == comy) {
+			Quad& child = quadtree[c];
+			uint32_t retcode = child.unstaircasize();
+			if (child.comx == comx && child.comy == comy) {
 				return retcode == 0 ? c : retcode;
 			} else if (retcode != 0) {
 				c = retcode;
@@ -461,12 +473,17 @@ void Quad::postBuild() {
 	comy /= mass;
 	for (uint32_t c : children) {
 		if (c != 0) {
-			quadtree[c].postBuild();
+			Quad& child = quadtree[c];
+			child.postBuild();
+			x = std::min(x, child.x);
+			xsize = std::max(xsize, child.x - x + child.xsize);
+			y = std::min(y, child.y);
+			ysize = std::max(ysize, child.y - y + child.ysize);
 		}
 	}
 }
 void Quad::collideAttract(Entity* e, bool doGravity, bool checkCollide) {
-	checkCollide = checkCollide && e->x + (e->radius + std::abs(e->dVelX)) * 2.0 > x && e->y + (e->radius + std::abs(e->dVelY)) * 2.0 > y && e->x - (e->radius + std::abs(e->dVelX)) * 2.0 < x + size && e->y - (e->radius + std::abs(e->dVelY)) * 2.0 < y + size;
+	checkCollide = checkCollide && e->x + e->radius + std::abs(e->dVelX) > x && e->y + e->radius + std::abs(e->dVelY) > y && e->x - e->radius + std::abs(e->dVelX) < x + xsize && e->y - e->radius + std::abs(e->dVelY) < y + ysize; // is the entity's next position within the stretched quad?
 	if (entity && entity != e) {
 		if (e->parent_id == entity->id || entity->parent_id == e->id) [[unlikely]] {
 			return;
@@ -497,17 +514,17 @@ void Quad::collideAttract(Entity* e, bool doGravity, bool checkCollide) {
 			double xdiff = entity->x - e->x, ydiff = entity->y - e->y;
 			double dist = dst(xdiff, ydiff);
 			double factor = entity->mass * delta * G / (dist * dist * dist);
-			e->addVelocity(xdiff * factor, ydiff * factor);
+			e->addVelocity(xdiff * factor, ydiff * factor); // here and below: `F = GM/R^3 * R_vec`, for each coordinate
 		}
 		return;
 	}
 	if (doGravity) {
-		double halfsize = size * 0.5, midx = x + halfsize, midy = y + halfsize;
-		if (!hasGravitators || invsize * (std::abs(e->x - midx) + std::abs(e->y - midy)) > gravityAccuracy) {
+		double midx = x + xsize * 0.5, midy = y + ysize * 0.5;
+		if (!hasGravitators || (std::abs(e->x - midx) + std::abs(e->y - midy)) > gravityAccuracy * size) {
 			double xdiff = comx - e->x, ydiff = comy - e->y;
 			double dist = dst(xdiff, ydiff);
 			double factor = delta * mass * G / (dist * dist * dist);
-			e->addVelocity(xdiff * factor, ydiff * factor);
+			e->addVelocity(xdiff * factor, ydiff * factor); //          ^ "below" being here
 			doGravity = false;
 		}
 	} else if (!checkCollide) {
@@ -520,7 +537,7 @@ void Quad::collideAttract(Entity* e, bool doGravity, bool checkCollide) {
 	}
 }
 void Quad::draw() {
-	sf::RectangleShape quad(sf::Vector2f(size / g_camera.scale, size / g_camera.scale));
+	sf::RectangleShape quad(sf::Vector2f(xsize / g_camera.scale, ysize / g_camera.scale));
 	quad.setPosition(g_camera.w * 0.5 + (x - ownX) / g_camera.scale, g_camera.h * 0.5 + (y - ownY) / g_camera.scale);
 	quad.setFillColor(sf::Color(0, 0, 0, 0));
 	quad.setOutlineColor(sf::Color(0, 0, 255, 255));
@@ -551,28 +568,32 @@ void buildQuadtree() {
 		x2 = std::max(e->x, x2);
 		y2 = std::max(e->y, y2);
 	}
-	quadtree[0] = Quad();
-	quadtree[0].x = x1;
-	quadtree[0].y = y1;
-	quadtree[0].size = std::max(x2 - x1, y2 - y1);
-	quadtree[0].invsize = 1.0 / quadtree[0].size;
+	Quad& root = quadtree[0];
+	root = Quad();
+	root.x = x1;
+	root.tX = x1;
+	root.y = y1;
+	root.tY = y1;
+	root.size = std::max(x2 - x1, y2 - y1);
+	root.xsize = x2 - x1;
+	root.ysize = y2 - y1;
 	quadsConstructed = 1;
 	for (size_t i = 0; i < updateGroup.size(); i++) {
 		try {
-			quadtree[0].put(updateGroup[i], 0);
+			root.put(updateGroup[i], 0);
 		} catch (const std::bad_alloc& except) {
 			free(quadtree);
 			quadsAllocated = (int)(quadsAllocated * extraQuadAllocation);
 			quadtree = (Quad*)malloc(quadsAllocated * sizeof(Quad));
-			quadtree[0] = Quad();
+			root = Quad();
 			quadsConstructed = 1;
 			i = 0;
 			if (debug) [[unlikely]] {
 				printf("Ran out of memory for quadtree, new size: %u\nPerforming investigation...", quadsAllocated);
 				for (Entity* e1 : updateGroup) {
 					for (Entity* e2 : updateGroup) {
-						if (e1->x == e2->x || e1->y == e2->y) [[unlikely]] {
-							printf("Found entities with equal coordinates: %g, %g and %g, %g\n", e1->x, e1->y, e2->x, e2->y);
+						if ((e1->x == e2->x || e1->y == e2->y) && e1->id != e2->id) {
+							printf("Found entities with equal coordinates: %g, %g and %g, %g, IDs %lli %lli\n", e1->x, e1->y, e2->x, e2->y, e1->id, e2->id);
 						}
 					}
 				}
@@ -585,8 +606,8 @@ void buildQuadtree() {
 			reallocateQuadtree();
 		}
 	}
-	quadtree[0].unstaircasize();
-	quadtree[0].postBuild();
+	root.unstaircasize();
+	root.postBuild();
 	if (std::max((double)quadsConstructed, minQuadtreeSize / quadtreeShrinkThreshold) < quadsAllocated * quadtreeShrinkThreshold) [[unlikely]] {
 		if (debug) [[unlikely]] {
 			printf("Shrinking quadtree... ");

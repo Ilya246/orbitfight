@@ -116,14 +116,16 @@ struct Quad {
 	void collideAttract(Entity* e, bool, bool);
 	void put(Entity* e, int reclevel);
 	Quad& getChild(uint8_t at);
+	Quad& getMakeChild(uint8_t at);
 	uint32_t unstaircasize();
 	void postBuild();
 
 	void draw();
 
+	double size, tX, tY, // the parameters of the quad as if it hadn't been stretched
+	xsize, ysize, x, y, comx = 0.0, comy = 0.0, mass = 0.0;
 	uint32_t children[4] = {0, 0, 0, 0};
 	Entity* entity = nullptr;
-	double size, invsize, x, y, comx = 0.0, comy = 0.0, mass = 0.0;
 	bool used = false, hasGravitators = false;
 };
 
