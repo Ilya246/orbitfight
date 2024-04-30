@@ -100,8 +100,7 @@ struct Entity : EntityDeleteListener {
 	Player* player = nullptr;
 	double x = 0.0, y = 0.0, velX = 0.0, velY = 0.0, rotation = 0.0, rotateVel = 0.0,
 	dVelX = 0.0, dVelY = 0.0, // exist for caching reasons
-	radius = 0.0,
-	mass = 0.0,
+	radius = 0.0, mass = 0.0,
 	resX = 0.0, resY = 0.0, resVelX = 0.0, resVelY = 0.0, resRotation = 0.0, resRotateVel = 0.0, resMass = 0.0, resRadius = 0.0,
 	syncX = 0.0, syncY = 0.0, syncVelX = 0.0, syncVelY = 0.0;
 	bool ghost = false, ai = false, synced = false, active = true, gravitates = false;
@@ -222,6 +221,7 @@ struct Missile: public Projectile {
 	Entity* owner = nullptr;
 
 	static double mass, accel, rotateSpeed, maxThrustAngle, startingFuel, leastItimeDecrease, fullThrustThreshold;
+	static int guidanceIterations;
 	double fuel,
 	resFuel,
 	prevItime = 0.0;

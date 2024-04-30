@@ -263,6 +263,7 @@ Missile::maxThrustAngle = 45.0 * degToRad,
 Missile::startingFuel = 80.0,
 Missile::leastItimeDecrease = 0.4,
 Missile::fullThrustThreshold = 0.95;
+int Missile::guidanceIterations = 3;
 
 double Triangle::mass = 1.0e7,
 Triangle::accel = 96.0,
@@ -764,18 +765,18 @@ void Triangle::control(movement& cont) {
 			double shootX = xMul;
 			double shootY = yMul;
 			if (target) {
-				double dX = target->x - x;
-				double dY = target->y - y;
-				double dVx = target->velX - velX;
-				double dVy = target->velY - velY;
-				double headIn = std::atan2(dY, dX);
-				double dVtg = dVy * cos(headIn) - dVx * sin(headIn);
-				double Vin = dVtg >= secondaryShootPower ? 0.0 : std::sqrt(secondaryShootPower * secondaryShootPower - dVtg * dVtg);
-				double targetHeading = std::atan2(dVtg, Vin) + headIn;
-				double angdiff = deltaAngleRad((double)rotationRad, targetHeading);
-				double ang = rotationRad + std::copysign(std::min(std::abs(angdiff), maxSecondaryAngle * degToRad), angdiff);
-				shootX = std::cos(ang);
-				shootY = std::sin(ang);
+				double dX            = target->x - x;
+				double dY            = target->y - y;
+				double headIn        = std::atan2(dY, dX);
+				double dVx           = target->velX - velX;
+				double dVy           = target->velY - velY;
+				double dVtg          = dVy * cos(headIn) - dVx * sin(headIn);
+				double Vin           = dVtg >= secondaryShootPower ? 0.0 : std::sqrt(secondaryShootPower * secondaryShootPower - dVtg * dVtg);
+				double targetHeading = Vin == 0.0 ? headIn : std::atan2(dVtg, Vin) + headIn;
+				double angdiff       = deltaAngleRad((double)rotationRad, targetHeading);
+				double ang           = rotationRad + std::copysign(std::min(std::abs(angdiff), maxSecondaryAngle * degToRad), angdiff);
+				shootX               = std::cos(ang);
+				shootY               = std::sin(ang);
 			}
 			proj->setVelocity(velX + secondaryShootPower * shootX, velY + secondaryShootPower * shootY);
 			proj->rotation = rotation;
@@ -1127,12 +1128,14 @@ Missile::Missile() : Projectile() {
 	}
 }
 
-// guesses time to intercept since the actual equation is pretty much unsolvable
-double guessItime(double prev, double x0, double vel, double y0, double halfaccel) {
+// iteratively guesses time of intercept for an accelerating and linearly moving target
+// reference frame should be rotated so that the linearly moving target is moving x-wards
+// the solution for the actual equation would take more time to compute
+double guessInterceptTime(double prev, double x0, double vel, double y0, double accel) {
 	double x  = x0 + vel * prev;
 	double d  = dst(x, y0);
 	double dd = vel * x / d;
-	return (dd + std::sqrt(dd * dd + 4.0 * halfaccel * (d - dd * prev))) / (2 * halfaccel);
+	return (dd + std::sqrt(dd * dd + 2.0 * accel * (d - dd * prev))) / (accel);
 }
 double accelAt(double time, double fuel, double thrust) {
 	double fuel1 = fuel * std::exp(-time / fuel);
@@ -1150,18 +1153,17 @@ void Missile::update2() {
 		double projX     = dX * std::cos(refRot) + dY * std::sin(refRot);
 		double projY     = dY * std::cos(refRot) - dX * std::sin(refRot);
 		double accel     = this->accel * fuel / startingFuel;
-		double halfaccel = accel * 0.5;
-		double itimef    = guessItime(0.0, -projX, -vel, projY, halfaccel);
-		double itime     = guessItime(itimef, -projX, -vel, projY, accelAt(itimef, fuel, halfaccel));
-		       itime     = guessItime(itime, -projX, -vel, projY, accelAt(itime, fuel, halfaccel));
-			   itime     = guessItime(itime, -projX, -vel, projY, accelAt(itime, fuel, halfaccel));
-			   itimef    = guessItime(itimef, -projX, -vel, projY, halfaccel);
-			   itimef    = guessItime(itimef, -projX, -vel, projY, halfaccel);
+		double itimef    = guessInterceptTime(0.0, -projX, -vel, projY, accel);
+		double itime     = guessInterceptTime(itimef, -projX, -vel, projY, accelAt(itimef, fuel, accel));
+		for (int i = 0; i < guidanceIterations; ++i) {
+			itime  = guessInterceptTime(itime, -projX, -vel, projY, accelAt(itime, fuel, accel));
+			itimef = guessInterceptTime(itimef, -projX, -vel, projY, accel);
+		}
 		bool fullthrust  = itimef < fuel * fullThrustThreshold;
 		bool thrust      = ((prevItime - itime) < leastItimeDecrease * delta || fullthrust) && fuel > 0.0;
 		double targetRot = std::atan2(dY + dVy * itime, dX + dVx * itime);
 		double finangle  = degToRad * (rotation + std::abs(rotateVel) * rotateVel / (2.0 * rotateSpeed));
-		rotateVel += delta * (deltaAngleRad(finangle, targetRot) > 0.0 ? rotateSpeed : -rotateSpeed);
+		rotateVel       += delta * (deltaAngleRad(finangle, targetRot) > 0.0 ? rotateSpeed : -rotateSpeed);
 		if (std::abs(deltaAngleRad(targetRot, rotation * degToRad)) < maxThrustAngle && thrust) {
 			double actaccel = fullthrust ? this->accel : accel;
 			addVelocity(actaccel * delta * std::cos(targetRot), actaccel * delta * std::sin(targetRot));
