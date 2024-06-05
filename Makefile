@@ -10,10 +10,9 @@ sources := $(shell find src -type f -name "*.cpp")
 objects := $(sources:src/%.cpp=build/%.o)
 depends := $(sources:src/%.cpp=build/%.d)
 
-all: orbitfight
+builddir = ./build
 
-src/font.cpp: font.ttf
-	xxd -i $^ $@
+all: orbitfight
 
 build/%.o: src/%.cpp
 	@printf "CC\t%s\n" $@
@@ -23,16 +22,16 @@ build/%.o: src/%.cpp
 -include $(depends)
 
 orbitfight: $(objects)
-	@printf "LD\t%s\n" $@
-	@$(CXX) $^ -o $@ $(LDFLAGS)
+	@printf "LD\t%s\n" $(builddir)/$@
+	@$(CXX) $^ -o $(builddir)/$@ $(LDFLAGS)
 
 clean:
-	rm -rf build
+	rm -r build/*
 
 strip: all
-	$(STRIP) orbitfight
+	$(STRIP) $(builddir)/orbitfight
 
 run: all
-	@./orbitfight
+	@$(builddir)/orbitfight
 
 .PHONY: all clean strip run
