@@ -30,6 +30,7 @@ inline std::vector<Entity*> simCleanupBuffer;
 inline std::vector<CelestialBody*> planets;
 inline std::vector<std::vector<Point>> ghostTrajectories;
 inline std::vector<sf::Color> ghostTrajectoryColors;
+inline std::vector<obf::Quad> quadtree;
 inline sf::Vector2i mousePos;
 inline sf::Clock actualDeltaClock, deltaClock, globalClock;
 inline std::future<void> inputReader;
@@ -61,7 +62,6 @@ inline double delta = 1.0 / 60.0,
 	syncCullThreshold = 0.6, syncCullOffset = 100000.0, sweepThreshold = 3.0e6 * 3.0e6,
 	predictSpacing = 0.25, predictDelta = 0.2,
 	predictBaseScale = 200.0,
-	extraQuadAllocation = 2.0, quadReallocateThreshold = 0.6, quadtreeShrinkThreshold = 0.2,
 	autorestartSpacing = 30.0 * 60.0 + 1, autorestartNotifSpacing = 5.0 * 60.0,
 	G = 6.67e-11,
 	gravityAccuracy = 5.0,
@@ -76,8 +76,6 @@ nextID = 0,
 predictSteps = (int)(90.0 / predictDelta),
 gen_baseMinPlanets = 10,
 gen_baseMaxPlanets = 15,
-quadsConstructed = 100, minQuadtreeSize = 80,
-quadsAllocated = (int)(quadsConstructed * extraQuadAllocation),
 updateThreadCount = 1, updateThreadsActual = 0;
 inline size_t minThreadEntities = 100,
 messageLimit = 50, usernameLimit = 24;
@@ -90,8 +88,6 @@ enableControlLock = false,
 simulating = false,
 autorestartRegenned = true,
 printPlanetMerges = true;
-
-inline obf::Quad* quadtree = (Quad*)malloc((size_t)(sizeof(Quad) * quadsAllocated));
 
 struct Var {
 	uint8_t type;

@@ -27,7 +27,6 @@ void updateEntities();
 
 void drawTrajectory(sf::Color& color, std::vector<Point>& traj);
 
-void reallocateQuadtree();
 void buildQuadtree();
 
 struct movement {
@@ -115,7 +114,7 @@ struct Quad {
 	void collideAttract(Entity* e, bool, bool);
 	void put(Entity* e, int reclevel);
 	Quad& getChild(uint8_t at);
-	Quad& getMakeChild(uint8_t at);
+	uint32_t getMakeChild(double at_x, double at_y);
 	uint32_t unstaircasize();
 	void postBuild();
 

@@ -26,7 +26,8 @@ orbitfight: $(objects)
 	@$(CXX) $^ -o $(builddir)/$@ $(LDFLAGS)
 
 clean:
-	rm -r build/*
+	rm build/*.o
+	rm build/*.d
 
 strip: all
 	$(STRIP) $(builddir)/orbitfight

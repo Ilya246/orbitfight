@@ -400,13 +400,12 @@ void Entity::onEntityDelete(Entity* d) {
 	}
 }
 
-Quad& Quad::getMakeChild(uint8_t at) {
+uint32_t Quad::getMakeChild(double at_x, double at_y) {
+	uint8_t at = (at_x > tX + size * 0.5) + 2 * (at_y > tY + size * 0.5);
 	if (children[at] == 0) {
-		if (quadsConstructed == quadsAllocated) [[unlikely]] {
-			throw std::bad_alloc();
-		}
-		Quad& child = quadtree[quadsConstructed];
-		child = Quad();
+		uint32_t next_id = (uint32_t)quadtree.size();
+		quadtree.emplace_back();
+		Quad& child = quadtree.back();
 		double halfsize = size * 0.5;
 		child.tX = at == 1 || at == 3 ? tX + halfsize : tX;
 		child.x = child.tX;
@@ -415,11 +414,10 @@ Quad& Quad::getMakeChild(uint8_t at) {
 		child.size = halfsize;
 		child.xsize = halfsize;
 		child.ysize = halfsize;
-		children[at] = quadsConstructed;
-		quadsConstructed++;
-		return child;
+		children[at] = next_id;
+		return next_id;
 	}
-	return getChild(at);
+	return children[at];
 }
 Quad& Quad::getChild(uint8_t at) {
 	return quadtree[children[at]];
@@ -432,6 +430,7 @@ void Quad::put(Entity* e, int reclevel) {
 	if (reclevel > 512) {
 		printf("body {ptr %lli, id %i, type %i, x %f, y %f, vx %f, vy %f, radius %f} exceeded quadtree recursion limit.\n", (size_t)e, e->id, e->type(), e->x, e->y, e->velX, e->velY, e->radius);
 		e->active = false;
+		e = nullptr;
 		return;
 	}
 	double nEntX = e->x + e->dVelX;
@@ -441,13 +440,13 @@ void Quad::put(Entity* e, int reclevel) {
 	y = std::min(y, nEntY - e->radius);
 	ysize = std::max(ysize, nEntY + e->radius - y); // stretch the quad to fit then entity during this and next frames
 	if (used) {
-		getMakeChild((e->x > tX + size * 0.5) + 2 * (e->y > tY + size * 0.5)).put(e, reclevel + 1);
+		quadtree[getMakeChild(e->x, e->y)].put(e, reclevel + 1);
 		if (entity) {
 			if (entity->ghost && entity->parent_id == e->id) [[unlikely]] {
 				entity = nullptr;
 				return;
 			}
-			getMakeChild((entity->x > tX + size * 0.5) + 2 * (entity->y > tY + size * 0.5)).put(entity, reclevel + 1);
+			quadtree[getMakeChild(entity->x, entity->y)].put(entity, reclevel + 1);
 			entity = nullptr;
 		}
 	} else {
@@ -565,16 +564,6 @@ void Quad::draw() {
 	}
 }
 
-void reallocateQuadtree() {
-	quadsAllocated = std::max(minQuadtreeSize, (int)(quadsConstructed * extraQuadAllocation));
-	Quad* newQuadtree = (Quad*)malloc(quadsAllocated * sizeof(Quad));
-	memcpy(newQuadtree, quadtree, quadsConstructed * sizeof(Quad));
-	delete quadtree;
-	quadtree = newQuadtree;
-	if (debug) [[unlikely]] {
-		printf("Reallocated quadtree, new size: %u\n", quadsAllocated);
-	}
-}
 void buildQuadtree() {
 	double x1 = +INFINITY, y1 = +INFINITY, x2 = -INFINITY, y2 = -INFINITY;
 	for (Entity* e : updateGroup) {
@@ -583,8 +572,9 @@ void buildQuadtree() {
 		x2 = std::max(e->x, x2);
 		y2 = std::max(e->y, y2);
 	}
-	Quad& root = quadtree[0];
-	root = Quad();
+	quadtree.clear();
+	quadtree.emplace_back();
+	Quad& root = quadtree.front();
 	root.x = x1;
 	root.tX = x1;
 	root.y = y1;
@@ -592,43 +582,11 @@ void buildQuadtree() {
 	root.size = std::max(x2 - x1, y2 - y1);
 	root.xsize = x2 - x1;
 	root.ysize = y2 - y1;
-	quadsConstructed = 1;
 	for (size_t i = 0; i < updateGroup.size(); i++) {
-		try {
-			root.put(updateGroup[i], 0);
-		} catch (const std::bad_alloc& except) {
-			free(quadtree);
-			quadsAllocated = (int)(quadsAllocated * extraQuadAllocation);
-			quadtree = (Quad*)malloc(quadsAllocated * sizeof(Quad));
-			root = Quad();
-			quadsConstructed = 1;
-			i = 0;
-			if (debug) [[unlikely]] {
-				printf("Ran out of memory for quadtree, new size: %u\nPerforming investigation...", quadsAllocated);
-				for (Entity* e1 : updateGroup) {
-					for (Entity* e2 : updateGroup) {
-						if ((e1->x == e2->x || e1->y == e2->y) && e1->id != e2->id) {
-							printf("Found entities with equal coordinates: %g, %g and %g, %g, IDs %lli %lli\n", e1->x, e1->y, e2->x, e2->y, e1->id, e2->id);
-						}
-					}
-				}
-			}
-		}
-		if (quadsConstructed > quadsAllocated * quadReallocateThreshold) [[unlikely]] {
-			if (debug) [[unlikely]] {
-				printf("Expanding quadtree... ");
-			}
-			reallocateQuadtree();
-		}
+		quadtree[0].put(updateGroup[i], 0);
 	}
-	root.unstaircasize();
-	root.postBuild();
-	if (std::max((double)quadsConstructed, minQuadtreeSize / quadtreeShrinkThreshold) < quadsAllocated * quadtreeShrinkThreshold) [[unlikely]] {
-		if (debug) [[unlikely]] {
-			printf("Shrinking quadtree... ");
-		}
-		reallocateQuadtree();
-	}
+	quadtree[0].unstaircasize();
+	quadtree[0].postBuild();
 }
 
 Triangle::Triangle() : Entity() {
