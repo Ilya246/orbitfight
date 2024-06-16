@@ -69,7 +69,7 @@ void clientParsePacket(sf::Packet& packet) {
             CelestialBody* e = new CelestialBody(radius);
             e->unloadCreatePacket(packet);
             if (e->star) {
-                stars.push_back(e);
+                stars.push_back(unique_ptr<CelestialBody>(e));
             }
             break;
         }

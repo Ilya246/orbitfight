@@ -27,7 +27,7 @@ void setupShip(Entity* ship, bool sync) {
 	if (planets.size() == 0) {
 		return;
 	}
-	CelestialBody* planet = planets[(int)rand_f(0, planets.size())];
+	std::unique_ptr<CelestialBody>& planet = planets[(int)rand_f(0, planets.size())];
 	double spawnDst = planet->radius * rand_f(shipSpawnDistanceMin, shipSpawnDistanceMax);
 	float spawnAngle = rand_f(-PI, PI);
 	ship->setPosition(planet->x + spawnDst * std::cos(spawnAngle), planet->y + spawnDst * std::sin(spawnAngle));
@@ -46,6 +46,7 @@ void setupShip(Entity* ship, bool sync) {
 int generateOrbitingPlanets(int amount, double x, double y, double velx, double vely, double parentmass, double minradius, double maxradius, double spawnDst) {
 	int totalMoons = 0;
 	double maxFactor = sqrt(pow(gen_minNextRadius * gen_maxNextRadius, amount * 0.5) * spawnDst);
+
 	for (int i = 0; i < amount; i++) {
 		spawnDst *= rand_f(gen_minNextRadius, gen_maxNextRadius);
 		double factor = sqrt(spawnDst) / maxFactor; // makes planets further outward generate larger
@@ -53,18 +54,24 @@ int generateOrbitingPlanets(int amount, double x, double y, double velx, double 
 		float radius = rand_f(minradius, maxradius * factor);
 		double mass = gen_baseDensity * pow(radius, gen_densityFactor);
 		bool star = mass > gen_starMass * gen_starMassReq;
-		CelestialBody* planet = new CelestialBody(star ? gen_starRadius * pow(mass / gen_starMass, 1.0 / gen_starDensityFactor) : radius, gen_baseDensity * pow(radius, gen_densityFactor));
+
+		obf::planets.push_back(std::make_unique<CelestialBody>(star ? gen_starRadius * pow(mass / gen_starMass, 1.0 / gen_starDensityFactor) : radius, gen_baseDensity * pow(radius, gen_densityFactor)));
+		std::unique_ptr<CelestialBody>& planet = planets.back();
+
+		planet->postMassUpdate();
+
 		planet->setPosition(x + spawnDst * std::cos(spawnAngle), y + spawnDst * std::sin(spawnAngle));
 		double vel = sqrt(G * parentmass / spawnDst);
 		planet->addVelocity(velx + vel * std::cos(spawnAngle + PI / 2.0), vely + vel * std::sin(spawnAngle + PI / 2.0));
-		planet->postMassUpdate();
+
 		if (!star) {
 			planet->setColor((int)rand_f(64.f, 255.f), (int)rand_f(64.f, 255.f), (int)rand_f(64.f, 255.f));
 		}
+
 		int moons = (int)(rand_f(0.f, 1.f) * pow(radius / gen_moonFactor, gen_moonPower));
-		obf::planets.push_back(planet);
 		totalMoons += moons + generateOrbitingPlanets(moons, planet->x, planet->y, planet->velX, planet->velY, planet->mass, gen_minMoonRadius, planet->radius * gen_maxMoonRadiusFrac, planet->radius * (1.0 + rand_f(gen_minMoonDistance, gen_minMoonDistance + pow(gen_maxMoonDistance, std::min(1.0, 0.5 / (planet->radius / gen_maxPlanetRadius))))));
 	}
+
 	return totalMoons;
 }
 
@@ -76,19 +83,22 @@ void generateSystem() {
 	double angleSpacing = TAU / starsN, angle = 0.0;
 	double starsMass = gen_starMass * starsN, dist = (starsN - 1) * gen_starRadius * 2.0;
 	for (int i = 0; i < starsN; i++) {
-		CelestialBody* star = nullptr;
-		double posX = std::cos(angle) * dist, posY = std::sin(angle) * dist;
-		if (rand_f(0.f, 1.f) < gen_blackholeChance) {
-			star = new CelestialBody(2.0 * G * gen_starMass / (CC), gen_starMass * 1.0001);
+		bool blackhole = rand_f(0.f, 1.f) < gen_blackholeChance;
+		stars.push_back(std::make_unique<CelestialBody>(blackhole ? 2.0 * G * gen_starMass / (CC) : gen_starRadius, blackhole ? gen_starMass * 1.0001 : gen_starMass));
+		std::unique_ptr<CelestialBody>& star = stars.back();
+		star->star = true;
+
+		star->blackhole = blackhole;
+		if (blackhole) {
 			star->setColor(0, 0, 0);
-			star->blackhole = true;
 		} else {
-			star = new CelestialBody(gen_starRadius, gen_starMass);
 			star->setColor(255, 229, 97);
 		}
+
+		double posX = std::cos(angle) * dist;
+		double posY = std::sin(angle) * dist;
 		star->setPosition(posX, posY);
-		star->star = true;
-		stars.push_back(star);
+
 		angle += angleSpacing;
 	}
 	if (starsN > 1) {
@@ -99,6 +109,7 @@ void generateSystem() {
 			aX += factor * xdiff;
 			aY += factor * ydiff;
 		}
+
 		double vel = sqrt(dst(aX, aY) * dist);
 		angle = 0.0;
 		for (int i = 0; i < starsN; i++) {
@@ -400,33 +411,35 @@ void Entity::onEntityDelete(Entity* d) {
 	}
 }
 
-uint32_t Quad::getMakeChild(double at_x, double at_y) {
-	uint8_t at = (at_x > tX + size * 0.5) + 2 * (at_y > tY + size * 0.5);
-	if (children[at] == 0) {
+uint32_t Quad::getMakeChild(uint32_t id, double at_x, double at_y) {
+	Quad parent = quadtree[id];
+	uint8_t at = (at_x > parent.tX + parent.size * 0.5) + 2 * (at_y > parent.tY + parent.size * 0.5);
+	if (parent.children[at] == 0) {
 		uint32_t next_id = (uint32_t)quadtree.size();
 		quadtree.emplace_back();
 		Quad& child = quadtree.back();
-		double halfsize = size * 0.5;
-		child.tX = at == 1 || at == 3 ? tX + halfsize : tX;
+		double halfsize = parent.size * 0.5;
+		child.tX = at == 1 || at == 3 ? parent.tX + halfsize : parent.tX;
 		child.x = child.tX;
-		child.tY = at > 1 ? tY + halfsize : tY;
+		child.tY = at > 1 ? parent.tY + halfsize : parent.tY;
 		child.y = child.tY;
 		child.size = halfsize;
 		child.xsize = halfsize;
 		child.ysize = halfsize;
-		children[at] = next_id;
+		quadtree[id].children[at] = next_id;
 		return next_id;
 	}
-	return children[at];
+	return parent.children[at];
 }
 Quad& Quad::getChild(uint8_t at) {
 	return quadtree[children[at]];
 }
-void Quad::put(Entity* e, int reclevel) {
-	mass += e->mass;
-	comx += e->mass * e->x;
-	comy += e->mass * e->y;
-	hasGravitators = hasGravitators || e->gravitates;
+void Quad::put(uint32_t id, Entity* e, int reclevel) {
+	Quad& cur = quadtree[id];
+	cur.mass += e->mass;
+	cur.comx += e->mass * e->x;
+	cur.comy += e->mass * e->y;
+	cur.hasGravitators = cur.hasGravitators || e->gravitates;
 	if (reclevel > 512) {
 		printf("body {ptr %lli, id %i, type %i, x %f, y %f, vx %f, vy %f, radius %f} exceeded quadtree recursion limit.\n", (size_t)e, e->id, e->type(), e->x, e->y, e->velX, e->velY, e->radius);
 		e->active = false;
@@ -435,23 +448,24 @@ void Quad::put(Entity* e, int reclevel) {
 	}
 	double nEntX = e->x + e->dVelX;
 	double nEntY = e->y + e->dVelY;
-	x = std::min(x, nEntX - e->radius);
-	xsize = std::max(xsize, nEntX + e->radius - x);
-	y = std::min(y, nEntY - e->radius);
-	ysize = std::max(ysize, nEntY + e->radius - y); // stretch the quad to fit then entity during this and next frames
-	if (used) {
-		quadtree[getMakeChild(e->x, e->y)].put(e, reclevel + 1);
-		if (entity) {
-			if (entity->ghost && entity->parent_id == e->id) [[unlikely]] {
-				entity = nullptr;
+	cur.x     = std::min(cur.x,     nEntX - e->radius        );
+	cur.xsize = std::max(cur.xsize, nEntX + e->radius - cur.x);
+	cur.y     = std::min(cur.y,     nEntY - e->radius        );
+	cur.ysize = std::max(cur.ysize, nEntY + e->radius - cur.y); // stretch the quad to fit the entity during this and next frames
+	if (cur.used) {
+		Entity* ent = cur.entity;
+		put(getMakeChild(id, e->x, e->y), e, reclevel + 1); // may have invalidated `cur`
+		if (ent) {
+			if (ent->ghost && ent->parent_id == e->id) [[unlikely]] {
+				quadtree[id].entity = nullptr;
 				return;
 			}
-			quadtree[getMakeChild(entity->x, entity->y)].put(entity, reclevel + 1);
-			entity = nullptr;
+			put(getMakeChild(id, ent->x, ent->y), ent, reclevel + 1);
+			quadtree[id].entity = nullptr;
 		}
 	} else {
-		entity = e;
-		used = true;
+		cur.entity = e;
+		cur.used = true;
 	}
 }
 uint32_t Quad::unstaircasize() { // makes children which are "staircases" of identical quads just point to the lowest non-identical children instead
@@ -583,7 +597,7 @@ void buildQuadtree() {
 	root.xsize = x2 - x1;
 	root.ysize = y2 - y1;
 	for (size_t i = 0; i < updateGroup.size(); i++) {
-		quadtree[0].put(updateGroup[i], 0);
+		Quad::put(0, updateGroup[i], 0);
 	}
 	quadtree[0].unstaircasize();
 	quadtree[0].postBuild();
@@ -893,7 +907,7 @@ void CelestialBody::postMassUpdate() {
 			if (debug)
 				printf("New color: %u, %u, %u\n", color[0], color[1], color[2]);
 			if (!star) {
-				stars.push_back(this);
+				stars.push_back(std::unique_ptr<CelestialBody>(this));
 				star = true;
 			}
 		}

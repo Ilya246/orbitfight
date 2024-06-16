@@ -477,17 +477,17 @@ int main(int argc, char** argv) {
 			}
 			if (d->type() == Entities::CelestialBody) {
 				for (size_t i = 0; i < stars.size(); i++) {
-					Entity* e = stars[i];
-					if (e == d) [[unlikely]] {
-						stars[i] = stars[stars.size() - 1];
+					std::unique_ptr<CelestialBody>& e = stars[i];
+					if (e.get() == d) {
+						stars[i].swap(stars[stars.size() - 1]);
 						stars.pop_back();
 						break;
 					}
 				}
 				for (size_t i = 0; i < planets.size(); i++) {
-					Entity* e = planets[i];
-					if (e == d) [[unlikely]] {
-						planets[i] = planets[planets.size() - 1];
+					std::unique_ptr<CelestialBody>& e = planets[i];
+					if (e.get() == d) {
+						planets[i].swap(planets[planets.size() - 1]);
 						planets.pop_back();
 						break;
 					}

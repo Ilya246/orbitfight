@@ -112,9 +112,9 @@ Entity* idLookup(uint32_t);
 
 struct Quad {
 	void collideAttract(Entity* e, bool, bool);
-	void put(Entity* e, int reclevel);
+	static void put(uint32_t id, Entity* e, int reclevel); // static in case `this` invalidates itself during vector growth
 	Quad& getChild(uint8_t at);
-	uint32_t getMakeChild(double at_x, double at_y);
+	static uint32_t getMakeChild(uint32_t id, double at_x, double at_y); // same here
 	uint32_t unstaircasize();
 	void postBuild();
 
