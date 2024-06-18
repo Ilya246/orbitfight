@@ -27,7 +27,6 @@ inline std::vector<Player*> playerGroup;
 inline std::vector<UIElement*> uiGroup;
 inline obf::MenuUI* menuUI = nullptr;
 inline std::vector<Entity*> simCleanupBuffer;
-inline std::vector<std::unique_ptr<CelestialBody>> planets;
 inline std::vector<std::vector<Point>> ghostTrajectories;
 inline std::vector<sf::Color> ghostTrajectoryColors;
 inline std::vector<obf::Quad> quadtree;
@@ -182,7 +181,6 @@ inline std::map<std::string, Var> vars {
 	{"triangle_maxSecondaryAngle", {Double, &Triangle::maxSecondaryAngle}},
 	{"triangle_slowRotateSpeed", {Double, &Triangle::slowRotateSpeed}}};
 
-inline std::vector<std::unique_ptr<CelestialBody>> stars;
 inline Entity* trajectoryRef = nullptr;
 inline Entity* lastTrajectoryRef = nullptr;
 inline Entity* systemCenter = nullptr;

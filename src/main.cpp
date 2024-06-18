@@ -471,27 +471,10 @@ int main(int argc, char** argv) {
 				i--;
 			}
 		}
-		for (Entity* d : deleted) {
+		for (size_t i = 0; i < deleted.size(); i++) {
+			Entity* d = deleted[i];
 			for (size_t i = 0; i < EntityDeleteListener::listeners.size(); i++) {
 				EntityDeleteListener::listeners[i]->onEntityDelete(d);
-			}
-			if (d->type() == Entities::CelestialBody) {
-				for (size_t i = 0; i < stars.size(); i++) {
-					std::unique_ptr<CelestialBody>& e = stars[i];
-					if (e.get() == d) {
-						stars[i].swap(stars[stars.size() - 1]);
-						stars.pop_back();
-						break;
-					}
-				}
-				for (size_t i = 0; i < planets.size(); i++) {
-					std::unique_ptr<CelestialBody>& e = planets[i];
-					if (e.get() == d) {
-						planets[i].swap(planets[planets.size() - 1]);
-						planets.pop_back();
-						break;
-					}
-				}
 			}
 			if (isServer) {
 				for (Player* p : playerGroup) {

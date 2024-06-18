@@ -310,7 +310,7 @@ void parseCommand (const string& command) {
 		size_t id = stoi(id_s);
 		for (Entity* e : updateGroup) {
 			if (e->id == id) {
-				sprintf(out, "Mass %g, radius %g, relative to star 0: x %g, y %g, vX %g, vY %g", e->mass, e->radius, e->x - stars[0]->x, e->y - stars[0]->y, e->velX - stars[0]->velX, e->velY - stars[0]->velY);
+				sprintf(out, "Mass %g, radius %g, x %g, y %g, vX %g, vY %g", e->mass, e->radius, e->x, e->y, e->velX, e->velY);
 				printPreferred(string(out));
 				return;
 			}

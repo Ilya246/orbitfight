@@ -24,10 +24,18 @@ bool operator ==(movement& mov1, movement& mov2) {
 }
 
 void setupShip(Entity* ship, bool sync) {
-	if (planets.size() == 0) {
-		return;
+	CelestialBody* planet;
+	std::vector<CelestialBody*> gravitators;
+	for (Entity* e : updateGroup) {
+		if (e->type() == Entities::CelestialBody) {
+			gravitators.push_back((CelestialBody*)e);
+		}
 	}
-	std::unique_ptr<CelestialBody>& planet = planets[(int)rand_f(0, planets.size())];
+	if (gravitators.size() == 0) {
+		printf("no planets, couldn't spawn ship\n");
+	}
+	size_t at = (size_t)rand_f(0, gravitators.size());
+	planet = gravitators[at];
 	double spawnDst = planet->radius * rand_f(shipSpawnDistanceMin, shipSpawnDistanceMax);
 	float spawnAngle = rand_f(-PI, PI);
 	ship->setPosition(planet->x + spawnDst * std::cos(spawnAngle), planet->y + spawnDst * std::sin(spawnAngle));
@@ -43,7 +51,7 @@ void setupShip(Entity* ship, bool sync) {
 	}
 }
 
-int generateOrbitingPlanets(int amount, double x, double y, double velx, double vely, double parentmass, double minradius, double maxradius, double spawnDst) {
+int generateOrbitingPlanets(std::vector<CelestialBody*>& planets, int amount, double x, double y, double velx, double vely, double parentmass, double minradius, double maxradius, double spawnDst) {
 	int totalMoons = 0;
 	double maxFactor = sqrt(pow(gen_minNextRadius * gen_maxNextRadius, amount * 0.5) * spawnDst);
 
@@ -55,27 +63,30 @@ int generateOrbitingPlanets(int amount, double x, double y, double velx, double 
 		double mass = gen_baseDensity * pow(radius, gen_densityFactor);
 		bool star = mass > gen_starMass * gen_starMassReq;
 
-		obf::planets.push_back(std::make_unique<CelestialBody>(star ? gen_starRadius * pow(mass / gen_starMass, 1.0 / gen_starDensityFactor) : radius, gen_baseDensity * pow(radius, gen_densityFactor)));
-		std::unique_ptr<CelestialBody>& planet = planets.back();
+		CelestialBody* planetp = new CelestialBody(star ? gen_starRadius * pow(mass / gen_starMass, 1.0 / gen_starDensityFactor) : radius, mass);
+		planets.push_back(planetp);
+		CelestialBody& planet = *planetp;
+		planet.postMassUpdate();
 
-		planet->postMassUpdate();
-
-		planet->setPosition(x + spawnDst * std::cos(spawnAngle), y + spawnDst * std::sin(spawnAngle));
+		planet.setPosition(x + spawnDst * std::cos(spawnAngle), y + spawnDst * std::sin(spawnAngle));
 		double vel = sqrt(G * parentmass / spawnDst);
-		planet->addVelocity(velx + vel * std::cos(spawnAngle + PI / 2.0), vely + vel * std::sin(spawnAngle + PI / 2.0));
+		planet.addVelocity(velx + vel * std::cos(spawnAngle + PI / 2.0), vely + vel * std::sin(spawnAngle + PI / 2.0));
 
 		if (!star) {
-			planet->setColor((int)rand_f(64.f, 255.f), (int)rand_f(64.f, 255.f), (int)rand_f(64.f, 255.f));
+			planet.setColor((int)rand_f(64.f, 255.f), (int)rand_f(64.f, 255.f), (int)rand_f(64.f, 255.f));
 		}
 
 		int moons = (int)(rand_f(0.f, 1.f) * pow(radius / gen_moonFactor, gen_moonPower));
-		totalMoons += moons + generateOrbitingPlanets(moons, planet->x, planet->y, planet->velX, planet->velY, planet->mass, gen_minMoonRadius, planet->radius * gen_maxMoonRadiusFrac, planet->radius * (1.0 + rand_f(gen_minMoonDistance, gen_minMoonDistance + pow(gen_maxMoonDistance, std::min(1.0, 0.5 / (planet->radius / gen_maxPlanetRadius))))));
+		double moonsDistance = planet.radius * (1.0 + rand_f(gen_minMoonDistance, gen_minMoonDistance + pow(gen_maxMoonDistance, std::min(1.0, 0.5 / (planet.radius / gen_maxPlanetRadius)))));
+		totalMoons += moons + generateOrbitingPlanets(planets, moons, planet.x, planet.y, planet.velX, planet.velY, planet.mass, gen_minMoonRadius, planet.radius * gen_maxMoonRadiusFrac, moonsDistance);
 	}
 
 	return totalMoons;
 }
 
 void generateSystem() {
+	std::vector<CelestialBody*> planets;
+	std::vector<CelestialBody*> stars;
 	int starsN = 1;
 	while (rand_f(0.f, 1.f) < gen_extraStarChance) {
 		starsN += 1;
@@ -84,20 +95,21 @@ void generateSystem() {
 	double starsMass = gen_starMass * starsN, dist = (starsN - 1) * gen_starRadius * 2.0;
 	for (int i = 0; i < starsN; i++) {
 		bool blackhole = rand_f(0.f, 1.f) < gen_blackholeChance;
-		stars.push_back(std::make_unique<CelestialBody>(blackhole ? 2.0 * G * gen_starMass / (CC) : gen_starRadius, blackhole ? gen_starMass * 1.0001 : gen_starMass));
-		std::unique_ptr<CelestialBody>& star = stars.back();
-		star->star = true;
+		CelestialBody* starp = new CelestialBody(blackhole ? 2.0 * G * gen_starMass / (CC) : gen_starRadius, blackhole ? gen_starMass * 1.0001 : gen_starMass);
+		stars.push_back(starp);
+		CelestialBody& star = *starp;
+		star.star = true;
 
-		star->blackhole = blackhole;
+		star.blackhole = blackhole;
 		if (blackhole) {
-			star->setColor(0, 0, 0);
+			star.setColor(0, 0, 0);
 		} else {
-			star->setColor(255, 229, 97);
+			star.setColor(255, 229, 97);
 		}
 
 		double posX = std::cos(angle) * dist;
 		double posY = std::sin(angle) * dist;
-		star->setPosition(posX, posY);
+		star.setPosition(posX, posY);
 
 		angle += angleSpacing;
 	}
@@ -118,8 +130,10 @@ void generateSystem() {
 		}
 	}
 	double spawnDst = gen_firstPlanetDistance * rand_f(gen_minNextRadius, gen_maxNextRadius) + dist + gen_starRadius;
-	int planets = (int)(rand_f(gen_baseMinPlanets, gen_baseMaxPlanets) * sqrt(starsN));
-	printf("Generated system: %u stars, %u planets, %u moons\n", starsN, planets, generateOrbitingPlanets(planets, 0.0, 0.0, 0.0, 0.0, starsMass, gen_minPlanetRadius, gen_maxPlanetRadius, spawnDst));
+	int planetsN = (int)(rand_f(gen_baseMinPlanets, gen_baseMaxPlanets) * sqrt(starsN));
+	printf("Generated system: %u stars, %u planets, %u moons\n", starsN, planetsN, generateOrbitingPlanets(planets, planetsN, 0.0, 0.0, 0.0, 0.0, starsMass, gen_minPlanetRadius, gen_maxPlanetRadius, spawnDst));
+	stars.clear();
+	planets.clear();
 }
 
 void fullClear(bool clearTriangles) {
@@ -144,8 +158,6 @@ void fullClear(bool clearTriangles) {
 	} else {
 		updateGroup = triangles;
 	}
-	planets.clear();
-	stars.clear();
 	trajectoryRef = nullptr;
 	lastTrajectoryRef = nullptr;
 }
@@ -323,6 +335,9 @@ Entity::Entity() {
 Entity::~Entity() noexcept {
 	if (debug) {
 		printf("Deleting entity id %u\n", this->id);
+	}
+	if (this == ownEntity) {
+		ownEntity = nullptr;
 	}
 }
 
@@ -896,7 +911,6 @@ void CelestialBody::postMassUpdate() {
 		setColor(0, 0, 0);
 		blackhole = true;
 		/*if (!star) { // prevent bouncy black holes
-			stars.push_back(this);
 			star = true;
 		}*/
 		radius = 2.0 * G * mass / (CC);
@@ -904,12 +918,10 @@ void CelestialBody::postMassUpdate() {
 		if (!simulating) {
 			double colorFactor = pow(gen_starMass / mass, gen_starColorFactor);
 			setColor((int)(255.0 * std::max(0.0, std::min(1.0, 2.0 - colorFactor))), (int)(255.0 * std::max(0.0, std::min(1.0, 1.9 - colorFactor))), (int)(255.0 * std::max(0.0, std::min(1.0, colorFactor - 0.72))));
-			if (debug)
+			if (debug) {
 				printf("New color: %u, %u, %u\n", color[0], color[1], color[2]);
-			if (!star) {
-				stars.push_back(std::unique_ptr<CelestialBody>(this));
-				star = true;
 			}
+			star = true;
 		}
 		radius = gen_starRadius * pow(mass / gen_starMass, 1.0 / gen_starDensityFactor);
 	} else {
