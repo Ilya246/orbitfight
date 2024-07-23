@@ -3,8 +3,8 @@ STRIP := strip
 
 STANDARD ?= c++20
 CXXFLAGS ?= -O3 -Wall -Wextra -pedantic -g
-override CXXFLAGS += -std=$(STANDARD) -c -Iinclude
-LDFLAGS := $(shell pkg-config --libs sfml-window sfml-graphics sfml-system sfml-network) -pthread
+CXXFLAGS += -std=$(STANDARD) -c -Iinclude
+LDFLAGS ?= $(shell pkg-config --libs sfml-window sfml-graphics sfml-system sfml-network)
 
 sources := $(shell find src -type f -name "*.cpp")
 objects := $(sources:src/%.cpp=build/%.o)
@@ -24,6 +24,7 @@ build/%.o: src/%.cpp
 orbitfight: $(objects)
 	@printf "LD\t%s\n" $(builddir)/$@
 	@$(CXX) $^ -o $(builddir)/$@ $(LDFLAGS)
+	@cp assets $(builddir) -r
 
 clean:
 	rm build/*.o

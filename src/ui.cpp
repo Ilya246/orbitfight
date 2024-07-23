@@ -8,8 +8,6 @@
 #include <SFML/Graphics.hpp>
 #include <SFML/Window.hpp>
 
-#include <thread>
-
 using namespace obf;
 
 namespace obf {

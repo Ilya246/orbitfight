@@ -2,3 +2,4 @@ build*.bat
 build/*
 orbitfight
 *.txt
+_*
