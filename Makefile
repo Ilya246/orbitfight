@@ -10,12 +10,15 @@ LDFLAGS ?= $(shell pkg-config --libs sfml-window sfml-graphics sfml-system sfml-
 sources := $(shell find src -type f -name "*.cpp")
 objects := $(sources:src/%.cpp=build/%.o)
 depends := $(sources:src/%.cpp=build/%.d)
+assets_o := $(shell find assets -type f)
+assets := $(assets_o:assets/%.ttf=include/%.asset)
 
-builddir = ./build
+builddir ?= build
+assetdir ?= assets
 
 all: orbitfight
 
-build/%.o: src/%.cpp
+$(builddir)/%.o: src/%.cpp $(assets)
 	@printf "CC\t%s\n" $@
 	@mkdir -p $(@D)
 	@$(CXX) $(CXXFLAGS) -MMD -MP $< -o $@
@@ -24,12 +27,16 @@ build/%.o: src/%.cpp
 
 orbitfight: $(objects)
 	@printf "LD\t%s\n" $(builddir)/$@
-	@$(XXD) -i assets/font.ttf include/font.asset
 	@$(CXX) $^ -o $(builddir)/$@ $(LDFLAGS)
+
+include/%.asset: $(assetdir)/%.*
+	@printf "XXD\t%s\n" $@
+	@$(XXD) -i $< $@
 
 clean:
 	rm build/*.o
 	rm build/*.d
+	rm include/*.asset
 
 strip: all
 	$(STRIP) $(builddir)/orbitfight
