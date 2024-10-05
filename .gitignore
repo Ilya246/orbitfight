@@ -1,5 +1,7 @@
 build*.bat
-build/*
+build/
+.cache/
 orbitfight
 *.txt
+*.asset
 _*

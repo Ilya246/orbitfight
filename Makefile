@@ -1,4 +1,5 @@
 CXX ?= g++
+XXD ?= xxd
 STRIP := strip
 
 STANDARD ?= c++20
@@ -23,8 +24,8 @@ build/%.o: src/%.cpp
 
 orbitfight: $(objects)
 	@printf "LD\t%s\n" $(builddir)/$@
+	@$(XXD) -i assets/font.ttf include/font.asset
 	@$(CXX) $^ -o $(builddir)/$@ $(LDFLAGS)
-	@cp assets $(builddir) -r
 
 clean:
 	rm build/*.o

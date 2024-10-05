@@ -1,3 +1,4 @@
+#include "assets.hpp"
 #include "camera.hpp"
 #include "entities.hpp"
 #include "events.hpp"
@@ -98,7 +99,7 @@ int main(int argc, char** argv) {
 		g_camera.scale = 1;
 		g_camera.resize();
 		font = new sf::Font;
-		if (!font->loadFromFile(assetsFolder + "/font.ttf")) [[unlikely]] {
+		if (!font->loadFromMemory(assets_font_ttf, assets_font_ttf_len)) [[unlikely]] {
 			puts("Failed to load font");
 			return 1;
 		}
