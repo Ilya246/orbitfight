@@ -12,11 +12,11 @@
 #include <SFML/Graphics.hpp>
 #include <SFML/Network.hpp>
 
+#include <SFML/Network/IpAddress.hpp>
 #include <cfloat>
 #include <cmath>
 #include <cstring>
 #include <fstream>
-#include <functional>
 #include <future>
 #include <iostream>
 #include <regex>
@@ -88,18 +88,18 @@ int main(int argc, char** argv) {
 	if (headless) {
 		connectListener = new sf::TcpListener;
 		connectListener->setBlocking(false);
-		if (connectListener->listen(port) != sf::Socket::Done) {
+		if (connectListener->listen(port) != sf::Socket::Status::Done) {
 			printf("Could not host server on port %u.\n", port);
 			return 0;
 		}
 		printf("Hosted server on port %u.\n", port);
 		generateSystem();
 	} else {
-		window = new sf::RenderWindow(sf::VideoMode(800, 800), "Orbitfight");
+		window = new sf::RenderWindow(sf::VideoMode({800, 800}), "Orbitfight");
 		g_camera.scale = 1;
 		g_camera.resize();
 		font = new sf::Font;
-		if (!font->loadFromMemory(assets_font_ttf, assets_font_ttf_len)) [[unlikely]] {
+		if (!font->openFromMemory(assets_font_ttf, assets_font_ttf_len)) [[unlikely]] {
 			puts("Failed to load font");
 			return 1;
 		}
@@ -123,7 +123,7 @@ int main(int argc, char** argv) {
 					port = stoi(addressPort[1]);
 					printPreferred("Connecting automatically to " + address + ":" + addressPort[1] + ".");
 					serverSocket = new sf::TcpSocket;
-					if (serverSocket->connect(address, port) != sf::Socket::Done) [[unlikely]] {
+					if (serverSocket->connect(sf::IpAddress::resolve(address).value(), port) != sf::Socket::Status::Done) [[unlikely]] {
 						printPreferred("Could not connect to " + address + ":" + addressPort[1] + ".");
 						delete serverSocket;
 						serverSocket = nullptr;
@@ -185,8 +185,8 @@ int main(int argc, char** argv) {
 				}
 			}
 			sf::Socket::Status status = connectListener->accept(sparePlayer->tcpSocket);
-			if (status == sf::Socket::Done) {
-				sparePlayer->ip = sparePlayer->tcpSocket.getRemoteAddress().toString();
+			if (status == sf::Socket::Status::Done) {
+				sparePlayer->ip = sparePlayer->tcpSocket.getRemoteAddress().value().toString();
 				sparePlayer->port = sparePlayer->tcpSocket.getRemotePort();
 				printPreferred(sparePlayer->ip + ":" + to_string(sparePlayer->port) + " has connected.");
 				sparePlayer->lastAck = globalTime;
@@ -205,7 +205,7 @@ int main(int argc, char** argv) {
 				entityAssign << Packets::AssignEntity << sparePlayer->entity->id;
 				sparePlayer->tcpSocket.send(entityAssign);
 				sparePlayer = new Player;
-			} else if (status != sf::Socket::NotReady) {
+			} else if (status != sf::Socket::Status::NotReady) {
 				printPreferred("An incoming connection has failed.");
 			}
 		}
@@ -213,22 +213,22 @@ int main(int argc, char** argv) {
 			if (window->hasFocus()) {
 				mousePos = sf::Mouse::getPosition(*window);
 				if (!activeTextbox) {
-					controls.forward = sf::Keyboard::isKeyPressed(sf::Keyboard::W);
-					controls.backward = sf::Keyboard::isKeyPressed(sf::Keyboard::S);
-					controls.turnleft = sf::Keyboard::isKeyPressed(sf::Keyboard::A);
-					controls.turnright = sf::Keyboard::isKeyPressed(sf::Keyboard::D);
-					controls.boost = sf::Keyboard::isKeyPressed(sf::Keyboard::LControl);
-					controls.primaryfire = sf::Keyboard::isKeyPressed(sf::Keyboard::Space);
-					controls.secondaryfire = sf::Keyboard::isKeyPressed(sf::Keyboard::X);
+					controls.forward = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W);
+					controls.backward = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::S);
+					controls.turnleft = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A);
+					controls.turnright = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D);
+					controls.boost = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::LControl);
+					controls.primaryfire = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space);
+					controls.secondaryfire = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::X);
 				}
 			}
-			sf::Event event;
-			while (window->pollEvent(event)) {
-				switch(event.type) {
-				case sf::Event::Closed:
+			std::optional<sf::Event> eventOpt;
+			while ((eventOpt = window->pollEvent()) && eventOpt.has_value()) {
+				sf::Event& event = eventOpt.value();
+
+				if (event.is<sf::Event::Closed>()) {
 					window->close();
-					break;
-				case sf::Event::Resized: {
+				} else if (event.is<sf::Event::Resized>()) {
 					g_camera.resize();
 					if (debug) [[unlikely]] {
 						printf("Resized view, new size: %g * %g\n", (double)g_camera.w * g_camera.scale, (double)g_camera.h * g_camera.scale);
@@ -243,14 +243,12 @@ int main(int argc, char** argv) {
 						e->resized();
 					}
 					g_camera.bindWorld();
-					break;
-				}
-				case sf::Event::MouseWheelScrolled: {
+				} else if (const auto castEv = event.getIf<sf::Event::MouseWheelScrolled>()) {
 					for (size_t i = 0; i < MouseScrolledListener::listeners.size(); i++) {
-						MouseScrolledListener::listeners[i]->onMouseScroll(event.mouseWheelScroll.delta);
+						MouseScrolledListener::listeners[i]->onMouseScroll(castEv->delta);
 					}
 					if (!activeTextbox) {
-						double factor = 1.0 + 0.1 * ((event.mouseWheelScroll.delta < 0) * 2 - 1);
+						double factor = 1.0 + 0.1 * ((castEv->delta < 0) * 2 - 1);
 						g_camera.zoom(factor);
 						if (debug) [[unlikely]] {
 							printf("Resized view, new size: %g * %g\n", (double)g_camera.w * g_camera.scale, (double)g_camera.h * g_camera.scale);
@@ -261,30 +259,26 @@ int main(int argc, char** argv) {
 							serverSocket->send(resize);
 						}
 					}
-					break;
-				}
-				case sf::Event::MouseButtonPressed: {
+				} else if (const auto castEv = event.getIf<sf::Event::MouseButtonPressed>()) {
 					for (size_t i = 0; i < MousePressListener::listeners.size(); i++) {
-						MousePressListener::listeners[i]->onMousePress(event.mouseButton.button);
+						MousePressListener::listeners[i]->onMousePress(castEv->button);
 					}
-					break;
-				}
-				case sf::Event::KeyPressed: {
+				} else if (const auto castEv = event.getIf<sf::Event::KeyPressed>()) {
 					for (size_t i = 0; i < KeyPressListener::listeners.size(); i++) {
-						KeyPressListener::listeners[i]->onKeyPress(event.key.code);
+						KeyPressListener::listeners[i]->onKeyPress(castEv->code);
 					}
 					handledTextBoxSelect = false;
-					if (!activeTextbox){
-						if (enableControlLock && event.key.code == sf::Keyboard::LAlt) {
+					if (!activeTextbox) {
+						if (enableControlLock && castEv->code == sf::Keyboard::Key::LAlt) {
 							lockControls = !lockControls;
 							if (serverSocket) {
 								sf::Packet controlsPacket;
 								controlsPacket << Packets::Controls << (lockControls ? (unsigned char) 0 : *(unsigned char*) &controls);
 								serverSocket->send(controlsPacket);
 							}
-						} else if (event.key.code == sf::Keyboard::T) {
+						} else if (castEv->code == sf::Keyboard::Key::T) {
 							if (!ownEntity || ownEntity->type() != Entities::Triangle) {
-								break;
+								continue;
 							}
 							double minDst = DBL_MAX;
 							Entity* closestEntity = nullptr;
@@ -305,11 +299,11 @@ int main(int argc, char** argv) {
 								targetPacket << Packets::SetTarget << (unset ? numeric_limits<uint32_t>::max() : closestEntity->id);
 								serverSocket->send(targetPacket);
 							}
-						} else if (event.key.code == sf::Keyboard::LShift && ownEntity) {
+						} else if (castEv->code == sf::Keyboard::Key::LShift && ownEntity) {
 							controls.slowrotate = !controls.slowrotate;
 						}
 					}
-					if (event.key.code == sf::Keyboard::Tab) {
+					if (castEv->code == sf::Keyboard::Key::Tab) {
 						double minDst = DBL_MAX;
 						Entity* closestEntity = nullptr;
 						for (Entity* e : updateGroup) {
@@ -330,16 +324,10 @@ int main(int argc, char** argv) {
 							printf("Selected entity id %u as reference body\n", trajectoryRef->id);
 						}
 					}
-					break;
-				}
-				case sf::Event::TextEntered: {
+				} else if (const auto castEv = event.getIf<sf::Event::TextEntered>()) {
 					for (size_t i = 0; i < TextEnteredListener::listeners.size(); i++) {
-						TextEnteredListener::listeners[i]->onTextEntered(event.text.unicode);
+						TextEnteredListener::listeners[i]->onTextEntered(castEv->unicode);
 					}
-					break;
-				}
-				default:
-					break;
 				}
 			}
 			window->clear(sf::Color(16, 0, 32));
@@ -379,8 +367,8 @@ int main(int argc, char** argv) {
 			if (lastTrajectoryRef) {
 				float radius = std::max(5.f, (float)(lastTrajectoryRef->radius / g_camera.scale));
 				sf::CircleShape selection(radius, 4);
-				selection.setOrigin(radius, radius);
-				selection.setPosition(g_camera.w * 0.5 + (lastTrajectoryRef->x - ownX) / g_camera.scale, g_camera.h * 0.5 + (lastTrajectoryRef->y - ownY) / g_camera.scale);
+				selection.setOrigin({(float)radius, (float)radius});
+				selection.setPosition({(float)(g_camera.w * 0.5 + (lastTrajectoryRef->x - ownX) / g_camera.scale), (float)(g_camera.h * 0.5 + (lastTrajectoryRef->y - ownY) / g_camera.scale)});
 				selection.setFillColor(sf::Color(0, 0, 0, 0));
 				selection.setOutlineColor(sf::Color(255, 255, 64));
 				selection.setOutlineThickness(1.f);
@@ -390,8 +378,8 @@ int main(int argc, char** argv) {
 				Entity* target = ((Triangle*)ownEntity)->target;
 				float radius = std::max(5.f, (float)(target->radius / g_camera.scale));
 				sf::CircleShape selection(radius, 3);
-				selection.setOrigin(radius, radius);
-				selection.setPosition(g_camera.w * 0.5 + (target->x - ownX) / g_camera.scale, g_camera.h * 0.5 + (target->y - ownY) / g_camera.scale);
+				selection.setOrigin({(float)radius, (float)radius});
+				selection.setPosition({(float)(g_camera.w * 0.5 + (target->x - ownX) / g_camera.scale), (float)(g_camera.h * 0.5 + (target->y - ownY) / g_camera.scale)});
 				selection.setFillColor(sf::Color(0, 0, 0, 0));
 				selection.setOutlineColor(sf::Color(255, 0, 0));
 				selection.setOutlineThickness(1.f);
@@ -409,15 +397,15 @@ int main(int argc, char** argv) {
 			window->display();
 
 			if (serverSocket) {
-				sf::Socket::Status status = sf::Socket::Done;
-				while (status != sf::Socket::NotReady) {
+				sf::Socket::Status status = sf::Socket::Status::Done;
+				while (status != sf::Socket::Status::NotReady) {
 					sf::Packet packet;
 					serverSocket->setBlocking(false);
 					status = serverSocket->receive(packet);
 					serverSocket->setBlocking(true);
-					if (status == sf::Socket::Done) {
+					if (status == sf::Socket::Status::Done) {
 						clientParsePacket(packet);
-					} else if (status == sf::Socket::Disconnected) {
+					} else if (status == sf::Socket::Status::Disconnected) {
 						printPreferred("Connection to server closed. Continuing simulation locally.");
 						setAuthority(true);
 						delete serverSocket;
@@ -589,8 +577,8 @@ int main(int argc, char** argv) {
 					sf::Packet pingPacket;
 					pingPacket << Packets::Ping;
 					sf::Socket::Status status = player->tcpSocket.send(pingPacket);
-					if (status != sf::Socket::Done) {
-						if (status == sf::Socket::Disconnected) {
+					if (status != sf::Socket::Status::Done) {
+						if (status == sf::Socket::Status::Disconnected) {
 							printf("Player %s has disconnected.\n", player->name().c_str());
 							playerGroup.erase(playerGroup.begin() + i);
 							i--;
@@ -600,23 +588,23 @@ int main(int argc, char** argv) {
 							continue;
 						}
 
-						if (status == sf::Socket::Error) {
+						if (status == sf::Socket::Status::Error) {
 							printf("Error when trying to send ping packet to player %s.\n", player->name().c_str());
 						}
 					}
 					player->lastPingSent = globalTime;
 				}
 
-				sf::Socket::Status status = sf::Socket::Done;
-				while (status != sf::Socket::NotReady && status != sf::Socket::Disconnected) {
+				sf::Socket::Status status = sf::Socket::Status::Done;
+				while (status != sf::Socket::Status::NotReady && status != sf::Socket::Status::Disconnected) {
 					sf::Packet packet;
 					player->tcpSocket.setBlocking(false);
 					status = player->tcpSocket.receive(packet);
 					player->tcpSocket.setBlocking(true);
-					if (status == sf::Socket::Done) [[likely]]{
+					if (status == sf::Socket::Status::Done) [[likely]]{
 						player->lastAck = globalTime;
 						serverParsePacket(packet, player);
-					} else if (status == sf::Socket::Disconnected) {
+					} else if (status == sf::Socket::Status::Disconnected) {
 						printf("Player %s has disconnected.\n", player->name().c_str());
 						i--;
 						to--;

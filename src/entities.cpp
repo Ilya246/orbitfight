@@ -5,6 +5,8 @@
 #include "net.hpp"
 #include "types.hpp"
 
+#include <SFML/Graphics/PrimitiveType.hpp>
+#include <SFML/System/Angle.hpp>
 #include <chrono>
 #include <cmath>
 #include <cstring>
@@ -175,7 +177,7 @@ void drawTrajectory(sf::Color& color, std::vector<Point>& traj) {
 		return;
 	}
 	if (lastTrajectoryRef && to > 0) [[likely]] {
-		sf::VertexArray lines(sf::Lines, to / by + (size_t)(to % by != 0));
+		sf::VertexArray lines(sf::PrimitiveType::Lines, to / by + (size_t)(to % by != 0));
 		float lastAlpha = 255.f;
 		float decBy = (255.f - 64.f) / to;
 		size_t i = 0;
@@ -509,7 +511,7 @@ void Quad::collideAttract(Entity* e, bool doGravity, bool checkCollide) {
 }
 void Quad::draw() {
 	sf::RectangleShape quad(sf::Vector2f(xsize / g_camera.scale, ysize / g_camera.scale));
-	quad.setPosition(g_camera.w * 0.5 + (x - ownX) / g_camera.scale, g_camera.h * 0.5 + (y - ownY) / g_camera.scale);
+	quad.setPosition({(float)(g_camera.w * 0.5 + (x - ownX) / g_camera.scale), (float)(g_camera.h * 0.5 + (y - ownY) / g_camera.scale)});
 	quad.setFillColor(sf::Color(0, 0, 0, 0));
 	quad.setOutlineColor(sf::Color(0, 0, 255, 255));
 	quad.setOutlineThickness(1);
@@ -551,11 +553,11 @@ Triangle::Triangle() : Entity() {
 	radius = 16.0;
 	if (!headless && !simulating) {
 		shape = std::make_unique<sf::CircleShape>(radius, 3);
-		shape->setOrigin(radius, radius);
+		shape->setOrigin({(float)radius, (float)radius});
 		forwards = std::make_unique<sf::CircleShape>(2.f, 6);
-		forwards->setOrigin(2.f, 2.f);
+		forwards->setOrigin({2.f, 2.f});
 		icon = std::make_unique<sf::CircleShape>(3.f, 3);
-		icon->setOrigin(3.f, 3.f);
+		icon->setOrigin({3.f, 3.f});
 		icon->setFillColor(sf::Color(255, 255, 255));
 	}
 }
@@ -611,7 +613,7 @@ void Triangle::control(movement& cont) {
 		rotateSpeed *= slowRotateSpeed;
 		if (!setDraw) {
 			forwards->setFillColor(sf::Color(255, 255, 0));
-			forwards->setRotation(90.f + rotation);
+			forwards->setRotation(sf::degrees(90.f + rotation));
 			setDraw = true;
 		}
 	}
@@ -619,20 +621,20 @@ void Triangle::control(movement& cont) {
 		addVelocity(accel * xMul * delta, accel * yMul * delta);
 		if (!setDraw) {
 			forwards->setFillColor(sf::Color(255, 196, 0));
-			forwards->setRotation(90.f + rotation);
+			forwards->setRotation(sf::degrees(90.f + rotation));
 			setDraw = true;
 		}
 	} else if (cont.backward) {
 		addVelocity(-accel * xMul * delta, -accel * yMul * delta);
 		if (!setDraw) {
 			forwards->setFillColor(sf::Color(255, 64, 64));
-			forwards->setRotation(270.f + rotation);
+			forwards->setRotation(sf::degrees(270.f + rotation));
 			setDraw = true;
 		}
 	}
 	if (!setDraw) {
 		forwards->setFillColor(sf::Color::White);
-		forwards->setRotation(90.f + rotation);
+		forwards->setRotation(sf::degrees(90.f + rotation));
 		setDraw = true;
 	}
 	if (cont.turnleft) {
@@ -650,7 +652,7 @@ void Triangle::control(movement& cont) {
 		boostProgress = 0.0;
 		if (!headless) {
 			forwards->setFillColor(sf::Color(64, 255, 64));
-			forwards->setRotation(90.f + rotation);
+			forwards->setRotation(sf::degrees(90.f + rotation));
 		}
 	}
 	if (cont.primaryfire && reloadProgress >= reload) {
@@ -713,14 +715,14 @@ void Triangle::control(movement& cont) {
 
 void Triangle::draw() {
 	Entity::draw();
-	shape->setPosition(x + drawShiftX, y + drawShiftY);
-	shape->setRotation(90.f + rotation);
+	shape->setPosition({(float)(x + drawShiftX), (float)(y + drawShiftY)});
+	shape->setRotation(sf::degrees(90.f + rotation));
 	shape->setFillColor(sf::Color(color[0], color[1], color[2]));
 	window->draw(*shape);
 	g_camera.bindUI();
 	float rotationRad = rotation * degToRad;
 	double uiX = g_camera.w * 0.5 + (x - ownX) / g_camera.scale, uiY = g_camera.h * 0.5 + (y - ownY) / g_camera.scale;
-	forwards->setPosition(uiX + 14.0 * cos(rotationRad), uiY + 14.0 * sin(rotationRad));
+	forwards->setPosition({(float)(uiX + 14.0 * cos(rotationRad)), (float)(uiY + 14.0 * sin(rotationRad))});
 	if (ownEntity == this) {
 		float reloadProgress = (-this->reloadProgress / reload + 1.0) * 40.f,
 		secondaryChargeProgress = (-this->secondaryCharge / secondaryStockpile + 1.0) * 40.f,
@@ -728,34 +730,31 @@ void Triangle::draw() {
 		if (reloadProgress > 0.0) {
 			sf::RectangleShape reloadBar(sf::Vector2f(reloadProgress, 4.f));
 			reloadBar.setFillColor(sf::Color(255, 64, 64));
-			reloadBar.setPosition(g_camera.w * 0.5f - reloadProgress / 2.f, g_camera.h * 0.5f + 40.f);
+			reloadBar.setPosition({g_camera.w * 0.5f - reloadProgress / 2.f, g_camera.h * 0.5f + 40.f});
 			window->draw(reloadBar);
 		}
 		if (secondaryChargeProgress > 0.0) {
 			sf::RectangleShape reloadBar(sf::Vector2f(secondaryChargeProgress, 4.f));
 			reloadBar.setFillColor(sf::Color(255, 64, 255));
-			reloadBar.setPosition(g_camera.w * 0.5f - secondaryChargeProgress / 2.f, g_camera.h * 0.5f + 46.f);
+			reloadBar.setPosition({g_camera.w * 0.5f - secondaryChargeProgress / 2.f, g_camera.h * 0.5f + 46.f});
 			window->draw(reloadBar);
 		}
 		if (boostProgress > 0.0) {
 			sf::RectangleShape boostReloadBar(sf::Vector2f(boostProgress, 4.f));
 			boostReloadBar.setFillColor(sf::Color(64, 255, 64));
-			boostReloadBar.setPosition(g_camera.w * 0.5f - boostProgress / 2.f, g_camera.h * 0.5f - 40.f);
+			boostReloadBar.setPosition({g_camera.w * 0.5f - boostProgress / 2.f, g_camera.h * 0.5f - 40.f});
 			window->draw(boostReloadBar);
 		}
 	}
 	window->draw(*forwards);
 	if (!name.empty()) {
-		sf::Text nameText;
-		nameText.setFont(*font);
-		nameText.setString(name);
-		nameText.setCharacterSize(8);
+		sf::Text nameText(*font, name, 8);
 		nameText.setFillColor(sf::Color::White);
-		nameText.setPosition(uiX - nameText.getLocalBounds().width / 2.0, uiY - 28.0);
+		nameText.setPosition({(float)(uiX - nameText.getLocalBounds().size.x / 2.0), (float)(uiY - 28.0)});
 		window->draw(nameText);
 	}
 	if (g_camera.scale * 2.0 > radius) {
-		icon->setPosition(uiX, uiY);
+		icon->setPosition({(float)uiX, (float)uiY});
 		window->draw(*icon);
 	}
 	g_camera.bindWorld();
@@ -778,11 +777,11 @@ CelestialBody::CelestialBody(double radius) : Entity() {
 	this->gravitates = true;
 	if (!headless) {
 		shape = std::make_unique<sf::CircleShape>(radius, std::max(4, (int)(sqrt(radius))));
-		shape->setOrigin(radius, radius);
+		shape->setOrigin({(float)radius, (float)radius});
 		icon = std::make_unique<sf::CircleShape>(2.f, 6);
-		icon->setOrigin(2.f, 2.f);
+		icon->setOrigin({2.f, 2.f});
 		warning = std::make_unique<sf::CircleShape>(5.f, 4);
-		warning->setOrigin(5.f, 5.f);
+		warning->setOrigin({5.f, 5.f});
 		warning->setFillColor(sf::Color(0, 0, 0, 0));
 		warning->setOutlineColor(sf::Color(255, 0, 0));
 		warning->setOutlineThickness(1.f);
@@ -794,11 +793,11 @@ CelestialBody::CelestialBody(double radius, double mass) : Entity() {
 	this->gravitates = true;
 	if (!headless) {
 		shape = std::make_unique<sf::CircleShape>(radius, std::max(4, (int)(sqrt(radius))));
-		shape->setOrigin(radius, radius);
+		shape->setOrigin({(float)radius, (float)radius});
 		icon = std::make_unique<sf::CircleShape>(2.f, 6);
-		icon->setOrigin(2.f, 2.f);
+		icon->setOrigin({2.f, 2.f});
 		warning = std::make_unique<sf::CircleShape>(5.f, 4);
-		warning->setOrigin(5.f, 5.f);
+		warning->setOrigin({5.f, 5.f});
 		warning->setFillColor(sf::Color(0, 0, 0, 0));
 		warning->setOutlineColor(sf::Color(255, 0, 0));
 		warning->setOutlineThickness(1.f);
@@ -857,7 +856,7 @@ void CelestialBody::postMassUpdate() {
 	}
 	if (!headless && !simulating) {
 		shape->setRadius(radius);
-		shape->setOrigin(radius, radius);
+		shape->setOrigin({(float)radius, (float)radius});
 	}
 }
 
@@ -898,19 +897,19 @@ void CelestialBody::collide(Entity* with, bool specialOnly) {
 
 void CelestialBody::draw() {
 	Entity::draw();
-	shape->setPosition(x + drawShiftX, y + drawShiftY);
+	shape->setPosition({(float)(x + drawShiftX), (float)(y + drawShiftY)});
 	shape->setFillColor(sf::Color(color[0], color[1], color[2]));
 	window->draw(*shape);
 	if (ownEntity) {
 		g_camera.bindUI();
 		double uiX = g_camera.w * 0.5 + (x - ownX) / g_camera.scale, uiY = g_camera.h * 0.5 + (y - ownY) / g_camera.scale;
 		if (g_camera.scale > radius) {
-			icon->setPosition(uiX, uiY);
+			icon->setPosition({(float)uiX, (float)uiY});
 			icon->setFillColor(sf::Color(color[0], color[1], color[2]));
 			window->draw(*icon);
 		}
 		if (blackhole && this != lastTrajectoryRef) {
-			warning->setPosition(uiX, uiY);
+			warning->setPosition({(float)uiX, (float)uiY});
 			window->draw(*warning);
 		}
 		g_camera.bindWorld();
@@ -929,9 +928,9 @@ Projectile::Projectile() : Entity() {
 	this->color[2] = 60;
 	if (!headless && !simulating) {
 		shape = std::make_unique<sf::CircleShape>(radius, 6);
-		shape->setOrigin(radius, radius);
+		shape->setOrigin({(float)radius, (float)radius});
 		icon = std::make_unique<sf::CircleShape>(2.f, 6);
-		icon->setOrigin(2.f, 2.f);
+		icon->setOrigin({2.f, 2.f});
 		icon->setFillColor(sf::Color(255, 60, 60));
 	}
 }
@@ -1001,14 +1000,14 @@ void Projectile::unloadSyncPacket(sf::Packet& packet) {
 
 void Projectile::draw() {
 	Entity::draw();
-	shape->setPosition(x + drawShiftX, y + drawShiftY);
-	shape->setRotation(90.f + rotation);
+	shape->setPosition({(float)(x + drawShiftX), (float)(y + drawShiftY)});
+	shape->setRotation(sf::degrees(90.f + rotation));
 	shape->setFillColor(sf::Color(color[0], color[1], color[2]));
 	window->draw(*shape);
 	if (g_camera.scale > radius) {
 		g_camera.bindUI();
-		icon->setPosition(g_camera.w * 0.5 + (x - ownX) / g_camera.scale, g_camera.h * 0.5 + (y - ownY) / g_camera.scale);
-		icon->setRotation(90.f + rotation);
+		icon->setPosition({(float)(g_camera.w * 0.5 + (x - ownX) / g_camera.scale), (float)(g_camera.h * 0.5 + (y - ownY) / g_camera.scale)});
+		icon->setRotation(sf::degrees(90.f + rotation));
 		window->draw(*icon);
 		g_camera.bindWorld();
 	}
@@ -1027,16 +1026,16 @@ Missile::Missile() : Projectile() {
 	this->color[2] = 0;
 	if (!headless && !simulating) {
 		shape = std::make_unique<sf::CircleShape>(radius, 3);
-		shape->setOrigin(radius, radius);
+		shape->setOrigin({(float)radius, (float)radius});
 		icon = std::make_unique<sf::CircleShape>(2.f, 3);
-		icon->setOrigin(2.f, 2.f);
+		icon->setOrigin({2.f, 2.f});
 		icon->setFillColor(sf::Color(255, 0, 0));
 		warning = std::make_unique<sf::CircleShape>(4.f, 4);
-		warning->setOrigin(4.f, 4.f);
+		warning->setOrigin({4.f, 4.f});
 		warning->setFillColor(sf::Color(0, 0, 0, 0));
 		warning->setOutlineColor(sf::Color(255, 0, 0, 255));
 		warning->setOutlineThickness(1.f);
-		warning->setRotation(45.f);
+		warning->setRotation(sf::degrees(45.f));
 	}
 }
 
@@ -1124,17 +1123,17 @@ void Missile::simReset() {
 
 void Missile::draw() {
 	Entity::draw();
-	shape->setPosition(x + drawShiftX, y + drawShiftY);
-	shape->setRotation(90.f + rotation);
+	shape->setPosition({(float)(x + drawShiftX), (float)(y + drawShiftY)});
+	shape->setRotation(sf::degrees(90.f + rotation));
 	shape->setFillColor(sf::Color(color[0], color[1], color[2]));
 	window->draw(*shape);
 	if (g_camera.scale > radius) {
 		g_camera.bindUI();
-		icon->setPosition(g_camera.w * 0.5 + (x - ownX) / g_camera.scale, g_camera.h * 0.5 + (y - ownY) / g_camera.scale);
-		icon->setRotation(90.f + rotation);
+		icon->setPosition({(float)(g_camera.w * 0.5 + (x - ownX) / g_camera.scale), (float)(g_camera.h * 0.5 + (y - ownY) / g_camera.scale)});
+		icon->setRotation(sf::degrees(90.f + rotation));
 		window->draw(*icon);
 		if (target && ownEntity && target == ownEntity) {
-			warning->setPosition(g_camera.w * 0.5 + (x - ownX) / g_camera.scale, g_camera.h * 0.5 + (y - ownY) / g_camera.scale);
+			warning->setPosition({(float)(g_camera.w * 0.5 + (x - ownX) / g_camera.scale), (float)(g_camera.h * 0.5 + (y - ownY) / g_camera.scale)});
 			window->draw(*warning);
 		}
 		g_camera.bindWorld();

@@ -6,7 +6,10 @@
 #include "ui.hpp"
 
 #include <SFML/Graphics.hpp>
+#include <SFML/Graphics/Text.hpp>
+#include <SFML/Network/IpAddress.hpp>
 #include <SFML/Window.hpp>
+#include <SFML/Window/Keyboard.hpp>
 
 using namespace obf;
 
@@ -71,7 +74,7 @@ UIElement::UIElement() {
     body.setOutlineThickness(2.f);
     body.setOutlineColor(sf::Color(32, 32, 32, 192));
     body.setFillColor(sf::Color(64, 64, 64, 64));
-    body.setPosition(0.f, 0.f);
+    body.setPosition({0.f, 0.f});
     body.setSize(sf::Vector2f(0.f, 0.f));
 }
 
@@ -93,11 +96,11 @@ bool UIElement::isMousedOver() {
     return mousePos.x > x && mousePos.y > y && mousePos.x < x + width && mousePos.y < y + height;
 }
 
-MiscInfoUI::MiscInfoUI() {
-    text.setFont(*font);
-    text.setCharacterSize(textCharacterSize);
+TextElement::TextElement(): text(*font, "", textCharacterSize) {} 
+
+MiscInfoUI::MiscInfoUI(): text(*font, "", textCharacterSize) {
     text.setFillColor(sf::Color::White);
-    text.setPosition(padding, padding);
+    text.setPosition({padding, padding});
 }
 
 void MiscInfoUI::update() {
@@ -112,16 +115,15 @@ void MiscInfoUI::update() {
     }
     wrapText(info, text, width - padding * 2.f);
     sf::FloatRect bounds = text.getLocalBounds();
-    float actualWidth = bounds.width + padding * 2.f;
-    height = bounds.height + padding * 2.f;
+    float actualWidth = bounds.size.x + padding * 2.f;
+    height = bounds.size.y + padding * 2.f;
     body.setSize(sf::Vector2f(actualWidth, height));
     UIElement::update();
     window->draw(text);
 }
 
 ChatUI::ChatUI() {
-    text.setFont(*font);
-    text.setCharacterSize(textCharacterSize);
+    text = sf::Text(*font, "", textCharacterSize);
     text.setFillColor(sf::Color::White);
     textbox.padding = 2.f;
     textbox.height = textCharacterSize + 3.f + textbox.padding * 2.f;
@@ -145,7 +147,7 @@ void ChatUI::resized() {
     width = std::min((float)(messageLimit * (textCharacterSize + 2)), g_camera.w * (lerpf * mulWidthMin + (1.f - lerpf) * mulWidthMax));
     lerpf = std::max(std::min(1.f, (g_camera.h - tallestAdjustAt) / shortestAdjustAt), 0.f);
     height = std::min((float)(storedMessageCount + 1) * (textCharacterSize + 3), g_camera.h * (lerpf * mulHeightMin + (1.f - lerpf) * mulHeightMax));
-    body.setPosition(0.f, g_camera.h - height);
+    body.setPosition({0.f, g_camera.h - height});
     body.setSize(sf::Vector2f(width, height));
     textbox.position(0, g_camera.h - textbox.height);
     textbox.width = width;
@@ -166,14 +168,14 @@ void ChatUI::resized() {
         }
     }
     text.setString(string);
-    text.setPosition(padding, g_camera.h - (textCharacterSize + 3) * (displayMessageCount + 1) - padding - textbox.padding * 2.f);
+    text.setPosition({padding, g_camera.h - (textCharacterSize + 3) * (displayMessageCount + 1) - padding - textbox.padding * 2.f});
 }
 
 void ChatUI::onKeyPress(sf::Keyboard::Key k) {
     if (!active || (activeTextbox != nullptr && activeTextbox != &textbox)) {
         return;
     }
-    if (k == sf::Keyboard::Enter) {
+    if (k == sf::Keyboard::Key::Enter) {
         activeTextbox = activeTextbox == &textbox ? nullptr : &textbox;
         handledTextBoxSelect = true;
         if (textbox.fullString.size() == 0) {
@@ -226,9 +228,9 @@ void TextElement::update() {
 void TextElement::resized() {
     text.setString(string);
     sf::FloatRect bounds = text.getLocalBounds();
-    width = bounds.width + padding * 2.f;
-    height = bounds.height + padding * 2.f;
-    text.setOrigin(bounds.left, bounds.top);
+    width = bounds.size.x + padding * 2.f;
+    height = bounds.size.y + padding * 2.f;
+    text.setOrigin({bounds.position.x, bounds.position.y});
     body.setSize(sf::Vector2f(width, height));
 }
 
@@ -236,14 +238,14 @@ void TextElement::resizeY(float height) {
     this->height = height;
     body.setSize(sf::Vector2f(width, height));
     sf::FloatRect bounds = text.getLocalBounds();
-    text.setOrigin(bounds.left, bounds.top + (bounds.height + padding * 2.f - height) * 0.5f);
+    text.setOrigin({bounds.position.x, bounds.position.y + (bounds.size.y + padding * 2.f - height) * 0.5f});
 }
 
 void TextElement::position(float x, float y) {
     this->x = x;
     this->y = y;
-    body.setPosition(x, y);
-    text.setPosition(x + padding, y + padding);
+    body.setPosition({x, y});
+    text.setPosition({x + padding, y + padding});
 }
 
 TextBoxElement::TextBoxElement() {
@@ -266,7 +268,7 @@ void TextBoxElement::update() {
             } else {
                 sf::Vector2f startpos = text.findCharacterPos(selectionStart - viewPos), endpos = text.findCharacterPos(selectionEnd - viewPos);
                 selection.setSize(sf::Vector2f(endpos.x - startpos.x, textCharacterSize + 2));
-                selection.setPosition(startpos.x, startpos.y);
+                selection.setPosition({startpos.x, startpos.y});
                 window->draw(selection);
             }
         }
@@ -274,7 +276,7 @@ void TextBoxElement::update() {
     TextElement::update();
     if (activeTextbox == this) {
         if (std::sin(globalTime * TAU * 1.5) > 0.0) {
-            cursor.setPosition(text.findCharacterPos(cursorPos - viewPos).x, y + padding);
+            cursor.setPosition({text.findCharacterPos(cursorPos - viewPos).x, y + padding});
             window->draw(cursor);
         }
     }
@@ -319,17 +321,17 @@ void TextBoxElement::onKeyPress(sf::Keyboard::Key k) {
         return;
     }
     switch (k) {
-        case sf::Keyboard::Enter: {
+        case sf::Keyboard::Key::Enter: {
             if (!handledTextBoxSelect) {
                 activeTextbox = nullptr;
             }
             break;
         }
-        case sf::Keyboard::BackSpace: {
+        case sf::Keyboard::Key::Backspace: {
             if (selectionActive) {
                 eraseSelection();
             } else if (fullString.size() > 0 && cursorPos > 0) {
-                if (sf::Keyboard::isKeyPressed(sf::Keyboard::LControl)) {
+                if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::LControl)) {
                     size_t from = cursorPos;
                     cursorPos--;
                     while (cursorPos > 0 && !(fullString[cursorPos - 1] == ' ' && fullString[cursorPos] != ' ')) {
@@ -344,11 +346,11 @@ void TextBoxElement::onKeyPress(sf::Keyboard::Key k) {
             }
             break;
         }
-        case sf::Keyboard::Delete: {
+        case sf::Keyboard::Key::Delete: {
             if (selectionActive) {
                 eraseSelection();
             } else if (fullString.size() > 0 && cursorPos < fullString.size()) {
-                if (sf::Keyboard::isKeyPressed(sf::Keyboard::LControl)) {
+                if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::LControl)) {
                     size_t from = cursorPos;
                     cursorPos++;
                     while (cursorPos < fullString.size() && !(fullString[cursorPos - 1] != ' ' && fullString[cursorPos] == ' ')) {
@@ -362,11 +364,11 @@ void TextBoxElement::onKeyPress(sf::Keyboard::Key k) {
             }
             break;
         }
-        case sf::Keyboard::Left: {
+        case sf::Keyboard::Key::Left: {
             if (fullString.size() == 0 || cursorPos == 0) {
                 break;
             }
-            bool shiftHeld = sf::Keyboard::isKeyPressed(sf::Keyboard::LShift);
+            bool shiftHeld = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::LShift);
             size_t oldPos = cursorPos;
             if (selectionActive && !shiftHeld) {
                 cursorPos = std::min(selectionStart, selectionEnd);
@@ -374,7 +376,7 @@ void TextBoxElement::onKeyPress(sf::Keyboard::Key k) {
             } else {
                 cursorPos--;
             }
-            if (sf::Keyboard::isKeyPressed(sf::Keyboard::LControl)) {
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::LControl)) {
                 while (cursorPos > 0 && !(fullString[cursorPos - 1] == ' ' && fullString[cursorPos] != ' ')) {
                     cursorPos--;
                 }
@@ -390,11 +392,11 @@ void TextBoxElement::onKeyPress(sf::Keyboard::Key k) {
             stringChanged();
             break;
         }
-        case sf::Keyboard::Right: {
+        case sf::Keyboard::Key::Right: {
             if (cursorPos == fullString.size()) {
                 return;
             } // also checks whether fullString is empty
-            bool shiftHeld = sf::Keyboard::isKeyPressed(sf::Keyboard::LShift);
+            bool shiftHeld = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::LShift);
             size_t oldPos = cursorPos;
             if (selectionActive && !shiftHeld) {
                 cursorPos = std::max(selectionStart, selectionEnd);
@@ -402,7 +404,7 @@ void TextBoxElement::onKeyPress(sf::Keyboard::Key k) {
             } else {
                 cursorPos = std::min(cursorPos + 1, fullString.size());
             }
-            if (sf::Keyboard::isKeyPressed(sf::Keyboard::LControl)) {
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::LControl)) {
                 while (cursorPos < fullString.size() && !(fullString[cursorPos - 1] != ' ' && fullString[cursorPos] == ' ')) {
                     cursorPos++;
                 }
@@ -417,22 +419,22 @@ void TextBoxElement::onKeyPress(sf::Keyboard::Key k) {
             stringChanged();
             break;
         }
-        case sf::Keyboard::A: {
-            if (sf::Keyboard::isKeyPressed(sf::Keyboard::LControl)) {
+        case sf::Keyboard::Key::A: {
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::LControl)) {
                 selectionActive = true;
                 selectionStart = 0;
                 selectionEnd = fullString.size();
             }
             break;
         }
-        case sf::Keyboard::C: {
-            if (sf::Keyboard::isKeyPressed(sf::Keyboard::LControl) && selectionActive) {
+        case sf::Keyboard::Key::C: {
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::LControl) && selectionActive) {
                 sf::Clipboard::setString(fullString.substr(std::min(selectionStart, selectionEnd), std::max(selectionStart, selectionEnd) - std::min(selectionStart, selectionEnd)));
             }
             break;
         }
-        case sf::Keyboard::V: {
-            if (sf::Keyboard::isKeyPressed(sf::Keyboard::LControl)) {
+        case sf::Keyboard::Key::V: {
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::LControl)) {
                 std::string pasted = sf::Clipboard::getString();
                 stripSpecialChars(pasted);
                 size_t selection = selectionActive ? std::max(selectionStart, selectionEnd) - std::min(selectionStart, selectionEnd) : 0;
@@ -506,7 +508,7 @@ void MenuUI::resized() {
         curY += b->height + buttonSpacing;
     }
     body.setSize(sf::Vector2f(width, height));
-    body.setPosition(x, y);
+    body.setPosition({x, y});
 }
 
 void MenuUI::setState(uint8_t state) {
@@ -595,8 +597,9 @@ void MenuUI::connect() {
             return;
         }
     }
+
     sf::TcpSocket* newSocket = new sf::TcpSocket();
-    if (newSocket->connect(address, port) != sf::Socket::Done) {
+    if (newSocket->connect(sf::IpAddress::resolve(address).value(), port) != sf::Socket::Status::Done) {
         buttons[0]->string = "Could not connect to server.";
         buttons[0]->active = true;
         buttons[0]->resized();
@@ -659,7 +662,7 @@ void MenuUI::onMousePress(sf::Mouse::Button b) {
                 } else {
                     connectListener = new sf::TcpListener;
                     connectListener->setBlocking(false);
-                    if (connectListener->listen(port) != sf::Socket::Done) {
+                    if (connectListener->listen(port) != sf::Socket::Status::Done) {
                         printPreferred("Could not host server on port " + to_string(port) + ". To change port, type /config port=<port>.");
                         break;
                     }
@@ -682,11 +685,11 @@ void MenuUI::onMousePress(sf::Mouse::Button b) {
 
 void MenuUI::onKeyPress(sf::Keyboard::Key k) {
     switch (k) {
-        case sf::Keyboard::Escape: {
+        case sf::Keyboard::Key::Escape: {
             active = !active;
             break;
         }
-        case sf::Keyboard::Enter: {
+        case sf::Keyboard::Key::Enter: {
             if (state == MenuStates::ConnectMenu && activeTextbox == buttons[1]) {
                 connect();
             }

@@ -8,9 +8,9 @@ void Camera::resize() {
 	w = size.x;
 	h = size.y;
 
-	uiView.setSize(w, h);
-	uiView.setCenter(w / 2, h / 2);
-	worldView.setSize(w * scale, h * scale);
+	uiView.setSize({(float)w, (float)h});
+	uiView.setCenter({w / 2.f, h / 2.f});
+	worldView.setSize({w * scale, h * scale});
 }
 
 void Camera::zoom(float by) {
@@ -20,7 +20,7 @@ void Camera::zoom(float by) {
 
 void Camera::bindWorld() const {
 	auto wv = worldView;
-	wv.setCenter(pos.x, pos.y);
+	wv.setCenter({pos.x, pos.y});
 	window->setView(wv);
 }
 
@@ -36,7 +36,7 @@ Pos Camera::windowMouse() const {
 Pos Camera::worldMouse() const {
 	auto screen = sf::Mouse::getPosition(*window);
 	auto wv = worldView;
-	wv.setCenter(pos.x, pos.y);
+	wv.setCenter({pos.x, pos.y});
 	return window->mapPixelToCoords(screen, wv);
 }
 

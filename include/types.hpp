@@ -1,4 +1,5 @@
 #pragma once
+#include <cstdint>
 
 // use like an enum e.g. Packets::CreateEntity
 namespace obf::Packets {

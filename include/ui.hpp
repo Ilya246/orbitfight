@@ -1,5 +1,5 @@
 #pragma once
-#include "globals.hpp"
+#include "events.hpp"
 
 #include <SFML/Graphics.hpp>
 #include <SFML/Window.hpp>
@@ -30,6 +30,8 @@ struct UIElement {
 
 // NOTE: the x, y, text and string properties of this struct should be managed by the owning struct
 struct TextElement : UIElement {
+    TextElement();
+
     void update() override;
     void resized() override; // sets width, height of text and the UI body according to desired padding
     void position(float x, float y); // positions text and UI body
