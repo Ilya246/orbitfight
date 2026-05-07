@@ -133,14 +133,18 @@ void generateSystem() {
 	double spawnDst = gen_firstPlanetDistance * rand_f(gen_minNextRadius, gen_maxNextRadius) + dist + gen_starRadius;
 	int planetsN = (int)(rand_f(gen_baseMinPlanets, gen_baseMaxPlanets) * sqrt(starsN));
 	printf("Generated system: %u stars, %u planets, %u moons\n", starsN, planetsN, generateOrbitingPlanets(planets, planetsN, 0.0, 0.0, 0.0, 0.0, starsMass, gen_minPlanetRadius, gen_maxPlanetRadius, spawnDst));
+
 	stars.clear();
 	planets.clear();
 }
 
 void fullClear(bool clearTriangles) {
+	if (authority)
+		worldBrightness = rand_f(worldBrightnessMin, worldBrightnessMax);
 	if (isServer) {
 		sf::Packet clearPacket;
 		clearPacket << Packets::FullClear;
+		clearPacket << (int32_t)worldBrightness;
 		for (Player* p : playerGroup) {
 			p->tcpSocket.send(clearPacket);
 		}
@@ -178,8 +182,8 @@ void drawTrajectory(sf::Color& color, std::vector<Point>& traj) {
 	}
 	if (lastTrajectoryRef && to > 0) [[likely]] {
 		sf::VertexArray lines(sf::PrimitiveType::Lines, to / by + (size_t)(to % by != 0));
-		float lastAlpha = 255.f;
-		float decBy = (255.f - 64.f) / to;
+		float lastAlpha = trajectoryAlpha;
+		float decBy = (trajectoryAlpha - 48.f) / to;
 		size_t i = 0;
 		for (size_t j = 0; j < to; j += by) {
 			Point point = traj[j];
@@ -492,12 +496,11 @@ void Quad::collideAttract(Entity* e, bool doGravity, bool checkCollide) {
 		return;
 	}
 	if (doGravity) {
-		double midx = x + xsize * 0.5, midy = y + ysize * 0.5;
-		if (!hasGravitators || (std::abs(e->x - midx) + std::abs(e->y - midy)) > gravityAccuracy * size) {
-			double xdiff = comx - e->x, ydiff = comy - e->y;
+		double xdiff = comx - e->x, ydiff = comy - e->y;
+		if ((!hasGravitators || std::abs(e->x - comx) + std::abs(e->y - comy) > gravityAccuracy * size) && entity != e) {
 			double dist = dst(xdiff, ydiff);
 			double factor = delta * mass * G / (dist * dist * dist);
-			e->addVelocity(xdiff * factor, ydiff * factor); //          ^ "below" being here
+			e->addVelocity(xdiff * factor, ydiff * factor);
 			doGravity = false;
 		}
 	} else if (!checkCollide) {
@@ -544,8 +547,10 @@ void buildQuadtree() {
 	for (size_t i = 0; i < updateGroup.size(); i++) {
 		Quad::put(0, updateGroup[i], 0);
 	}
-	quadtree[0].unstaircasize();
-	quadtree[0].postBuild();
+	if (updateGroup.size() != 0) {
+		quadtree[0].unstaircasize();
+		quadtree[0].postBuild();
+	}
 }
 
 Triangle::Triangle() : Entity() {
@@ -866,7 +871,7 @@ void CelestialBody::collide(Entity* with, bool specialOnly) {
 		return;
 	}
 	if (authority && star && with->type() == Entities::Triangle) {
-		if (with->player || !isServer || with == ownEntity) {
+		if (!simulating && (with->player || !isServer || with == ownEntity)) {
 			if (isServer) {
 				std::string sendMessage;
 				sendMessage.append("<").append(((Triangle*)with)->name).append("> has been incinerated.");

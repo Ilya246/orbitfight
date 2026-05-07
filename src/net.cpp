@@ -166,6 +166,7 @@ void clientParsePacket(sf::Packet& packet) {
         break;
     }
     case Packets::FullClear: {
+        packet >> (int32_t&)worldBrightness;
         fullClear(false);
         break;
     }

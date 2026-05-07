@@ -13,6 +13,7 @@
 #include <SFML/Network.hpp>
 
 #include <SFML/Network/IpAddress.hpp>
+#include <cfenv>
 #include <cfloat>
 #include <cmath>
 #include <cstring>
@@ -20,6 +21,10 @@
 #include <future>
 #include <iostream>
 #include <regex>
+
+#ifdef __linux__
+#include "fenv.h"
+#endif
 
 using namespace obf;
 
@@ -32,42 +37,49 @@ void inputListen() {
 	inputWaiting = false;
 }
 
+// Detect GDB
+bool is_debugger_present() {
+#ifdef __linux__
+    std::ifstream status("/proc/self/status");
+    std::string line;
+    while (std::getline(status, line)) {
+        if (line.rfind("TracerPid:", 0) == 0) {
+            return line.back() != '0';
+        }
+    }
+    return false;
+#else
+    return false;
+#endif
+}
+
 int main(int argc, char** argv) {
-	bool regenConfig = false;
 	for (int i = 1; i < argc; i++) {
 		headless |= !strcmp(argv[i], "--headless");
-		regenConfig |= !strcmp(argv[i], "--regenerate-help");
 	}
+
+	// Crash on NaN or OF if we're under GDB
+	if (is_debugger_present()) {
+		feenableexcept(FE_INVALID | FE_OVERFLOW);
+	}
+
 	authority = headless;
 	isServer = headless;
 	bool configNotPresent = parseTomlFile(configFile) != 0;
-	if (configNotPresent || regenConfig) {
+	if (configNotPresent) {
 		if (configNotPresent) printf("No config file detected, creating config %s and documentation file %s.\n", configFile.c_str(), configDocFile.c_str());
 		std::ofstream out;
 		out.open(configDocFile);
-		out << "NOTE: configs changed using the console will not be saved" << std::endl;
-		out << "predictSteps: As a client, how many steps of [predictDelta] ticks to simulate for trajectory prediction (int)" << std::endl;
-		out << "port: Used both as the port to host on and to specify port for autoConnect if server address does not contain port (short uint)" << std::endl;
-		out << "predictDelta: As a client, how many ticks to advance every prediction simulation step (double)" << std::endl;
-		out << "predictSpacing: As a client, how many seconds to wait between trajectory prediction simulations (double)" << std::endl;
-		out << "NOTE: any clients will have to have the same physics-related configs as the server for them to work properly" << std::endl;
-		out << "friction: Friction of touching bodies (double)" << std::endl;
-		out << "collideRestitution: How bouncy collisions are (double)" << std::endl;
-		out << "gravityStrength: How strong gravity is (double)" << std::endl;
-		out << "syncSpacing: As a server, how often should clients be synced (double)" << std::endl;
-		out << "gen_blackholeChance: As a server, what fraction of stars should instead be black holes (double)" << std::endl;
-		out << "gen_extraStarChance: As a server, the chance for an additional star to generate after the previous (double)" << std::endl;
-		out << "autorestartSpacing: As a server, if autorestart is enabled, how many seconds to wait between autorestarts (double)" << std::endl;
-		out << "autorestartNotifSpacing: As a server, if autorestart is enabled, how many seconds to wait between chat autorestart notifications (double)" << std::endl;
-		out << "serverAddress: Used with autoConnect as the address to connect to (string)" << std::endl;
-		out << "name: Your ingame name as a client (string)" << std::endl;
-		out << "autorestart: As a server, whether to periodically regenerate the solar system (bool)" << std::endl;
-		out << "autoConnect: As a client, whether to automatically connect to a server (bool)" << std::endl;
-		out << "enableControlLock: As a client, whether to enable using LAlt to lock controls (bool)" << std::endl;
-		out << "DEBUG: Whether to enable debug mode, prints extra info to console (bool)" << std::endl;
-		if(regenConfig) {
-			return 0;
-		}
+		out << "TUTORIAL:\n" <<
+		"    - W - forwards\n"
+		"    - A - rotate left\n"
+		"    - S - backwards\n"
+		"    - D - rotate right\n"
+		"    - X - fire railgun\n"
+		"    - LCtrl - boost\n"
+		"    - Spacebar - fire\n"
+		"    - T - target body closest to cursor\n"
+		"    - Tab - set/change/unset reference body to predict trajectories against" << endl;
 	}
 	std::ofstream out;
 	out.open(configFile, std::ios::app);
@@ -79,7 +91,7 @@ int main(int argc, char** argv) {
 		}
 	} else {
 		if (name.empty()) {
-			printf("Specify a username.\n");
+			printf("Type in an username (we didn't have budget for UI).\n");
 			getline(std::cin, name);
 			out << "\nname = " << name << std::endl;
 		}
@@ -330,7 +342,7 @@ int main(int argc, char** argv) {
 					}
 				}
 			}
-			window->clear(sf::Color(16, 0, 32));
+			window->clear(sf::Color(worldBrightness / 2, 0, worldBrightness));
 			if (ownEntity) [[likely]] {
 				ownX = ownEntity->x;
 				ownY = ownEntity->y;
@@ -349,9 +361,11 @@ int main(int argc, char** argv) {
 				y += e->y * e->mass;
 				tmass += e->mass;
 			}
-			x /= updateGroup.size() * tmass;
-			y /= updateGroup.size() * tmass;
-			systemCenter->setPosition(x, y);
+			if (updateGroup.size() != 0 && tmass != 0.0) {
+				x /= updateGroup.size() * tmass;
+				y /= updateGroup.size() * tmass;
+				systemCenter->setPosition(x, y);
+			}
 			for (size_t i = 0; i < updateGroup.size(); i++) {
 				updateGroup[i]->draw();
 			}

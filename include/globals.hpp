@@ -78,6 +78,8 @@ enableControlLock = false,
 simulating = false,
 autorestartRegenned = true,
 printPlanetMerges = true;
+inline int trajectoryAlpha = 160,
+worldBrightness = 32, worldBrightnessMax = 32, worldBrightnessMin = 12;
 
 struct Var {
 	uint8_t type;
@@ -168,7 +170,10 @@ inline std::map<std::string, Var> vars {
 	{"triangle_secondaryRegen", {Double, &Triangle::secondaryRegen}},
 	{"triangle_secondaryReload", {Double, &Triangle::secondaryReload}},
 	{"triangle_maxSecondaryAngle", {Double, &Triangle::maxSecondaryAngle}},
-	{"triangle_slowRotateSpeed", {Double, &Triangle::slowRotateSpeed}}};
+	{"triangle_slowRotateSpeed", {Double, &Triangle::slowRotateSpeed}},
+
+	{"trajectoryAlpha", {Int, &trajectoryAlpha}},
+};
 
 inline Entity* trajectoryRef = nullptr;
 inline Entity* lastTrajectoryRef = nullptr;
