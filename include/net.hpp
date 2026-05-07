@@ -11,5 +11,7 @@ namespace obf {
     void clientParsePacket(sf::Packet&);
     void serverParsePacket(sf::Packet&, Player*);
 
-    void relayMessage(std::string&);
+    void relayMessage(const std::string_view&);
+
+    void relayVars(Player* player = nullptr);
 }

@@ -202,22 +202,15 @@ int main(int argc, char** argv) {
 			if (status == sf::Socket::Status::Done) {
 				sparePlayer->ip = sparePlayer->tcpSocket.getRemoteAddress().value().toString();
 				sparePlayer->port = sparePlayer->tcpSocket.getRemotePort();
-				printPreferred(sparePlayer->ip + ":" + to_string(sparePlayer->port) + " has connected.");
-				sparePlayer->lastAck = globalTime;
+				sparePlayer->lastAck = sparePlayer->lastPingReceived = globalTime;
+				playerGroup.push_back(sparePlayer);
 				for (Entity* e : updateGroup) {
 					sf::Packet packet;
 					packet << Packets::CreateEntity;
 					e->loadCreatePacket(packet);
 					sparePlayer->tcpSocket.send(packet);
 				}
-				playerGroup.push_back(sparePlayer);
-				sparePlayer->entity = new Triangle();
-				setupShip(sparePlayer->entity, false);
-				sparePlayer->entity->player = sparePlayer;
-				sparePlayer->entity->syncCreation();
-				sf::Packet entityAssign;
-				entityAssign << Packets::AssignEntity << sparePlayer->entity->id;
-				sparePlayer->tcpSocket.send(entityAssign);
+				relayVars(sparePlayer);
 				sparePlayer = new Player;
 			} else if (status != sf::Socket::Status::NotReady) {
 				printPreferred("An incoming connection has failed.");
@@ -452,10 +445,8 @@ int main(int argc, char** argv) {
 				double closest = DBL_MAX;
 				if (isServer) {
 					for (Player* p : playerGroup) {
-						if (!p->entity) {
-							continue;
-						}
-						closest = std::min(closest, dst2(e->x - p->entity->x, e->y - p->entity->y));
+						if (p->entity)
+							closest = std::min(closest, dst2(e->x - p->entity->x, e->y - p->entity->y));
 					}
 				}
 				if (ownEntity) {
@@ -579,53 +570,38 @@ int main(int argc, char** argv) {
 			int to = playerGroup.size();
 			for (int i = 0; i < to; i++) {
 				Player* player = playerGroup[i];
+				sf::Socket::Status status;
 				if (globalTime - player->lastAck > 1.0 && globalTime - player->lastPingSent > 1.0) {
-					if (globalTime - player->lastAck > maxAckTime) {
-						printf("Player %s's connection has timed out.\n", player->name().c_str());
-						playerGroup.erase(playerGroup.begin() + i);
-						i--;
-						to--;
+					if (globalTime - player->lastAck > maxAckTime || player->lastPingReceived < globalTime - maxAckTime) {
 						player->tcpSocket.disconnect();
-						delete player;
-						continue;
-					}
-
-					sf::Packet pingPacket;
-					pingPacket << Packets::Ping;
-					sf::Socket::Status status = player->tcpSocket.send(pingPacket);
-					if (status != sf::Socket::Status::Done) {
-						if (status == sf::Socket::Status::Disconnected) {
-							printf("Player %s has disconnected.\n", player->name().c_str());
-							playerGroup.erase(playerGroup.begin() + i);
-							i--;
-							to--;
-							player->tcpSocket.disconnect();
-							delete player;
-							continue;
-						}
-
+					} else {
+						sf::Packet pingPacket;
+						pingPacket << Packets::Ping;
+						status = player->tcpSocket.send(pingPacket);
 						if (status == sf::Socket::Status::Error) {
 							printf("Error when trying to send ping packet to player %s.\n", player->name().c_str());
 						}
+						player->lastPingSent = globalTime;
 					}
-					player->lastPingSent = globalTime;
 				}
 
-				sf::Socket::Status status = sf::Socket::Status::Done;
-				while (status != sf::Socket::Status::NotReady && status != sf::Socket::Status::Disconnected) {
+				status = sf::Socket::Status::Done;
+				while (status == sf::Socket::Status::Done) {
 					sf::Packet packet;
 					player->tcpSocket.setBlocking(false);
 					status = player->tcpSocket.receive(packet);
 					player->tcpSocket.setBlocking(true);
-					if (status == sf::Socket::Status::Done) [[likely]]{
+					if (status == sf::Socket::Status::Done) {
 						player->lastAck = globalTime;
 						serverParsePacket(packet, player);
 					} else if (status == sf::Socket::Status::Disconnected) {
-						printf("Player %s has disconnected.\n", player->name().c_str());
+						string name = player->name();
 						i--;
 						to--;
 						player->tcpSocket.disconnect();
 						delete player;
+						if (player->connected)
+							relayMessage(std::format("Player {} has disconnected.\n", name));
 						goto egg;
 					}
 				}

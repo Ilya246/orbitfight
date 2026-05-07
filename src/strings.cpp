@@ -54,7 +54,7 @@ void displayMessage(const string& message, bool print) {
 void displayMessage(const string& message) {
 	displayMessage(message, true);
 }
-void printPreferred(const string& s) {
+void printPreferred(const string_view& s) {
 	cout << s << std::endl;
 	if (!headless) {
 		string buf;
@@ -112,11 +112,11 @@ stopParsing:
 		Var variable = it->second;
 		if (value.empty()) {
 			switch (variable.type) {
-				case obf::Types::Short_u:
-					printPreferred(std::to_string(*(uint16_t*)variable.value));
+				case obf::Types::Int8:
+					printPreferred(std::to_string(*(uint8_t*)variable.value));
 					break;
-				case obf::Types::Int:
-					printPreferred(std::to_string(*(int*)variable.value));
+				case obf::Types::Int32:
+					printPreferred(std::to_string(*(int32_t*)variable.value));
 					break;
 				case obf::Types::Double:
 					sprintf(out, "%g", *(double*)variable.value);
@@ -135,23 +135,23 @@ stopParsing:
 			return 2;
 		}
 		switch (variable.type) {
-			case obf::Types::Short_u: {
+			case obf::Types::Int8: {
 				if (!regex_match(value, int_regex)) {
 					return 3;
 				}
-				*(uint16_t*)variable.value = (uint16_t)stoi(value);
+				*(uint8_t*)variable.value = (uint8_t)stoi(value);
 				if (print) {
-					printPreferred(std::to_string(*(uint16_t*)variable.value));
+					printPreferred(std::to_string(*(uint8_t*)variable.value));
 				}
 				break;
 			}
-			case obf::Types::Int: {
+			case obf::Types::Int32: {
 				if (!regex_match(value, int_regex)) {
 					return 3;
 				}
 				*(int*)variable.value = stoi(value);
 				if (print) {
-					printPreferred(std::to_string(*(int*)variable.value));
+					printPreferred(std::to_string(*(int32_t*)variable.value));
 				}
 				break;
 			}
@@ -191,6 +191,9 @@ stopParsing:
 	} else {
 		return 1;
 	}
+	if (isServer)
+		relayVars();
+		
 	return 0;
 }
 

@@ -19,7 +19,8 @@ constexpr uint16_t Ping = 0,
 	PlanetCollision = 12,
 	SyncDone = 13,
 	SetTarget = 14,
-	FullClear = 15;
+	FullClear = 15,
+	VarChange = 16;
 }
 
 namespace obf::Entities {
@@ -32,9 +33,12 @@ constexpr uint8_t Triangle = 1,
 
 namespace obf::Types {
 
-constexpr uint8_t String = 0,
-	Short_u = 1,
-	Int = 2,
+enum {
+	String = 0,
+	Int8 = 1,
+	Int32 = 2,
 	Double = 3,
-	Bool = 4;
+	Bool = 6
+};
+
 }

@@ -25,6 +25,8 @@ bool operator ==(movement& mov1, movement& mov2) {
 }
 
 void setupShip(Entity* ship, bool sync) {
+	if (!ship) return;
+
 	CelestialBody* planet;
 	std::vector<CelestialBody*> gravitators;
 	for (Entity* e : updateGroup) {
@@ -242,21 +244,14 @@ std::string Player::name() {
 }
 Player::~Player() {
 	for (size_t i = 0; i < playerGroup.size(); i++) {
-		if (playerGroup[i] == this) [[unlikely]] {
+		if (playerGroup[i] == this) {
 			playerGroup[i] = playerGroup[playerGroup.size() - 1];
 			playerGroup.pop_back();
 			break;
 		}
 	}
-	sf::Packet chatPacket;
-	std::string sendMessage = "";
-	sendMessage.append("<").append(name()).append("> has disconnected.");
-	std::cout << sendMessage << std::endl;
-	chatPacket << Packets::Chat << sendMessage;
-	for (Player* p : playerGroup) {
-		p->tcpSocket.send(chatPacket);
-	}
-	entity->active = false;
+	if (entity)
+		entity->active = false;
 }
 
 Entity::Entity() {

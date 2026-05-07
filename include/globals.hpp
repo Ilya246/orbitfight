@@ -32,9 +32,8 @@ inline sf::Vector2i mousePos;
 inline sf::Clock actualDeltaClock, deltaClock, globalClock;
 inline std::future<void> inputReader;
 inline std::string serverAddress = "", name = "",
-inputBuffer = "",
-assetsFolder = "assets";
-inline unsigned short port = 7817;
+inputBuffer = "";
+inline int32_t port = 7817;
 inline movement lastControls, controls;
 inline double delta = 1.0 / 60.0,
 	globalTime = 0.0,
@@ -63,7 +62,7 @@ inline double delta = 1.0 / 60.0,
 	predictingFor = 0.0,
 	drawShiftX = 0.0, drawShiftY = 0.0,
 	ownX = 0.0, ownY = 0.0;
-inline int textCharacterSize = 18,
+inline int32_t textCharacterSize = 18,
 nextID = 0,
 predictSteps = (int)(90.0 / predictDelta),
 gen_baseMinPlanets = 10,
@@ -78,43 +77,42 @@ enableControlLock = false,
 simulating = false,
 autorestartRegenned = true,
 printPlanetMerges = true;
-inline int trajectoryAlpha = 160,
+inline int32_t trajectoryAlpha = 160,
 worldBrightness = 32, worldBrightnessMax = 32, worldBrightnessMin = 12;
 
 struct Var {
 	uint8_t type;
 	void* value;
+	bool synced = true;
 };
 
 using namespace obf::Types;
 
 inline std::map<std::string, Var> vars {
-	{"name", {String, &name}},
-	{"port", {Int, &port}},
-	{"serverAddress", {String, &serverAddress}},
-
-	{"assetsFolder", {String, &assetsFolder}},
+	{"name", {String, &name, false}},
+	{"port", {Int32, &port, false}},
+	{"serverAddress", {String, &serverAddress, false}},
 
 	{"predictDelta", {Double, &predictDelta}},
 	{"predictSpacing", {Double, &predictSpacing}},
 	{"predictBaseScale", {Double, &predictBaseScale}},
-	{"predictSteps", {Int, &predictSteps}},
+	{"predictSteps", {Int32, &predictSteps}},
 
-	{"autoConnect", {Bool, &autoConnect}},
-	{"DEBUG", {Bool, &debug}},
-	{"enableControlLock", {Bool, &enableControlLock}},
-	{"printPlanetMerges", {Bool, &printPlanetMerges}},
+	{"autoConnect", {Bool, &autoConnect, false}},
+	{"DEBUG", {Bool, &debug, false}},
+	{"enableControlLock", {Bool, &enableControlLock, false}},
+	{"printPlanetMerges", {Bool, &printPlanetMerges, false}},
 
-	{"autorestart", {Bool, &autorestart}},
-	{"autorestartNotifSpacing", {Double, &autorestartNotifSpacing}},
-	{"autorestartSpacing", {Double, &autorestartSpacing}},
+	{"autorestart", {Bool, &autorestart, false}},
+	{"autorestartNotifSpacing", {Double, &autorestartNotifSpacing, false}},
+	{"autorestartSpacing", {Double, &autorestartSpacing, false}},
 
-	{"maxAckTime", {Double, &maxAckTime}},
-	{"syncSpacing", {Double, &syncSpacing}},
-	{"fullSyncSpacing", {Double, &fullsyncSpacing}},
-	{"targetFramerate", {Double, &targetFramerate}},
+	{"maxAckTime", {Double, &maxAckTime, false}},
+	{"syncSpacing", {Double, &syncSpacing, false}},
+	{"fullSyncSpacing", {Double, &fullsyncSpacing, false}},
+	{"targetFramerate", {Double, &targetFramerate, false}},
 
-	{"sweepThreshold", {Double, &sweepThreshold}},
+	{"sweepThreshold", {Double, &sweepThreshold, false}},
 
 	{"gravityAccuracy", {Double, &gravityAccuracy}},
 
@@ -125,14 +123,14 @@ inline std::map<std::string, Var> vars {
 	{"deltaOverride", {Double, &deltaOverride}},
 	{"timescale", {Double, &timescale}},
 
-	{"shipSpawnDistanceMin", {Double, &shipSpawnDistanceMin}},
-	{"shipSpawnDistanceMax", {Double, &shipSpawnDistanceMax}},
+	{"shipSpawnDistanceMin", {Double, &shipSpawnDistanceMin, false}},
+	{"shipSpawnDistanceMax", {Double, &shipSpawnDistanceMax, false}},
 
 	{"gen_baseDensity", {Double, &gen_baseDensity}},
 	{"gen_densityFactor", {Double, &gen_densityFactor}},
 	{"gen_starDensityFactor", {Double, &gen_starDensityFactor}},
-	{"gen_baseMinPlanets", {Int, &gen_baseMinPlanets}},
-	{"gen_baseMaxPlanets", {Int, &gen_baseMaxPlanets}},
+	{"gen_baseMinPlanets", {Int32, &gen_baseMinPlanets}},
+	{"gen_baseMaxPlanets", {Int32, &gen_baseMaxPlanets}},
 	{"gen_blackholeChance", {Double, &gen_blackholeChance}},
 	{"gen_extraStarChance", {Double, &gen_extraStarChance}},
 	{"gen_firstPlanetDistance", {Double, &gen_firstPlanetDistance}},
@@ -172,7 +170,7 @@ inline std::map<std::string, Var> vars {
 	{"triangle_maxSecondaryAngle", {Double, &Triangle::maxSecondaryAngle}},
 	{"triangle_slowRotateSpeed", {Double, &Triangle::slowRotateSpeed}},
 
-	{"trajectoryAlpha", {Int, &trajectoryAlpha}},
+	{"trajectoryAlpha", {Int32, &trajectoryAlpha, false}},
 };
 
 inline Entity* trajectoryRef = nullptr;

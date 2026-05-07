@@ -15,7 +15,7 @@ void stripSpecialChars(string&);
 
 void displayMessage(const string&, bool);
 void displayMessage(const string&);
-void printPreferred(const string&);
+void printPreferred(const string_view&);
 
 int parseToml(const string&);
 int parseTomlFile(const string&);
