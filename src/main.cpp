@@ -58,10 +58,12 @@ int main(int argc, char** argv) {
 		headless |= !strcmp(argv[i], "--headless");
 	}
 
+#ifdef __linux__
 	// Crash on NaN or OF if we're under GDB
 	if (is_debugger_present()) {
 		feenableexcept(FE_INVALID | FE_OVERFLOW);
 	}
+#endif
 
 	authority = headless;
 	isServer = headless;
