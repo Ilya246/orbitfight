@@ -594,7 +594,7 @@ int main(int argc, char** argv) {
 					if (status == sf::Socket::Status::Done) {
 						player->lastAck = globalTime;
 						serverParsePacket(packet, player);
-					} else if (status == sf::Socket::Status::Disconnected) {
+					} else if (status != sf::Socket::Status::NotReady) {
 						string name = player->name();
 						i--;
 						to--;

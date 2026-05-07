@@ -78,7 +78,7 @@ simulating = false,
 autorestartRegenned = true,
 printPlanetMerges = true;
 inline int32_t trajectoryAlpha = 160,
-worldBrightness = 32, worldBrightnessMax = 32, worldBrightnessMin = 12;
+worldBrightness = 32, worldBrightnessMax = 32, worldBrightnessMin = 0;
 
 struct Var {
 	uint8_t type;
