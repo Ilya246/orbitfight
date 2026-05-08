@@ -239,6 +239,7 @@ struct Player {
 	sf::TcpSocket tcpSocket;
 	std::vector<sf::Packet> tcpQueue;
 	std::string username = "unnamed", ip = "";
+	std::string disconnectReason = "";
 	double lastAck = 0.0, lastPingSent = 0.0, lastPingReceived = 0.0, lastSynced = 0.0, lastFullsynced = 0.0, ping = 0.0,
 	viewW = 500.0, viewH = 500.0;
 	int kills = 0;

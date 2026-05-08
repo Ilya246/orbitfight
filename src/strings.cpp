@@ -340,6 +340,8 @@ void parseCommand (const string& command) {
 			for (Player* p : playerGroup) {
 				setupShip(p->entity, true);
 			}
+			if (!headless)
+				setupShip(ownEntity, true);
 			std::string sendMessage = "ANNOUNCEMENT: The system has been regenerated.";
 			relayMessage(sendMessage);
 			if (autorestart) {

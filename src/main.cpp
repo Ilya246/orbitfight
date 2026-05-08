@@ -571,9 +571,10 @@ int main(int argc, char** argv) {
 			for (int i = 0; i < to; i++) {
 				Player* player = playerGroup[i];
 				sf::Socket::Status status;
-				if (globalTime - player->lastAck > 1.0 && globalTime - player->lastPingSent > 1.0) {
-					if (globalTime - player->lastAck > maxAckTime || player->lastPingReceived < globalTime - maxAckTime) {
+				if (globalTime - player->lastPingReceived > 1.0 && globalTime - player->lastPingSent > 1.0) {
+					if (globalTime - player->lastAck > maxAckTime || globalTime - player->lastPingReceived > maxAckTime) {
 						player->tcpSocket.disconnect();
+						player->disconnectReason = "Timed out";
 					} else {
 						sf::Packet pingPacket;
 						pingPacket << Packets::Ping;
@@ -594,14 +595,17 @@ int main(int argc, char** argv) {
 					if (status == sf::Socket::Status::Done) {
 						player->lastAck = globalTime;
 						serverParsePacket(packet, player);
-					} else if (status != sf::Socket::Status::NotReady) {
+					} else if (status != sf::Socket::Status::NotReady && status != sf::Socket::Status::Partial) {
 						string name = player->name();
+						string reason = player->disconnectReason;
+						if (reason.empty())
+							reason = status == sf::Socket::Status::Disconnected ? "Disconnected" : "Errored";
 						i--;
 						to--;
 						player->tcpSocket.disconnect();
 						delete player;
 						if (player->connected)
-							relayMessage(std::format("Player {} has disconnected.\n", name));
+							relayMessage(std::format("Player {} has disconnected ({}).\n", name, reason));
 						goto egg;
 					}
 				}

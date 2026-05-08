@@ -57,9 +57,7 @@ if(WIN32 OR MINGW)
     target_link_options(orbitfight PRIVATE -static)
 endif()
 
-if(WIN32)
-    set(SFML_STATIC_LIBRARIES ON)
-endif()
+set(SFML_STATIC_LIBRARIES ON)
 
 # Find SFML3 specifically
 find_package(SFML 3 COMPONENTS System Window Graphics Network QUIET)
