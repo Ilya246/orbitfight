@@ -5,6 +5,9 @@ project(orbitfight VERSION 1.0.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(BUILD_SHARED_LIBS OFF)
+
+include(FetchContent)
 
 # Default to Release with Debug info (-O3 -g) if not specified
 if(NOT CMAKE_BUILD_TYPE)
@@ -49,6 +52,8 @@ target_include_directories(orbitfight
         "${ASSET_OUT_DIR}"
 )
 
+target_compile_options(orbitfight PRIVATE -g)
+
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(orbitfight PRIVATE -Wall -Wextra -pedantic)
 endif()
@@ -57,44 +62,23 @@ if(WIN32 OR MINGW)
     target_link_options(orbitfight PRIVATE -static)
 endif()
 
+set(SFML_USE_SYSTEM_DEPS OFF)
+set(BUILD_SHARED_LIBS OFF)
 set(SFML_STATIC_LIBRARIES ON)
+set(SFML_VERSION 3.1.0)
 
 # Find SFML3 specifically
-find_package(SFML 3 COMPONENTS System Window Graphics Network QUIET)
+find_package(SFML ${SFML_VERSION} COMPONENTS System Window Graphics Network QUIET)
 
-if(SFML_FOUND)
-    message(STATUS "Using find_package SFML.")
-
-    # Cursed OS case-sensitivity mismatch patch.
-    if(CMAKE_CROSSCOMPILING AND MINGW)
-        foreach(SFML_TGT SFML::System SFML::Window SFML::Graphics SFML::Network)
-            if(TARGET ${SFML_TGT})
-                foreach(PROP INTERFACE_LINK_LIBRARIES IMPORTED_LINK_INTERFACE_LIBRARIES IMPORTED_LINK_INTERFACE_LIBRARIES_RELEASE IMPORTED_LINK_INTERFACE_LIBRARIES_DEBUG)
-                    get_target_property(IL ${SFML_TGT} ${PROP})
-                    if(IL)
-                        string(REPLACE "Crypt32" "crypt32" IL "${IL}")
-                        string(REPLACE "Dnsapi" "dnsapi" IL "${IL}")
-                        string(REPLACE "Ws2_32" "ws2_32" IL "${IL}")
-                        string(REPLACE "Winmm" "winmm" IL "${IL}")
-                        string(REPLACE "OpenGL32" "opengl32" IL "${IL}")
-                        string(REPLACE "Opengl32" "opengl32" IL "${IL}")
-                        string(REPLACE "Gdi32" "gdi32" IL "${IL}")
-                        string(REPLACE "Advapi32" "advapi32" IL "${IL}")
-                        string(REPLACE "User32" "user32" IL "${IL}")
-                        set_target_properties(${SFML_TGT} PROPERTIES ${PROP} "${IL}")
-                    endif()
-                endforeach()
-            endif()
-        endforeach()
-    endif()
-
-    target_link_libraries(orbitfight PRIVATE SFML::Graphics SFML::Window SFML::Network SFML::System)
-elseif(NOT CMAKE_CROSSCOMPILING)
-    # None, hope we're on Linux and try pkg_config
-    message(STATUS "Couldn't find SFML, trying pkg_config. Install SFML or fix its installation if this fails.")
-    find_package(PkgConfig REQUIRED)
-    pkg_check_modules(SFML REQUIRED IMPORTED_TARGET sfml-window sfml-graphics sfml-system sfml-network)
-    target_link_libraries(orbitfight PRIVATE PkgConfig::SFML)
-else()
-    message(FATAL_ERROR "SFML not found for cross-compilation! CMAKE_PREFIX_PATH must point to SFML.")
+if(NOT SFML_FOUND)
+    message(STATUS "Couldn't find SFML, fetching.")
+    FetchContent_Declare(
+        SFML
+        GIT_REPOSITORY https://github.com/SFML/SFML.git
+        GIT_TAG ${SFML_VERSION}
+        GIT_SHALLOW 1
+    )
+    FetchContent_MakeAvailable(SFML)
 endif()
+
+target_link_libraries(orbitfight PRIVATE SFML::Graphics SFML::Window SFML::Network SFML::System)
