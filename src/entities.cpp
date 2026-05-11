@@ -308,6 +308,9 @@ void Entity::update3() {
 
 void Entity::draw() {
 	sf::Color trajColor(color[0], color[1], color[2]);
+	if (type() == Entities::CelestialBody && ((CelestialBody*)this)->blackhole) {
+		trajColor = sf::Color::White;
+	}
 	drawTrajectory(trajColor, trajectory);
 }
 
@@ -852,7 +855,7 @@ void CelestialBody::unloadSyncPacket(sf::Packet& packet) {
 }
 
 void CelestialBody::postMassUpdate() {
-	if (mass > gen_chandrasekharLimit) {
+	if (mass > gen_chandrasekharLimit || blackhole) {
 		setColor(0, 0, 0);
 		blackhole = true;
 		/*if (!star) { // prevent bouncy black holes
@@ -894,8 +897,8 @@ void CelestialBody::collide(Entity* with, bool specialOnly) {
 		} else {
 			with->active = false;
 		}
-	} else if (authority && with->type() == Entities::CelestialBody) [[unlikely]] {
-		if (mass >= with->mass) {
+	} else if (authority && with->type() == Entities::CelestialBody) {
+		if ((mass >= with->mass && !((CelestialBody*)with)->blackhole) || blackhole) {
 			if (!simulating && printPlanetMerges) {
 				printf("Planetary collision: %u absorbed %u\n", id, with->id);
 			}
