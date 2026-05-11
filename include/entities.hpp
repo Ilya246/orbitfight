@@ -54,6 +54,7 @@ struct Entity : EntityDeleteListener {
 	virtual void control(movement& cont);
 	virtual void update1();
 	virtual void update2();
+	virtual void update3();
 	virtual void draw();
 
 	virtual void collide(Entity* with, bool collideOther);
@@ -84,6 +85,10 @@ struct Entity : EntityDeleteListener {
 		velX += dx;
 		velY += dy;
 	}
+	inline void addAccel(double dx, double dy) {
+		aX += dx;
+		aY += dy;
+	}
 
 	inline void setColor(uint8_t r, uint8_t g, uint8_t b) {
 		color[0] = r;
@@ -97,10 +102,10 @@ struct Entity : EntityDeleteListener {
 
 	virtual uint8_t type() = 0;
 	Player* player = nullptr;
-	double x = 0.0, y = 0.0, velX = 0.0, velY = 0.0, rotation = 0.0, rotateVel = 0.0,
+	double x = 0.0, y = 0.0, velX = 0.0, velY = 0.0, aX = 0.0, aXO = 0.0, aY = 0.0, aYO = 0.0, rotation = 0.0, rotateVel = 0.0,
 	dVelX = 0.0, dVelY = 0.0, // exist for caching reasons
 	radius = 0.0, mass = 0.0,
-	resX = 0.0, resY = 0.0, resVelX = 0.0, resVelY = 0.0, resRotation = 0.0, resRotateVel = 0.0, resMass = 0.0, resRadius = 0.0,
+	resX = 0.0, resY = 0.0, resVelX = 0.0, resVelY = 0.0, resAX = 0.0, resAY = 0.0, resRotation = 0.0, resRotateVel = 0.0, resMass = 0.0, resRadius = 0.0,
 	syncX = 0.0, syncY = 0.0, syncVelX = 0.0, syncVelY = 0.0;
 	bool ghost = false, ai = false, synced = false, active = true, gravitates = false;
 	Entity* simRelBody = nullptr;

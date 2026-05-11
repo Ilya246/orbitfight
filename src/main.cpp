@@ -432,9 +432,6 @@ int main(int argc, char** argv) {
 		}
 
 		buildQuadtree();
-		for (Entity* e : updateGroup) {
-			e->update1();
-		}
 		updateEntities();
 
 		if (authority && lastSweep + projectileSweepSpacing < globalTime) {
@@ -508,6 +505,8 @@ int main(int argc, char** argv) {
 				ghost->y = ownEntity->y;
 				ghost->velX = ownEntity->velX;
 				ghost->velY = ownEntity->velY;
+				ghost->aX = ownEntity->aX;
+				ghost->aY = ownEntity->aY;
 				ghost->parent_id = ownEntity->id;
 				std::copy(std::begin(ownEntity->color), std::end(ownEntity->color), std::begin(ghost->color));
 				simCleanupBuffer.push_back(ghost);
@@ -520,9 +519,6 @@ int main(int argc, char** argv) {
 				predictingFor = predictDelta * predictSteps;
 				globalTime += predictDelta;
 				buildQuadtree();
-				for (Entity* e : updateGroup) {
-					e->update1();
-				}
 				updateEntities();
 				double x = 0.0, y = 0.0, tmass = 0.0;
 				for (Entity* e : updateGroup) {

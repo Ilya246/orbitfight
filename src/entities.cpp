@@ -171,7 +171,13 @@ void fullClear(bool clearTriangles) {
 
 void updateEntities() {
 	for (Entity* e : updateGroup) {
+		e->update1();
+	}
+	for (Entity* e : updateGroup) {
 		e->update2();
+	}
+	for (Entity* e : updateGroup) {
+		e->update3();
 	}
 	return;
 }
@@ -283,15 +289,21 @@ void Entity::control(movement&) {
 	return;
 }
 void Entity::update1() {
-	dVelX = velX * delta;
-	dVelY = velY * delta;
-	x += dVelX;
-	y += dVelY;
+	x += velX * delta + 0.5 * aX * delta * delta;
+	y += velY * delta + 0.5 * aY * delta * delta;
 	rotation += rotateVel * delta;
+	aXO = aX;
+	aYO = aY;
+	aX = 0;
+	aY = 0;
 	collided.clear();
 }
 void Entity::update2() {
 	quadtree[0].collideAttract(this, true, true);
+}
+void Entity::update3() {
+	velX += 0.5 * (aXO + aX) * delta;
+	velY += 0.5 * (aYO + aY) * delta;
 }
 
 void Entity::draw() {
@@ -324,8 +336,10 @@ void Entity::collide(Entity* with, bool specialOnly) {
 		return;
 	}
 	factor *= dst(dVx, dVy) * collideRestitution; // normal component of velocity multiplied by restitution
-	addVelocity(massFactorThis * (inX * factor + friction * delta * dVx), massFactorThis * (inY * factor + friction * delta * dVy));
-	with->addVelocity(-massFactorOther * (inX * factor + friction * delta * dVx), -massFactorOther * (inY * factor + friction * delta * dVy));
+	addVelocity(massFactorThis * inX * factor, massFactorThis * inY * factor);
+	addAccel(massFactorThis * friction * dVx, massFactorThis * friction * dVy);
+	with->addVelocity(-massFactorOther * inX * factor, -massFactorOther * inY * factor);
+	with->addAccel(-massFactorOther * friction * dVx, -massFactorOther * friction * dVy);
 }
 
 void Entity::simSetup() {
@@ -333,6 +347,8 @@ void Entity::simSetup() {
 	resY = y;
 	resVelX = velX;
 	resVelY = velY;
+	resAX = aX;
+	resAY = aY;
 	resRotation = rotation;
 	resRotateVel = rotateVel;
 	resMass = mass;
@@ -343,6 +359,8 @@ void Entity::simReset() {
 	y = resY;
 	velX = resVelX;
 	velY = resVelY;
+	aX = resAX;
+	aY = resAY;
 	rotation = resRotation;
 	rotateVel = resRotateVel;
 	mass = resMass;
@@ -485,8 +503,8 @@ void Quad::collideAttract(Entity* e, bool doGravity, bool checkCollide) {
 		if (doGravity) {
 			double xdiff = entity->x - e->x, ydiff = entity->y - e->y;
 			double dist = dst(xdiff, ydiff);
-			double factor = entity->mass * delta * G / (dist * dist * dist);
-			e->addVelocity(xdiff * factor, ydiff * factor); // here and below: `F = GM/R^3 * R_vec`, for each coordinate
+			double factor = entity->mass * G / (dist * dist * dist);
+			e->addAccel(xdiff * factor, ydiff * factor); // here and below: `F = GM/R^3 * R_vec`, for each coordinate
 		}
 		return;
 	}
@@ -494,8 +512,8 @@ void Quad::collideAttract(Entity* e, bool doGravity, bool checkCollide) {
 		double xdiff = comx - e->x, ydiff = comy - e->y;
 		if ((!hasGravitators || std::abs(e->x - comx) + std::abs(e->y - comy) > gravityAccuracy * size) && entity != e) {
 			double dist = dst(xdiff, ydiff);
-			double factor = delta * mass * G / (dist * dist * dist);
-			e->addVelocity(xdiff * factor, ydiff * factor);
+			double factor = mass * G / (dist * dist * dist);
+			e->addAccel(xdiff * factor, ydiff * factor);
 			doGravity = false;
 		}
 	} else if (!checkCollide) {
@@ -618,14 +636,14 @@ void Triangle::control(movement& cont) {
 		}
 	}
 	if (cont.forward) {
-		addVelocity(accel * xMul * delta, accel * yMul * delta);
+		addAccel(accel * xMul, accel * yMul);
 		if (!setDraw) {
 			forwards->setFillColor(sf::Color(255, 196, 0));
 			forwards->setRotation(sf::degrees(90.f + rotation));
 			setDraw = true;
 		}
 	} else if (cont.backward) {
-		addVelocity(-accel * xMul * delta, -accel * yMul * delta);
+		addAccel(-accel * xMul, -accel * yMul);
 		if (!setDraw) {
 			forwards->setFillColor(sf::Color(255, 64, 64));
 			forwards->setRotation(sf::degrees(270.f + rotation));
@@ -1077,7 +1095,7 @@ void Missile::update2() {
 		rotateVel       += delta * (deltaAngleRad(finangle, targetRot) > 0.0 ? rotateSpeed : -rotateSpeed);
 		if (std::abs(deltaAngleRad(targetRot, rotation * degToRad)) < maxThrustAngle && thrust) {
 			double actaccel = fullthrust ? this->accel : accel;
-			addVelocity(actaccel * delta * std::cos(targetRot), actaccel * delta * std::sin(targetRot));
+			addAccel(actaccel * std::cos(targetRot), actaccel * delta * std::sin(targetRot));
 			fuel -= delta * (fullthrust ? 1.0 : fuel / startingFuel);
 		}
 		/* if (!simulating) {
