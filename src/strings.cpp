@@ -56,24 +56,6 @@ void displayMessage(const string& message) {
 }
 void printPreferred(const string_view& s) {
 	cout << s << std::endl;
-	if (!headless) {
-		string buf;
-		buf.reserve(s.size());
-		for (char c : s) {
-			if (c == '\n') {
-				if (buf.size() == 0) {
-					continue;
-				}
-				displayMessage(buf, false);
-				buf.clear();
-			} else {
-				buf += c;
-			}
-		}
-		if (buf.size() != 0) {
-			displayMessage(buf, false);
-		}
-	}
 }
 
 int parseToml(const string& line, bool print) {
@@ -191,8 +173,8 @@ stopParsing:
 	} else {
 		return 1;
 	}
-	if (isServer)
-		relayVars();
+
+	relayVars();
 		
 	return 0;
 }
@@ -250,10 +232,8 @@ void parseCommand (const string& command) {
 		"count - print amount of entities in existence\n"
 		"showfps - print current framerate\n"
 		"reset - regenerate the star system");
-		if (isServer) {
-			printPreferred("players - list currently online players\n"
-			"say <message> - say argument into ingame chat");
-		}
+		printPreferred("players - list currently online players\n"
+		"say <message> - say argument into ingame chat");
 		return;
 	} else if (args[0] == "config") {
 		if (args.size() < 2) {
@@ -283,10 +263,6 @@ void parseCommand (const string& command) {
 		}
 		return;
 	} else if (args[0] == "say") {
-		if (!isServer) {
-			displayMessage("This command only works if you're the server.");
-			return;
-		}
 		if (command.size() < 4) {
 			printf("Invalid argument.\n");
 			return;
@@ -324,41 +300,25 @@ void parseCommand (const string& command) {
 		printPreferred(to_string(updateGroup.size()));
 		return;
 	} else if (args[0] == "reset") {
-		if (!authority) {
-			printPreferred("This command only works if you're the server.");
-			return;
-		}
 		delta = 0.0;
-		fullClear(!isServer);
+		fullClear(false);
 		generateSystem();
-		if (isServer) {
-			for (Entity* e : updateGroup) {
-				if (e->type() != Entities::Triangle) {
-					e->syncCreation();
-				}
+		for (Entity* e : updateGroup) {
+			if (e->type() != Entities::Triangle) {
+				e->syncCreation();
 			}
-			for (Player* p : playerGroup) {
-				setupShip(p->entity, true);
-			}
-			if (!headless)
-				setupShip(ownEntity, true);
-			std::string sendMessage = "ANNOUNCEMENT: The system has been regenerated.";
-			relayMessage(sendMessage);
-			if (autorestart) {
-				lastAutorestartNotif = -autorestartNotifSpacing;
-				lastAutorestart = globalTime;
-			}
-		} else {
-			ownEntity = new Triangle();
-			((Triangle*)ownEntity)->name = name;
-			setupShip(ownEntity, false);
+		}
+		for (Player* p : playerGroup) {
+			setupShip(p->entity, true);
+		}
+		std::string sendMessage = "ANNOUNCEMENT: The system has been regenerated.";
+		relayMessage(sendMessage);
+		if (autorestart) {
+			lastAutorestartNotif = -autorestartNotifSpacing;
+			lastAutorestart = globalTime;
 		}
 		return;
 	} else if (args[0] == "players") {
-		if (!isServer) {
-			printPreferred("This command only works if you're the server.");
-			return;
-		}
 		printf("%llu players:\n", playerGroup.size());
 		for (Player* p : playerGroup) {
 			cout << "	<" << p->name() << ">" << endl;

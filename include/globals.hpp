@@ -2,31 +2,20 @@
 
 #include "entities.hpp"
 #include "types.hpp"
-#include "ui.hpp"
 
 #include <future>
 #include <map>
 #include <vector>
 
-#include <SFML/Graphics.hpp>
 #include <SFML/Network.hpp>
 
 namespace obf {
 
 inline sf::TcpSocket* serverSocket = nullptr;
 inline sf::TcpListener* connectListener = nullptr;
-inline sf::RenderWindow* window = nullptr;
-inline obf::Entity* ownEntity = nullptr;
-inline sf::Font* font = nullptr;
 inline obf::Player* sparePlayer = new obf::Player;
-inline obf::TextBoxElement* activeTextbox = nullptr;
 inline std::vector<Entity*> updateGroup;
 inline std::vector<Player*> playerGroup;
-inline std::vector<UIElement*> uiGroup;
-inline obf::MenuUI* menuUI = nullptr;
-inline std::vector<Entity*> simCleanupBuffer;
-inline std::vector<std::vector<Point>> ghostTrajectories;
-inline std::vector<sf::Color> ghostTrajectoryColors;
 inline std::vector<obf::Quad> quadtree;
 inline sf::Vector2i mousePos;
 inline sf::Clock actualDeltaClock, deltaClock, globalClock;
@@ -34,7 +23,6 @@ inline std::future<void> inputReader;
 inline std::string serverAddress = "", name = "",
 inputBuffer = "";
 inline int32_t port = 7817;
-inline movement lastControls, controls;
 inline double delta = 1.0 / 60.0,
 	globalTime = 0.0,
 	deltaOverride = -1.0, // disabled when < 0
@@ -60,25 +48,18 @@ inline double delta = 1.0 / 60.0,
 	lastPing = 0.0, lastPredict = 0.0, lastSweep = 0.0, lastAutorestartNotif = -autorestartNotifSpacing, lastAutorestart = 0.0,
 	lastShowFramerate = 0.0,
 	predictingFor = 0.0,
-	drawShiftX = 0.0, drawShiftY = 0.0,
 	ownX = 0.0, ownY = 0.0;
-inline int32_t textCharacterSize = 18,
-nextID = 0,
+inline int32_t nextID = 0,
 predictSteps = (int)(90.0 / predictDelta),
 gen_baseMinPlanets = 10,
 gen_baseMaxPlanets = 15;
 inline size_t messageLimit = 50, usernameLimit = 24;
 inline long long measureFrames = 0, framerate = 0;
-inline size_t trajectoryOffset = 0;
-inline bool headless = false, isServer = false, authority = false, autoConnect = false, debug = false, autorestart = false,
-inputWaiting = false, lockControls = false,
-handledTextBoxSelect = false,
-enableControlLock = false,
-simulating = false,
+inline bool debug = false, autorestart = false,
+inputWaiting = false,
 autorestartRegenned = true,
 printPlanetMerges = true;
-inline int32_t trajectoryAlpha = 160,
-worldBrightness = 32, worldBrightnessMax = 32, worldBrightnessMin = 0;
+inline int32_t worldBrightness = 32, worldBrightnessMax = 32, worldBrightnessMin = 0;
 
 struct Var {
 	uint8_t type;
@@ -98,9 +79,7 @@ inline std::map<std::string, Var> vars {
 	{"predictBaseScale", {Double, &predictBaseScale}},
 	{"predictSteps", {Int32, &predictSteps}},
 
-	{"autoConnect", {Bool, &autoConnect, false}},
 	{"DEBUG", {Bool, &debug, false}},
-	{"enableControlLock", {Bool, &enableControlLock, false}},
 	{"printPlanetMerges", {Bool, &printPlanetMerges, false}},
 
 	{"autorestart", {Bool, &autorestart, false}},
@@ -169,8 +148,6 @@ inline std::map<std::string, Var> vars {
 	{"triangle_secondaryReload", {Double, &Triangle::secondaryReload}},
 	{"triangle_maxSecondaryAngle", {Double, &Triangle::maxSecondaryAngle}},
 	{"triangle_slowRotateSpeed", {Double, &Triangle::slowRotateSpeed}},
-
-	{"trajectoryAlpha", {Int32, &trajectoryAlpha, false}},
 };
 
 inline Entity* trajectoryRef = nullptr;
