@@ -222,10 +222,10 @@ Entity* idLookup(uint32_t id) {
 double Projectile::mass = 5.0e3;
 
 double Missile::mass = 1.0e3,
-Missile::accel = 196.0,
+Missile::accel = 392.0,
 Missile::rotateSpeed = 240.0,
 Missile::maxThrustAngle = 45.0 * degToRad,
-Missile::startingFuel = 80.0,
+Missile::startingFuel = 120.0,
 Missile::leastItimeDecrease = 0.4,
 Missile::fullThrustThreshold = 0.95;
 int Missile::guidanceIterations = 3;
@@ -236,7 +236,7 @@ Triangle::rotateSlowSpeedMult = 2.0 / 3.0,
 Triangle::rotateSpeed = 180.0,
 Triangle::boostCooldown = 12.0,
 Triangle::boostStrength = 320.0,
-Triangle::reload = 8.0,
+Triangle::reload = 40.0,
 Triangle::shootPower = 120.0,
 Triangle::secondaryRegen = 0.3,
 Triangle::secondaryReload = 1.0,
@@ -476,7 +476,7 @@ void Quad::collideAttract(Entity* e, bool doGravity, bool checkCollide) {
 				e->collide(entity, false);
 				entity->collide(e, true);
 				entity->collided.push_back(e->id);
-			} else if (std::abs(dx) - radiusSum < std::abs(dVx) * 2.0 && std::abs(dy) - radiusSum < std::abs(dVy) * 2.0) { // possibly colliding before next frame?
+			} else if ((dVx != 0.0 || dVy != 0.0) && std::abs(dx) - radiusSum < std::abs(dVx) * 2.0 && std::abs(dy) - radiusSum < std::abs(dVy) * 2.0) { // possibly colliding before next frame?
 				double vel = dst(dVx, dVy);
 				double ivel = 1.0 / vel,
 				// calculate closest approach and at what x it will happen to check whether velocity is big enough to reach said closest approach
