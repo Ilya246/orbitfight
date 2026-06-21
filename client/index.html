@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Orbitfight — Web Port</title>
+  <meta name="description" content="A web port of Ilya246/orbitfight, a N-body gravity space combat game.">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #000;
+      font-family: ui-monospace, SFMono-Regular, "Menlo", monospace;
+    }
+    #game-container {
+      position: fixed;
+      inset: 0;
+      background: #000;
+      overflow: hidden;
+    }
+    #game-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: crosshair;
+      outline: none;
+    }
+    #hint-strip {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      padding: 6px 10px;
+      background: rgba(15,15,25,0.7);
+      color: rgba(255,255,255,0.85);
+      font-size: 12px;
+      border-radius: 6px;
+      pointer-events: none;
+      max-width: 60vw;
+      line-height: 1.45;
+    }
+    #conn-indicator {
+      display: none;
+      color: #8f8;
+    }
+    /* Chat bar at the bottom */
+    #chat-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      padding: 4px 8px;
+      background: rgba(0,0,0,0.6);
+      gap: 4px;
+    }
+    #chat-input {
+      flex: 1;
+      padding: 4px 8px;
+      background: rgba(20,20,30,0.9);
+      border: 1px solid rgba(100,100,140,0.5);
+      border-radius: 4px;
+      color: #fff;
+      font-family: inherit;
+      font-size: 13px;
+      outline: none;
+    }
+    #chat-input:focus {
+      border-color: rgba(140,140,200,0.8);
+    }
+    #chat-input::placeholder {
+      color: rgba(255,255,255,0.3);
+    }
+    #chat-send {
+      padding: 4px 12px;
+      background: rgba(60,60,80,0.9);
+      border: 1px solid rgba(140,140,180,0.6);
+      border-radius: 4px;
+      color: #fff;
+      font-family: inherit;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    #chat-send:hover {
+      background: rgba(80,80,100,0.9);
+    }
+    /* Username dialog */
+    .dialog-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 20;
+    }
+    .dialog-box {
+      background: rgba(20,20,30,0.95);
+      border: 1px solid rgba(140,140,200,0.6);
+      border-radius: 8px;
+      padding: 24px;
+      width: 380px;
+      max-width: 90vw;
+      color: #fff;
+      font-size: 14px;
+    }
+    .dialog-box h2 {
+      margin: 0 0 16px;
+      font-size: 18px;
+      color: #ffe165;
+    }
+    .dialog-box p {
+      font-size: 12px;
+      color: #aaa;
+      margin: 0 0 16px;
+      line-height: 1.5;
+    }
+    .dialog-box label {
+      display: block;
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+    .dialog-box input[type="text"] {
+      width: 100%;
+      padding: 6px 8px;
+      background: rgba(40,40,50,0.9);
+      border: 1px solid rgba(100,100,140,0.6);
+      border-radius: 4px;
+      color: #fff;
+      font-family: inherit;
+      font-size: 14px;
+      margin-bottom: 16px;
+    }
+    .dialog-box .buttons {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+    .dialog-box button {
+      padding: 6px 16px;
+      background: rgba(60,60,80,0.9);
+      border: 1px solid rgba(140,140,180,0.6);
+      border-radius: 4px;
+      color: #fff;
+      font-family: inherit;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .dialog-box button.primary {
+      background: rgba(80,120,200,0.8);
+    }
+    #connect-dialog {
+      display: none;
+    }
+    #connect-dialog .desc {
+      font-size: 12px;
+      color: #aaa;
+      margin: 0 0 16px;
+      line-height: 1.5;
+    }
+    #connect-status {
+      font-size: 12px;
+      margin-bottom: 12px;
+      min-height: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <canvas id="game-canvas" tabindex="0"></canvas>
+    <div id="hint-strip">
+      <div><b>Esc</b> menu · <b>H</b> help · <b>Wheel</b> zoom · <b>Enter</b> chat</div>
+      <div><b>WASD</b> fly · <b>Space</b> missile · <b>X</b> railgun</div>
+      <div><b>E</b> boost · <b>Q</b> slow · <b>T</b> target · <b>Tab</b> ref</div>
+      <div id="conn-indicator">● Connected to server</div>
+    </div>
+    <!-- Chat bar -->
+    <div id="chat-bar">
+      <input type="text" id="chat-input" placeholder="Type a message and press Enter to chat..." maxlength="50" autocomplete="off">
+      <button id="chat-send">Send</button>
+    </div>
+    <!-- Username prompt dialog (shown before auto-connect) -->
+    <div id="username-dialog" class="dialog-overlay" style="display:none;">
+      <div class="dialog-box">
+        <h2>Enter Username</h2>
+        <p>A server was detected. Enter your username to connect.</p>
+        <label for="username-input">Username</label>
+        <input type="text" id="username-input" maxlength="24" placeholder="Player" autocomplete="off">
+        <div class="buttons">
+          <button id="username-cancel">Singleplayer</button>
+          <button id="username-confirm" class="primary">Connect</button>
+        </div>
+      </div>
+    </div>
+    <!-- Manual connect dialog -->
+    <div id="connect-dialog" class="dialog-overlay">
+      <div class="dialog-box">
+        <h2>Connect to Server</h2>
+        <div class="desc">
+          Connect to a C++ orbitfight server. Enter the WebSocket URL below.
+          If the game is served over HTTPS, use <code>wss://</code>.
+        </div>
+        <label for="proxy-url">Proxy WebSocket URL</label>
+        <input type="text" id="proxy-url" value="ws://localhost:7818/" placeholder="ws://server.example.com:7818/">
+        <label for="player-name">Player name</label>
+        <input type="text" id="player-name" value="Player" maxlength="24">
+        <div id="connect-status"></div>
+        <div class="buttons">
+          <button id="connect-cancel">Cancel</button>
+          <button id="connect-submit" class="primary">Connect</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="main.js"></script>
+</body>
+</html>
