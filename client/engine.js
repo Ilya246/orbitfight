@@ -3,7 +3,6 @@
 
 import { PI, TAU, degToRad, dst, dst2, rand_f, deltaAngleRad, C, CC } from "./math.js";
 import { Entities, Types } from "./types.js";
-import { PacketReader, PacketWriter } from "./packet.js";
 
 // ============================================================================
 // Global state (ported from globals.hpp)
@@ -991,27 +990,27 @@ export class Triangle extends Entity {
 
                 export function drawTrajectory(ctx, color, traj) {
                     const to = traj.length;
-                    const by = Math.max(1, Math.floor(g_camera.scale / State.predictBaseScale));
-                    if (by > to / 2) return;
                     if (!State.lastTrajectoryRef || to === 0) return;
                     const ref = State.lastTrajectoryRef;
-                    // This function is called from inside the world-scaled ctx (which has
-                    // translate(W/2, H/2) + scale(1/scale, 1/scale) applied). So we pass
-                    // WORLD coordinates to moveTo/lineTo and the ctx transform converts
-                    // them to screen pixels. To get a consistent 1.5px screen-space line
-                    // width despite the 1/scale ctx scale, we multiply lineWidth by scale.
                     ctx.lineWidth = 1.5 * g_camera.scale;
                     ctx.strokeStyle = `rgba(${Math.floor(color[0])},${Math.floor(color[1])},${Math.floor(color[2])},${State.trajectoryAlpha / 255})`;
                     ctx.beginPath();
-                    let drewAny = false;
-                    for (let j = 0; j < to; j += by) {
+                    let pwx = 0;
+                    let pwy = 0;
+                    for (let j = 0; j < to; j++) {
                         const p = traj[j];
                         const wx = ref.x + p.x + State.drawShiftX;
                         const wy = ref.y + p.y + State.drawShiftY;
-                        if (!drewAny) { ctx.moveTo(wx, wy); drewAny = true; }
-                        else ctx.lineTo(wx, wy);
+                        if (j === 0) ctx.moveTo(wx, wy);
+                        else {
+                            const l = dst(wx - pwx, wy - pwy);
+                            ctx.setLineDash([5 * l, 5 * l]);
+                            ctx.lineTo(wx, wy);
+                        }
+                        pwx = wx;
+                        pwy = wy;
                     }
-                    if (drewAny) ctx.stroke();
+                    ctx.stroke();
                 }
 
                 function drawEntityTrajectory(ctx, e) {
