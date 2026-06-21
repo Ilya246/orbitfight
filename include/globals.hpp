@@ -3,22 +3,36 @@
 #include "entities.hpp"
 #include "types.hpp"
 
+#include <chrono>
 #include <future>
 #include <map>
 #include <vector>
 
-#include <SFML/Network.hpp>
-
 namespace obf {
 
-inline sf::TcpSocket* serverSocket = nullptr;
-inline sf::TcpListener* connectListener = nullptr;
+// sf::Clock stand-in
+class Clock {
+public:
+	Clock() : start(std::chrono::steady_clock::now()) {}
+	double restart() {
+		auto now = std::chrono::steady_clock::now();
+		double elapsed = std::chrono::duration<double>(now - start).count();
+		start = now;
+		return elapsed;
+	}
+	double getElapsedTime() const {
+		auto now = std::chrono::steady_clock::now();
+		return std::chrono::duration<double>(now - start).count();
+	}
+private:
+	std::chrono::steady_clock::time_point start;
+};
+
 inline obf::Player* sparePlayer = new obf::Player;
 inline std::vector<Entity*> updateGroup;
 inline std::vector<Player*> playerGroup;
 inline std::vector<obf::Quad> quadtree;
-inline sf::Vector2i mousePos;
-inline sf::Clock actualDeltaClock, deltaClock, globalClock;
+inline Clock actualDeltaClock, deltaClock, globalClock;
 inline std::future<void> inputReader;
 inline std::string serverAddress = "", name = "",
 inputBuffer = "";

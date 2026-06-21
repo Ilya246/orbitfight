@@ -4,26 +4,44 @@
 #include "strings.hpp"
 #include "types.hpp"
 
-#include <SFML/Network.hpp>
-
+#include <limits>
 
 using namespace obf;
 
 namespace obf {
 
-void serverParsePacket(sf::Packet& packet, Player* player) {
+void sendToPlayer(Player* player, Packet& packet) {
+    // [length: 4B, big endian][payload]
+    const auto* payload = static_cast<const uint8_t*>(packet.getData());
+    uint32_t payloadLen = (uint32_t)packet.getDataSize();
+    std::vector<uint8_t> frame(4 + payloadLen);
+    frame[0] = (uint8_t)((payloadLen >> 24) & 0xFF);
+    frame[1] = (uint8_t)((payloadLen >> 16) & 0xFF);
+    frame[2] = (uint8_t)((payloadLen >> 8) & 0xFF);
+    frame[3] = (uint8_t)(payloadLen & 0xFF);
+    std::memcpy(frame.data() + 4, payload, payloadLen);
+    wsSend(player->connId, frame.data(), frame.size());
+}
+
+void broadcastPacket(Packet& packet) {
+    for (Player* p : playerGroup) {
+        sendToPlayer(p, packet);
+    }
+}
+
+void serverParsePacket(Packet& packet, Player* player) {
     uint16_t type;
     packet >> type;
     if (debug) {
-        printf("Got packet %d from %s, size %llu\n", type, player->name().c_str(), packet.getDataSize());
+        printf("Got packet %d from %s, size %zu\n", type, player->name().c_str(), packet.getDataSize());
     }
     switch(type) {
     case Packets::Ping: {
         player->ping = globalTime - player->lastPingSent;
         player->lastPingReceived = globalTime;
-        sf::Packet pingInfoPacket;
+        Packet pingInfoPacket;
         pingInfoPacket << Packets::PingInfo << player->ping;
-        player->tcpSocket.send(pingInfoPacket);
+        sendToPlayer(player, pingInfoPacket);
         break;
     }
     case Packets::Nickname: {
@@ -36,9 +54,9 @@ void serverParsePacket(sf::Packet& packet, Player* player) {
         setupShip(player->entity, false);
         player->entity->player = player;
         player->entity->syncCreation();
-        sf::Packet entityAssign;
+        Packet entityAssign;
         entityAssign << Packets::AssignEntity << player->entity->id;
-        player->tcpSocket.send(entityAssign);
+        sendToPlayer(player, entityAssign);
 
         packet >> player->username;
         stripSpecialChars(player->username);
@@ -54,14 +72,12 @@ void serverParsePacket(sf::Packet& packet, Player* player) {
             (unsigned char) (hash >> 16)
         };
 
-        sf::Packet colorPacket;
+        Packet colorPacket;
         colorPacket << Packets::ColorEntity << player->entity->id << color[0] << color[1] << color[2];
-        sf::Packet namePacket;
+        Packet namePacket;
         namePacket << Packets::Name << player->entity->id << player->username;
-        for (Player* p : playerGroup) {
-            p->tcpSocket.send(colorPacket);
-            p->tcpSocket.send(namePacket);
-        }
+        broadcastPacket(colorPacket);
+        broadcastPacket(namePacket);
         ((Triangle*)player->entity)->name = player->username;
         player->entity->setColor(color[0], color[1], color[2]);
         std::string sendMessage;
@@ -77,9 +93,8 @@ void serverParsePacket(sf::Packet& packet, Player* player) {
         packet >> message;
         if (message.size() <= messageLimit && message.size() > 0) {
             stripSpecialChars(message);
-            sf::Packet chatPacket;
             std::string sendMessage = "";
-            sendMessage.append("[").append(player->name()).append("]: ").append(message); // i probably need to implement an alphanumeric regex here
+            sendMessage.append("[").append(player->name()).append("]: ").append(message);
             relayMessage(sendMessage);
         }
         break;
@@ -106,23 +121,20 @@ void serverParsePacket(sf::Packet& packet, Player* player) {
 }
 
 void relayMessage(const std::string_view& message) {
-    sf::Packet chatPacket;
+    Packet chatPacket;
     printPreferred(message);
     chatPacket << Packets::Chat << (std::string)message;
-    for (Player* p : playerGroup) {
-        p->tcpSocket.send(chatPacket);
-    }
+    broadcastPacket(chatPacket);
 }
 
 void relayVars(Player* player) {
-    sf::Packet packet;
+    Packet packet;
     packet << Packets::VarChange;
     for (const auto& [name, var] : vars) {
         if (!var.synced) continue;
 
         packet << name;
         switch (var.type) {
-            // TODO make this not terrible
             case String: {
                 packet << *(string*)var.value;
                 break;
@@ -147,11 +159,9 @@ void relayVars(Player* player) {
     }
 
     if (!player) {
-        for (Player* p : playerGroup) {
-            p->tcpSocket.send(packet);
-        }
+        broadcastPacket(packet);
     } else {
-        player->tcpSocket.send(packet);
+        sendToPlayer(player, packet);
     }
 }
 

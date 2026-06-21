@@ -4,12 +4,9 @@
 #include "net.hpp"
 #include "types.hpp"
 
-#include <SFML/System/Angle.hpp>
 #include <cmath>
 #include <cstring>
 #include <vector>
-
-#include <SFML/Network.hpp>
 
 namespace obf {
 
@@ -38,12 +35,10 @@ void setupShip(Entity* ship, bool sync) {
 	double vel = sqrt(G * planet->mass / spawnDst);
 	ship->setVelocity(planet->velX + vel * std::cos(spawnAngle + PI / 2.0), planet->velY + vel * std::sin(spawnAngle + PI / 2.0));
 	if (sync) {
-		sf::Packet packet;
+		Packet packet;
 		packet << Packets::SyncEntity;
 		ship->loadSyncPacket(packet);
-		for (Player* p : playerGroup) {
-			p->tcpSocket.send(packet);
-		}
+		broadcastPacket(packet);
 	}
 }
 
@@ -136,12 +131,10 @@ void generateSystem() {
 void fullClear(bool clearTriangles) {
 	worldBrightness = rand_f(worldBrightnessMin, worldBrightnessMax);
 
-	sf::Packet clearPacket;
+	Packet clearPacket;
 	clearPacket << Packets::FullClear;
 	clearPacket << (int32_t)worldBrightness;
-	for (Player* p : playerGroup) {
-		p->tcpSocket.send(clearPacket);
-	}
+	broadcastPacket(clearPacket);
 
 	std::vector<Entity*> triangles;
 	for (Entity* e : updateGroup) {
@@ -242,10 +235,10 @@ Entity::~Entity() noexcept {
 
 void Entity::syncCreation() {
 	for (Player* p : playerGroup) {
-		sf::Packet packet;
+		Packet packet;
 		packet << Packets::CreateEntity;
 		this->loadCreatePacket(packet);
-		p->tcpSocket.send(packet);
+		sendToPlayer(p, packet);
 	}
 }
 
@@ -337,7 +330,7 @@ void Quad::put(uint32_t id, Entity* e, int reclevel) {
 	cur.comy += e->mass * e->y;
 	cur.hasGravitators = cur.hasGravitators || e->gravitates;
 	if (reclevel > 512) {
-		printf("body {ptr %lli, id %i, type %i, x %f, y %f, vx %f, vy %f, radius %f} exceeded quadtree recursion limit.\n", (size_t)e, e->id, e->type(), e->x, e->y, e->velX, e->velY, e->radius);
+		printf("body {ptr %zu, id %i, type %i, x %f, y %f, vx %f, vy %f, radius %f} exceeded quadtree recursion limit.\n", (size_t)e, e->id, e->type(), e->x, e->y, e->velX, e->velY, e->radius);
 		e->active = false;
 		e = nullptr;
 		return;
@@ -492,13 +485,13 @@ Triangle::Triangle() : Entity() {
 	radius = 16.0;
 }
 
-void Triangle::loadCreatePacket(sf::Packet& packet) {
+void Triangle::loadCreatePacket(Packet& packet) {
 	packet << type() << id << x << y << velX << velY << rotation << name;
 	if (debug) {
 		printf("Sent id %d: %g %g %g %g\n", id, x, y, velX, velY);
 	}
 }
-void Triangle::loadSyncPacket(sf::Packet& packet) {
+void Triangle::loadSyncPacket(Packet& packet) {
 	packet << id << x << y << velX << velY << rotation;
 }
 
@@ -610,13 +603,13 @@ CelestialBody::CelestialBody(bool) {
 	}
 }
 
-void CelestialBody::loadCreatePacket(sf::Packet& packet) {
+void CelestialBody::loadCreatePacket(Packet& packet) {
 	packet << type() << radius << id << x << y << velX << velY << mass << star << blackhole << color[0] << color[1] << color[2];
 	if (debug) {
 		printf("Sent id %d: %g %g %g %g\n", id, x, y, velX, velY);
 	}
 }
-void CelestialBody::loadSyncPacket(sf::Packet& packet) {
+void CelestialBody::loadSyncPacket(Packet& packet) {
 	packet << id << x << y << velX << velY;
 }
 
@@ -662,11 +655,9 @@ void CelestialBody::collide(Entity* with, bool specialOnly) {
 			}
 			mass += with->mass;
 			postMassUpdate();
-			sf::Packet collisionPacket;
+			Packet collisionPacket;
 			collisionPacket << Packets::PlanetCollision << id << mass;
-			for (Player* p : playerGroup) {
-				p->tcpSocket.send(collisionPacket);
-			}
+			broadcastPacket(collisionPacket);
 			with->active = false;
 		}
 	}
@@ -720,13 +711,13 @@ void Projectile::collide(Entity* with, bool specialOnly) {
 	}
 }
 
-void Projectile::loadCreatePacket(sf::Packet& packet) {
+void Projectile::loadCreatePacket(Packet& packet) {
 	packet << type() << id << x << y << velX << velY;
 	if (debug) {
 		printf("Sent id %d: %g %g %g %g\n", id, x, y, velX, velY);
 	}
 }
-void Projectile::loadSyncPacket(sf::Packet& packet) {
+void Projectile::loadSyncPacket(Packet& packet) {
 	packet << id << x << y << velX << velY;
 }
 
@@ -789,13 +780,13 @@ void Missile::update2() {
 	Entity::update2();
 }
 
-void Missile::loadCreatePacket(sf::Packet& packet) {
+void Missile::loadCreatePacket(Packet& packet) {
 	packet << type() << id << x << y << velX << velY << rotation << (target == nullptr ? std::numeric_limits<uint32_t>::max() : target->id) << (owner == nullptr ? std::numeric_limits<uint32_t>::max() : owner->id);
 	if (debug) {
 		printf("Sent id %d: %g %g %g %g\n", id, x, y, velX, velY);
 	}
 }
-void Missile::loadSyncPacket(sf::Packet& packet) {
+void Missile::loadSyncPacket(Packet& packet) {
 	packet << id << x << y << velX << velY << rotation << fuel;
 }
 

@@ -47,9 +47,6 @@ void displayMessage(const string& message, bool print) {
 	if (print) {
 		printf("%s\n", message.c_str());
 	}
-	for (MessageDisplayedListener* l : MessageDisplayedListener::listeners) {
-		l->onNewMessage(message);
-	}
 }
 void displayMessage(const string& message) {
 	displayMessage(message, true);
@@ -267,13 +264,11 @@ void parseCommand (const string& command) {
 			printf("Invalid argument.\n");
 			return;
 		}
-		sf::Packet chatPacket;
+		Packet chatPacket;
 		std::string sendMessage;
 		sendMessage.append("Server: ").append(command.substr(4));
 		chatPacket << Packets::Chat << sendMessage;
-		for (Player* p : playerGroup) {
-			p->tcpSocket.send(chatPacket);
-		}
+		broadcastPacket(chatPacket);
 		cout << sendMessage << endl;
 		return;
 	} else if (args[0] == "lookup") {
@@ -319,7 +314,7 @@ void parseCommand (const string& command) {
 		}
 		return;
 	} else if (args[0] == "players") {
-		printf("%llu players:\n", playerGroup.size());
+		printf("%zu players:\n", playerGroup.size());
 		for (Player* p : playerGroup) {
 			cout << "	<" << p->name() << ">" << endl;
 		}

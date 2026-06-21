@@ -1,10 +1,9 @@
 #pragma once
 #include "events.hpp"
+#include "packet.hpp"
 
 #include <limits>
 #include <vector>
-
-#include <SFML/Network.hpp>
 
 namespace obf {
 
@@ -56,8 +55,8 @@ struct Entity : EntityDeleteListener {
 
 	void syncCreation();
 
-	virtual void loadCreatePacket(sf::Packet& packet) = 0;
-	virtual void loadSyncPacket(sf::Packet& packet) = 0;
+	virtual void loadCreatePacket(Packet& packet) = 0;
+	virtual void loadSyncPacket(Packet& packet) = 0;
 
 	void onEntityDelete(Entity* d) override;
 
@@ -100,9 +99,9 @@ Entity* idLookup(uint32_t);
 
 struct Quad {
 	void collideAttract(Entity* e, bool, bool);
-	static void put(uint32_t id, Entity* e, int reclevel); // static in case `this` invalidates itself during vector growth
+	static void put(uint32_t id, Entity* e, int reclevel);
 	Quad& getChild(uint8_t at);
-	static uint32_t getMakeChild(uint32_t id, double at_x, double at_y); // same here
+	static uint32_t getMakeChild(uint32_t id, double at_x, double at_y);
 	uint32_t unstaircasize();
 	void postBuild();
 
@@ -118,8 +117,8 @@ struct Triangle: public Entity {
 
 	void control(movement& cont) override;
 
-	void loadCreatePacket(sf::Packet& packet) override;
-	void loadSyncPacket(sf::Packet& packet) override;
+	void loadCreatePacket(Packet& packet) override;
+	void loadSyncPacket(Packet& packet) override;
 
 	void onEntityDelete(Entity* d) override;
 
@@ -140,8 +139,8 @@ struct CelestialBody: public Entity {
 
 	void collide(Entity* with, bool collideOther) override;
 
-	void loadCreatePacket(sf::Packet& packet) override;
-	void loadSyncPacket(sf::Packet& packet) override;
+	void loadCreatePacket(Packet& packet) override;
+	void loadSyncPacket(Packet& packet) override;
 
 	uint8_t type() override;
 	
@@ -155,8 +154,8 @@ struct Projectile: public Entity {
 
 	void collide(Entity* with, bool collideOther) override;
 
-	void loadCreatePacket(sf::Packet& packet) override;
-	void loadSyncPacket(sf::Packet& packet) override;
+	void loadCreatePacket(Packet& packet) override;
+	void loadSyncPacket(Packet& packet) override;
 
 	uint8_t type() override;
 
@@ -168,8 +167,8 @@ struct Missile: public Projectile {
 
 	void update2() override;
 
-	void loadCreatePacket(sf::Packet& packet) override;
-	void loadSyncPacket(sf::Packet& packet) override;
+	void loadCreatePacket(Packet& packet) override;
+	void loadSyncPacket(Packet& packet) override;
 
 	void onEntityDelete(Entity* d) override;
 
@@ -193,8 +192,8 @@ struct Player {
 
 	Entity* entity = nullptr;
 
-	sf::TcpSocket tcpSocket;
-	std::vector<sf::Packet> tcpQueue;
+	uint64_t connId = 0; // websocket connection ID
+	std::vector<Packet> tcpQueue;
 	std::string username = "unnamed", ip = "";
 	std::string disconnectReason = "";
 	double lastAck = 0.0, lastPingSent = 0.0, lastPingReceived = 0.0, lastSynced = 0.0, lastFullsynced = 0.0, ping = 0.0,
