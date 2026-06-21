@@ -45,7 +45,7 @@ bool is_debugger_present() {
 #endif
 }
 
-int main(int argc, char** argv) {
+int main(int, char**) {
 #ifdef __linux__
     // Crash on NaN or OF if we're under GDB
     if (is_debugger_present()) {

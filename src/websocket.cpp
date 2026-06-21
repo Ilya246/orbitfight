@@ -2,7 +2,6 @@
 #include "globals.hpp"
 #include "net.hpp"
 #include "packet.hpp"
-#include "strings.hpp"
 #include "types.hpp"
 #include "websocket.hpp"
 
@@ -14,7 +13,6 @@
 
 #include <cstdint>
 #include <cstdio>
-#include <memory>
 #include <mutex>
 #include <string>
 #include <unordered_map>
