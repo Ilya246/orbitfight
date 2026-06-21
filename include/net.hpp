@@ -1,9 +1,6 @@
 #pragma once
 #include "entities.hpp"
 #include "packet.hpp"
-#include "websocket.hpp"
-
-#include <cstdint>
 
 namespace obf {
     void serverParsePacket(Packet& packet, Player* player);

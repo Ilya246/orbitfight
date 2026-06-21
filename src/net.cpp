@@ -3,6 +3,7 @@
 #include "net.hpp"
 #include "strings.hpp"
 #include "types.hpp"
+#include "websocket.hpp"
 
 #include <limits>
 
