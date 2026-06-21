@@ -1,6 +1,7 @@
 #pragma once
 #include "entities.hpp"
 #include "packet.hpp"
+#include "websocket.hpp"
 
 #include <cstdint>
 
@@ -15,8 +16,4 @@ namespace obf {
     void relayMessage(const std::string_view&);
 
     void relayVars(Player* player = nullptr);
-
-    // send raw bytes to player - implemented in main.cpp
-    void wsSend(uint64_t connId, const uint8_t* data, size_t len);
-    void wsDisconnect(uint64_t connId);
 }
