@@ -212,6 +212,14 @@ export class Entity {
         this.collided = [];
 
         this.player = null;
+
+        // Rolling prediction cache (only used on CelestialBody instances).
+        // Set by runPrediction() in prediction.js. Shape:
+        //   { refId, stepDt, baseTime, nodes: [{x,y,velX,velY,t}, ...] }
+        this.predCache = null;
+        // When true, update1 reads from predCache instead of integrating.
+        this.predReplaying = false;
+        this.predReplayIndex = 0;
     }
 
     setPosition(x, y) { this.x = x; this.y = y; }
@@ -221,6 +229,16 @@ export class Entity {
     setColor(r, g, b) { this.color = [r, g, b]; }
 
     update1() {
+        if (this.predReplaying) {
+            // State (x/y/velX/velY) already set by the prediction loop via
+            // interpolation from the cache. Just zero accelerations and
+            // clear collided list. We still go into the quadtree so other
+            // entities can attract to us and collide with us.
+            this.aX = 0; this.aY = 0;
+            this.aXO = 0; this.aYO = 0;
+            this.collided = [];
+            return;
+        }
         this.x += this.velX * State.delta + 0.5 * this.aX * State.delta * State.delta;
         this.y += this.velY * State.delta + 0.5 * this.aY * State.delta * State.delta;
         this.rotation += this.rotateVel * State.delta;
@@ -231,11 +249,13 @@ export class Entity {
         this.collided = [];
     }
     update2() {
+        if (this.predReplaying) return;
         if (State.quadtree.length > 0) {
             State.quadtree[0].collideAttract(this, true, true);
         }
     }
     update3() {
+        if (this.predReplaying) return;
         this.velX += 0.5 * (this.aXO + this.aX) * State.delta;
         this.velY += 0.5 * (this.aYO + this.aY) * State.delta;
     }
@@ -279,6 +299,9 @@ export class Entity {
         this.aX = this.resAX; this.aY = this.resAY;
         this.rotation = this.resRotation; this.rotateVel = this.resRotateVel;
         this.mass = this.resMass; this.radius = this.resRadius;
+        // Defensive: never let replay flags leak into the real sim.
+        this.predReplaying = false;
+        this.predReplayIndex = 0;
     }
 
     onEntityDelete(_d) {
@@ -729,6 +752,12 @@ export class Triangle extends Entity {
                     this.mass += other.mass;
                     this.postMassUpdate();
                     other.active = false;
+                    // Mass changed mid-prediction — our cached trajectory is
+                    // now stale. Drop the cache and resume live integration.
+                    if (State.simulating) {
+                        this.predCache = null;
+                        this.predReplaying = false;
+                    }
                 }
             }
         }

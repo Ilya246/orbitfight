@@ -10,6 +10,7 @@ import { MiscInfoUI, HelpUI, MenuUI, ChatPanel } from "./ui.js";
 import { PI, TAU, degToRad, dst, dst2, deltaAngleRad } from "./math.js";
 import { Entities } from "./types.js";
 import { NetworkClient } from "./net.js";
+import { runPrediction as runPredictionImpl } from "./prediction.js";
 
 const DBL_MAX = Number.MAX_VALUE;
 
@@ -554,89 +555,14 @@ export class Game {
     }
 
     runPrediction() {
-        const resDelta = State.delta;
-        const resTime = State.globalTime;
-        const resAuthority = State.authority;
-        // Save controls — control() mutates the struct (sets secondaryfire=0
-        // when out of charge during prediction). Without restoring, the
-        // player's real controls get corrupted, causing the ghost to disappear
-        // on the next frame.
-        const resControls = { ...State.controls };
-        State.authority = true;
-        const retUpdateGroup = State.updateGroup.slice();
-        State.delta = State.predictDelta;
-        State.simulating = true;
-        State.ghostTrajectories = [];
-        State.ghostTrajectoryColors = [];
-        const controlsActive = !!(State.controls.forward || State.controls.backward ||
-            State.controls.turnleft || State.controls.turnright || State.controls.boost ||
-            State.controls.primaryfire || State.controls.secondaryfire || State.controls.slowrotate);
-            let ghost = null;
-            if (State.ownEntity && controlsActive) {
-                ghost = new Triangle();
-                let id = ghost.id;
-                Object.assign(ghost, State.ownEntity);
-                ghost.id = id;
-                ghost.ghost = true;
-                ghost.parent_id = State.ownEntity.id;
-                State.simCleanupBuffer.push(ghost);
-            }
-            for (const e of State.updateGroup) {
-                e.simSetup();
-                e.trajectory = [];
-            }
-            for (let i = 0; i < State.predictSteps; i++) {
-                State.predictingFor = State.predictDelta * State.predictSteps;
-                State.globalTime += State.predictDelta;
-                buildQuadtree();
-                updateEntities();
-                if (State.updateGroup.length > 0 && State.trajectoryRef) {
-                    let x = 0, y = 0, tmass = 0;
-                    for (const e of State.updateGroup) {
-                        x += e.x * e.mass;
-                        y += e.y * e.mass;
-                        tmass += e.mass;
-                    }
-                    if (tmass !== 0 && State.systemCenter) {
-                        x /= State.updateGroup.length * tmass;
-                        y /= State.updateGroup.length * tmass;
-                        State.systemCenter.setPosition(x, y);
-                    }
-                    for (const e of State.updateGroup) {
-                        e.trajectory.push({ x: e.x - State.trajectoryRef.x, y: e.y - State.trajectoryRef.y });
-                    }
-                }
-                if (State.ownEntity) State.ownEntity.control(State.controls);
-                for (let j = 0; j < State.updateGroup.length; j++) {
-                    if (!State.updateGroup[j].active) {
-                        State.updateGroup[j].active = true;
-                        State.updateGroup.splice(j, 1);
-                        j--;
-                    }
-                }
-            }
-            for (const en of State.simCleanupBuffer) {
-                State.ghostTrajectories.push(en.trajectory);
-                State.ghostTrajectoryColors.push([en.color[0] * 0.7, en.color[1] * 0.7, en.color[2] * 0.7]);
-                en.active = false;
-            }
-            State.simCleanupBuffer = [];
-            State.updateGroup = retUpdateGroup;
-            for (const e of State.updateGroup) e.simReset();
-            State.delta = resDelta;
-            State.simulating = false;
-            State.authority = resAuthority;
-            State.controls = resControls; // restore mutated controls
-            State.globalTime = resTime;
-            State.lastPredict = State.globalTime;
-            State.lastTrajectoryRef = State.trajectoryRef;
-        }
+        runPredictionImpl();
+    }
 
-        // -------------------------------------------------------------------------
-        // Render
-        // -------------------------------------------------------------------------
+    // -------------------------------------------------------------------------
+    // Render
+    // -------------------------------------------------------------------------
 
-        render() {
+    render() {
             const ctx = this.ctx;
             const W = g_camera.w;
             const H = g_camera.h;
