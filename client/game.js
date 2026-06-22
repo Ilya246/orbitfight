@@ -115,6 +115,17 @@ export class Game {
         setupShip(own);
         State.authority = true;
         this.menuUI.active = false;
+        this.autoSelectSystemCenter();
+    }
+
+    // By default, predict trajectories against the system center so the
+    // player gets orbit previews without having to press Tab first. The
+    // user can still override this with Tab (or unset by re-selecting the
+    // same body), in which case we don't second-guess them.
+    autoSelectSystemCenter() {
+        if (State.systemCenter) {
+            State.trajectoryRef = State.systemCenter;
+        }
     }
 
     resetSystem() {
@@ -150,6 +161,7 @@ export class Game {
         this.autoFrameCamera();
         this.menuUI.active = false;
         pushMessage("System regenerated.");
+        this.autoSelectSystemCenter();
     }
 
     async connectToServer(proxyUrl, name) {
@@ -164,6 +176,7 @@ export class Game {
             fullClear(true);
             pushMessage(`Connected.`);
             this.menuUI.active = false;
+            this.autoSelectSystemCenter();
         } catch (e) {
             pushMessage(`Could not connect: ${e?.message || e}`);
             this.netClient = null;
@@ -466,7 +479,14 @@ export class Game {
         for (const d of deleted) {
             for (const e of State.updateGroup) e.onEntityDelete(d);
             if (d === State.lastTrajectoryRef) State.lastTrajectoryRef = null;
-            if (d === State.trajectoryRef) State.trajectoryRef = null;
+            if (d === State.trajectoryRef) {
+                // The body the user was predicting against is gone. Fall
+                // back to the system center so the trajectory view is not
+                // lost — the user can still Tab to pick something else or
+                // unset it.
+                State.trajectoryRef = null;
+                this.autoSelectSystemCenter();
+            }
             if (d === State.ownEntity) {
                 if (State.authority) {
                     const tri = new Triangle();
@@ -754,6 +774,14 @@ export class Game {
                 ctx.textAlign = "center";
                 ctx.textBaseline = "bottom";
                 ctx.fillText("Press Tab near a body to predict trajectories", W * 0.5, H - 12);
+                ctx.textAlign = "left";
+                ctx.textBaseline = "top";
+            } else if (State.trajectoryRef === State.systemCenter && !this.menuUI.active && !this.helpUI.active) {
+                ctx.font = `11px ui-monospace, SFMono-Regular, "Menlo", monospace`;
+                ctx.fillStyle = "rgba(255,255,255,0.45)";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "bottom";
+                ctx.fillText("Reference: system center · Tab to change", W * 0.5, H - 12);
                 ctx.textAlign = "left";
                 ctx.textBaseline = "top";
             }

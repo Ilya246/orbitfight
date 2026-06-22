@@ -137,8 +137,9 @@ export class HelpUI {
             "H           — toggle this help",
             "",
             "A new system generates automatically.",
-            "Press Tab near a body to see predicted orbits.",
-            "Trajectories only appear after Tab is pressed.",
+            "Trajectories predict against the system center by default.",
+            "Press Tab near a body to switch the reference body.",
+            "Press Tab on the current reference body to unset it.",
         ];
         ctx.font = `${State.textCharacterSize}px ui-monospace, SFMono-Regular, "Menlo", monospace`;
         ctx.textBaseline = "top";
