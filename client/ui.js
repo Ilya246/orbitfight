@@ -19,11 +19,11 @@ export class MiscInfoUI {
         if (State.lastPing > 0) {
             info += `Ping: ${Math.round(State.lastPing * 1000)}ms\n`;
         }
-        if (State.lastTrajectoryRef) {
-            const distVal = Math.floor(dst(State.ownX - State.lastTrajectoryRef.x, State.ownY - State.lastTrajectoryRef.y));
+        if (State.trajectoryRef) {
+            const distVal = Math.floor(dst(State.ownX - State.trajectoryRef.x, State.ownY - State.trajectoryRef.y));
             info += `Distance: ${distVal}\n`;
             if (State.ownEntity) {
-                const v = Math.floor(dst(State.ownEntity.velX - State.lastTrajectoryRef.velX, State.ownEntity.velY - State.lastTrajectoryRef.velY));
+                const v = Math.floor(dst(State.ownEntity.velX - State.trajectoryRef.velX, State.ownEntity.velY - State.trajectoryRef.velY));
                 info += `Velocity: ${v}\n`;
             }
         }

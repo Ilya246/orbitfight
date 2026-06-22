@@ -10,7 +10,7 @@ import { MiscInfoUI, HelpUI, MenuUI, ChatPanel } from "./ui.js";
 import { PI, TAU, degToRad, dst, dst2, deltaAngleRad } from "./math.js";
 import { Entities } from "./types.js";
 import { NetworkClient } from "./net.js";
-import { runPrediction as runPredictionImpl } from "./prediction.js";
+import { startPrediction, pollPrediction, isPredictionRunning } from "./prediction.js";
 
 const DBL_MAX = Number.MAX_VALUE;
 
@@ -21,7 +21,6 @@ export class Game {
         if (!ctx) throw new Error("2D canvas context not available");
         this.ctx = ctx;
         this.raf = 0;
-        this.lastFrameTime = 0;
         this.miscUI = new MiscInfoUI();
         this.helpUI = new HelpUI();
         this.menuUI = new MenuUI();
@@ -32,8 +31,6 @@ export class Game {
         this.mouseDown = false;
 
         this.deltaClock = 0;
-        this.globalClock = 0;
-        this.actualDeltaClock = 0;
         this.lastShowFramerate = 0;
 
         this.loopError = null;
@@ -49,11 +46,13 @@ export class Game {
         this.startFreeplay();
         this.autoFrameCamera();
         this.helpUI.show(8);
-        this.lastFrameTime = performance.now();
-        this.globalClock = this.lastFrameTime;
-        this.actualDeltaClock = this.lastFrameTime;
-        this.deltaClock = this.lastFrameTime;
-        this.loop(this.lastFrameTime);
+        
+        const now = performance.now();
+        this.deltaClock = now;
+        this.lastShowFramerate = now;
+        State.globalTime = 0.0;
+        
+        this.loop(now);
         // Check if we should auto-connect (non-localhost). If so, show the
         // username prompt dialog instead of connecting immediately.
         this.checkAutoConnect();
@@ -136,7 +135,6 @@ export class Game {
         State.ghostTrajectoryColors = [];
         State.quadtree = [];
         State.trajectoryRef = null;
-        State.lastTrajectoryRef = null;
         State.lastPredict = State.globalTime;
         State.lastSweep = State.globalTime;
         State.controls = {
@@ -401,7 +399,6 @@ export class Game {
         }
         if (closest === State.trajectoryRef) {
             State.trajectoryRef = null;
-            State.lastTrajectoryRef = null;
         } else if (closest) {
             State.trajectoryRef = closest;
             pushMessage(`Selected entity id ${closest.id} as reference body`);
@@ -479,7 +476,6 @@ export class Game {
         }
         for (const d of deleted) {
             for (const e of State.updateGroup) e.onEntityDelete(d);
-            if (d === State.lastTrajectoryRef) State.lastTrajectoryRef = null;
             if (d === State.trajectoryRef) {
                 // The body the user was predicting against is gone. Fall
                 // back to the system center so the trajectory view is not
@@ -505,8 +501,17 @@ export class Game {
             }
         }
 
-        if (State.globalTime - State.lastPredict > State.predictSpacing && State.trajectoryRef) {
-            this.runPrediction();
+        // Prediction runs continuously in a Web Worker (or time-sliced on
+        // the main thread as fallback). Each frame we:
+        //   1. Poll for completed predictions and apply results.
+        //   2. If no prediction is running, start a new one immediately.
+        // This replaces the old predictSpacing timer — prediction is always
+        // running, but on a separate thread so it doesn't cause stutter.
+        if (pollPrediction()) {
+            // A prediction just completed; trajectories are now updated.
+        }
+        if (!isPredictionRunning() && State.trajectoryRef) {
+            startPrediction();
         }
 
         buildQuadtree();
@@ -538,24 +543,34 @@ export class Game {
         }
 
         const now = performance.now();
-        State.delta = (now - this.deltaClock) / 1000.0;
+        let dt = (now - this.deltaClock) / 1000.0;
         this.deltaClock = now;
+
         State.measureFrames++;
-        if (State.globalTime > this.lastShowFramerate + 1.0) {
-            this.lastShowFramerate = State.globalTime;
+        if (now - this.lastShowFramerate >= 1000.0) {
             State.framerate = State.measureFrames;
             State.measureFrames = 0;
+            this.lastShowFramerate = now;
         }
-        const actualDelta = (now - this.actualDeltaClock) / 1000.0;
-        this.actualDeltaClock = now;
-        if (State.deltaOverride > 0.0) State.delta = State.deltaOverride;
-        else State.delta *= State.timescale;
-        State.delta = Math.min(State.delta, 1.0 / 15.0);
-        State.globalTime = (now - this.globalClock) / 1000.0;
+
+        if (State.deltaOverride > 0.0) {
+            dt = State.deltaOverride;
+        } else {
+            dt *= State.timescale;
+        }
+        
+        dt = Math.min(dt, 1.0 / 15.0);
+        State.delta = dt;
+        State.globalTime += dt;
     }
 
+    // Prediction is now handled by the prediction coordinator (worker-based).
+    // See step() for the polling/starting logic. This method is kept for
+    // any external callers but is a no-op.
     runPrediction() {
-        runPredictionImpl();
+        if (!isPredictionRunning() && State.trajectoryRef) {
+            startPrediction();
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -596,9 +611,9 @@ export class Game {
             const w2sX = (wx) => W * 0.5 + (wx - State.ownX) / scale;
             const w2sY = (wy) => H * 0.5 + (wy - State.ownY) / scale;
 
-            if (State.lastTrajectoryRef) {
-                const r = Math.max(5, State.lastTrajectoryRef.radius / scale);
-                drawPolygon(ctx, w2sX(State.lastTrajectoryRef.x), w2sY(State.lastTrajectoryRef.y), r, 4, 0, null, "rgba(255,255,64,1)", 1);
+            if (State.trajectoryRef) {
+                const r = Math.max(5, State.trajectoryRef.radius / scale);
+                drawPolygon(ctx, w2sX(State.trajectoryRef.x), w2sY(State.trajectoryRef.y), r, 4, 0, null, "rgba(255,255,64,1)", 1);
             }
             if (State.ownEntity && State.ownEntity.target) {
                 const target = State.ownEntity.target;
@@ -653,7 +668,7 @@ export class Game {
                     }
                 }
 
-                if (e.type() === Entities.CelestialBody && e.blackhole && e !== State.lastTrajectoryRef) {
+                if (e.type() === Entities.CelestialBody && e.blackhole && e !== State.trajectoryRef) {
                     drawPolygon(ctx, uiX, uiY, 5, 4, 0, null, "rgba(255,0,0,0.8)", 1);
                 }
             }
