@@ -21,6 +21,11 @@ On screenshot: missile fight between ships orbiting different planets
 - Spacebar - fire
 - T - target body closest to cursor
 - Tab - set/change/unset reference body to predict trajectories against
+- M - place a maneuver node on the trajectory near the cursor (requires trajectory prediction active)
+- Shift+N - clear all maneuver nodes
+
+# Maneuver Scheduler
+When trajectory prediction is active (press Tab near a body), press M to place a KSP-style maneuver node on your predicted trajectory. Each node has a button panel for setting the burn orientation (prograde, retrograde, normal, antinormal, radial in/out, or manual toward mouse). Scroll the wheel over a node to adjust its delta-V. Toggle Auto to have your ship automatically execute the burn when it reaches the node — this setting carries over as the default for new nodes. Two ghost trajectories are shown per maneuver chain: a cyan ghost showing the ideal post-burn path (instant delta-V), and a green ghost demonstrating the physical burn (turn + thrust).
 
 # Hosting
 `orbitfight.exe --headless`

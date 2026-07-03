@@ -24,6 +24,7 @@ function setupRealSystem() {
     State.quadtree = [];
     State.simCleanupBuffer = [];
     State.ghostTrajectories = [];
+    State.ghostTrajectoryStarts = [];
     State.ghostTrajectoryColors = [];
     State.ownEntity = null;
     State.trajectoryRef = null;
@@ -221,6 +222,7 @@ describe("prediction — fallback path", () => {
         startPrediction();
         pollPrediction();
         assert.ok(Array.isArray(State.ghostTrajectories));
+        assert.ok(Array.isArray(State.ghostTrajectoryStarts));
         assert.ok(Array.isArray(State.ghostTrajectoryColors));
     });
 

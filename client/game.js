@@ -11,6 +11,12 @@ import { PI, TAU, degToRad, dst, dst2, deltaAngleRad } from "./math.js";
 import { Entities } from "./types.js";
 import { NetworkClient } from "./net.js";
 import { startPrediction, pollPrediction, isPredictionRunning } from "./prediction.js";
+import {
+    ManeuverScheduler, ManeuverNode, ManeuverOrientation,
+    findClosestTrajectoryIndexDrawn, resolveRefBody,
+    getManeuverPanelPos, getManeuverButtons,
+    hitTestManeuverButtons,
+} from "./maneuver.js";
 
 const DBL_MAX = Number.MAX_VALUE;
 
@@ -36,6 +42,15 @@ export class Game {
         this.loopError = null;
         this.errorCount = 0;
         this.wantConnect = false;
+
+        this.maneuverScheduler = new ManeuverScheduler();
+        State.maneuverScheduler = this.maneuverScheduler;
+        this.maneuverNodeScreenPositions = [];
+        this.maneuverPanelPositions = [];
+        this.frozenPanels = new Map();
+        this.hoveredManeuverNode = null;
+        this.heldManeuverButton = null;
+        this.heldButtonTimer = 0;
 
         this.handleResize();
     }
@@ -116,6 +131,7 @@ export class Game {
         State.authority = true;
         this.menuUI.active = false;
         this.autoSelectSystemCenter();
+        this.maneuverScheduler.clear();
     }
 
     // By default, predict trajectories against the system center so the
@@ -129,9 +145,11 @@ export class Game {
     }
 
     resetSystem() {
+        this.maneuverScheduler.clear();
         State.simulating = false;
         State.simCleanupBuffer = [];
         State.ghostTrajectories = [];
+        State.ghostTrajectoryStarts = [];
         State.ghostTrajectoryColors = [];
         State.quadtree = [];
         State.trajectoryRef = null;
@@ -254,6 +272,11 @@ export class Game {
             this.pickReferenceBody();
         } else if (k === "KeyQ" && State.ownEntity) {
             State.controls.slowrotate = State.controls.slowrotate ? 0 : 1;
+        } else if (k === "KeyM") {
+            this.placeManeuverNode();
+        } else if (k === "KeyN" && e.shiftKey) {
+            this.maneuverScheduler.clear();
+            pushMessage("Cleared all maneuver nodes.");
         }
     };
 
@@ -265,6 +288,10 @@ export class Game {
         const rect = this.canvas.getBoundingClientRect();
         State.mousePos.x = Math.floor(e.clientX - rect.left);
         State.mousePos.y = Math.floor(e.clientY - rect.top);
+        // Update manual orientation for the active manual node
+        if (this.maneuverScheduler.activeManualNode) {
+            this.updateManualOrientation();
+        }
     };
 
     onMouseDown = (e) => {
@@ -274,15 +301,39 @@ export class Game {
             if (hit) this.onMenuButton(hit.label);
             return;
         }
+        // Check maneuver node buttons first (using pre-computed panel positions)
+        const hit = hitTestManeuverButtons(
+            this.maneuverScheduler,
+            State.mousePos,
+            this.maneuverPanelPositions,
+        );
+        if (hit) {
+            this.onManeuverButton(hit.node, hit.button);
+            return;
+        }
         this.mouseDown = true;
     };
 
     onMouseUp = () => {
         this.mouseDown = false;
+        // Release manual orientation
+        if (this.maneuverScheduler.activeManualNode) {
+            this.maneuverScheduler.activeManualNode = null;
+        }
+        // Release held dv button
+        this.heldManeuverButton = null;
     };
 
     onWheel = (e) => {
         if (this.menuUI.active) return;
+        // If hovering over a maneuver node, adjust its delta-V magnitude
+        if (this.hoveredManeuverNode) {
+            e.preventDefault();
+            const step = e.shiftKey ? 50 : 10;
+            const dir = e.deltaY < 0 ? 1 : -1;
+            this.hoveredManeuverNode.dvMagnitude = Math.max(0, this.hoveredManeuverNode.dvMagnitude + dir * step);
+            return;
+        }
         e.preventDefault();
         const factor = 1.0 + 0.1 * (e.deltaY < 0 ? -1 : 1);
         g_camera.zoom(factor);
@@ -405,6 +456,232 @@ export class Game {
         }
     }
 
+    // -------------------------------------------------------------------------
+    // Maneuver scheduler actions
+    // -------------------------------------------------------------------------
+
+    // Place a maneuver node on the trajectory point closest to the mouse.
+    // Requires trajectory prediction to be active (State.trajectoryRef set).
+    placeManeuverNode() {
+        if (!State.trajectoryRef) {
+            pushMessage("Press Tab near a body first to enable trajectory prediction.");
+            return;
+        }
+        if (!State.ownEntity || !State.ownEntity.trajectory || State.ownEntity.trajectory.length === 0) {
+            pushMessage("No trajectory available yet — wait for prediction.");
+            return;
+        }
+        // Convert mouse to draw-world coordinates. The trajectory is drawn
+        // relative to State.trajectoryRef (see drawTrajectory in engine.js),
+        // so we must search using the drawn (ref-relative) position, not the
+        // absolute world position. Otherwise the wrong trajectory point is
+        // selected when a non-system-center ref body is chosen.
+        const drawX = State.ownX + (State.mousePos.x - g_camera.w * 0.5) * g_camera.scale;
+        const drawY = State.ownY + (State.mousePos.y - g_camera.h * 0.5) * g_camera.scale;
+        const traj = State.ownEntity.trajectory;
+        const ref = State.trajectoryRef;
+        const refTraj = ref ? ref.trajectory : null;
+        const idx = findClosestTrajectoryIndexDrawn(
+            traj, refTraj,
+            ref ? ref.x : 0, ref ? ref.y : 0,
+            drawX, drawY,
+        );
+        if (idx < 0) {
+            pushMessage("Could not find a trajectory point near cursor.");
+            return;
+        }
+        // burnTime = current time + (idx+1) * predictDelta
+        const burnTime = State.globalTime + (idx + 1) * State.predictDelta;
+        const node = new ManeuverNode(burnTime);
+        node.autoExecute = this.maneuverScheduler.defaultAutoExecute;
+        // Anchor the node to a fixed world position so it doesn't teleport
+        // as the trajectory is recomputed each prediction cycle.
+        node.worldX = traj[idx].x;
+        node.worldY = traj[idx].y;
+        // Store the ship's velocity at this trajectory point for a stable
+        // burn-direction arrow.
+        if (idx > 0 && idx < traj.length - 1) {
+            node.initialVelX = (traj[idx + 1].x - traj[idx - 1].x) / (2 * State.predictDelta);
+            node.initialVelY = (traj[idx + 1].y - traj[idx - 1].y) / (2 * State.predictDelta);
+        } else if (idx < traj.length - 1) {
+            node.initialVelX = (traj[idx + 1].x - traj[idx].x) / State.predictDelta;
+            node.initialVelY = (traj[idx + 1].y - traj[idx].y) / State.predictDelta;
+        } else if (idx > 0) {
+            node.initialVelX = (traj[idx].x - traj[idx - 1].x) / State.predictDelta;
+            node.initialVelY = (traj[idx].y - traj[idx - 1].y) / State.predictDelta;
+        }
+        // Remember which ref body this node was created with, so that
+        // prograde/retrograde/radial directions are computed relative to
+        // the correct body even if the player later switches ref bodies.
+        if (State.trajectoryRef === State.systemCenter) {
+            node.refBodyIsSystemCenter = true;
+            node.refBodyId = null;
+        } else if (State.trajectoryRef) {
+            node.refBodyIsSystemCenter = false;
+            node.refBodyId = State.trajectoryRef.id;
+        }
+        this.maneuverScheduler.addNode(node);
+        pushMessage(`Placed maneuver node #${node.id} (Δv ${node.dvMagnitude}, ${node.orientation}).`);
+    }
+
+    // Handle a click on a maneuver node button.
+    onManeuverButton(node, button) {
+        switch (button.action) {
+            case 'orient':
+                node.orientation = button.value;
+                break;
+            case 'manual':
+                // Start manual orientation — node follows mouse until released
+                this.maneuverScheduler.activeManualNode = node;
+                node.orientation = ManeuverOrientation.Manual;
+                this.updateManualOrientation();
+                break;
+            case 'dv_up':
+                node.dvMagnitude += 10;
+                this.startHoldingButton(node, button.action);
+                break;
+            case 'dv_down':
+                node.dvMagnitude = Math.max(0, node.dvMagnitude - 10);
+                this.startHoldingButton(node, button.action);
+                break;
+            case 'dv_up_large':
+                node.dvMagnitude += 50;
+                this.startHoldingButton(node, button.action);
+                break;
+            case 'dv_down_large':
+                node.dvMagnitude = Math.max(0, node.dvMagnitude - 50);
+                this.startHoldingButton(node, button.action);
+                break;
+            case 'toggle_auto':
+                node.autoExecute = !node.autoExecute;
+                this.maneuverScheduler.defaultAutoExecute = node.autoExecute;
+                pushMessage(`Auto-execute ${node.autoExecute ? 'ON' : 'OFF'} (default for new nodes).`);
+                break;
+            case 'delete':
+                this.maneuverScheduler.removeNode(node);
+                break;
+        }
+    }
+
+    // Start holding a dv button for repeat adjustment.
+    startHoldingButton(node, action) {
+        this.heldManeuverButton = { node, action };
+        this.heldButtonTimer = 0;
+    }
+
+    // Process held button repeat (called from step).
+    processHeldManeuverButton(dt) {
+        if (!this.heldManeuverButton) return;
+        const { node, action } = this.heldManeuverButton;
+        // Stop if node was deleted
+        if (!this.maneuverScheduler.nodes.includes(node)) {
+            this.heldManeuverButton = null;
+            return;
+        }
+        this.heldButtonTimer += dt * 1000; // ms
+        if (this.heldButtonTimer >= 80) {
+            this.heldButtonTimer = 0;
+            switch (action) {
+                case 'dv_up':         node.dvMagnitude += 10; break;
+                case 'dv_down':       node.dvMagnitude = Math.max(0, node.dvMagnitude - 10); break;
+                case 'dv_up_large':   node.dvMagnitude += 50; break;
+                case 'dv_down_large': node.dvMagnitude = Math.max(0, node.dvMagnitude - 50); break;
+            }
+        }
+    }
+
+    // Update the manual orientation angle based on mouse position relative
+    // to the active manual node's screen position.
+    updateManualOrientation() {
+        const node = this.maneuverScheduler.activeManualNode;
+        if (!node) return;
+        // Find the node's screen position
+        const idx = this.maneuverScheduler.nodes.indexOf(node);
+        if (idx < 0 || !this.maneuverNodeScreenPositions[idx]) return;
+        const pos = this.maneuverNodeScreenPositions[idx];
+        const dx = State.mousePos.x - pos.x;
+        const dy = State.mousePos.y - pos.y;
+        if (dx === 0 && dy === 0) return;
+        node.manualAngle = Math.atan2(dy, dx);
+    }
+
+    // Apply auto-execute: if a maneuver node's burn time has arrived and
+    // auto-execute is on, override the ship's controls to perform the burn.
+    // Called at the start of step(), before controls are sent to the server.
+    applyManeuverAutoExecute() {
+        if (!State.ownEntity) {
+            this.maneuverScheduler.activeBurnNode = null;
+            return;
+        }
+        // Cancel burn if the node was removed
+        if (this.maneuverScheduler.activeBurnNode &&
+            !this.maneuverScheduler.nodes.includes(this.maneuverScheduler.activeBurnNode)) {
+            this.maneuverScheduler.activeBurnNode = null;
+        }
+        // Abort auto-execute if the player presses any manual movement control.
+        // We check State.controls which was just populated by
+        // readKeyboardIntoControls() from the raw keyboard state.
+        if (this.maneuverScheduler.activeBurnNode) {
+            const anyManualControl = State.controls.forward || State.controls.backward ||
+                State.controls.turnleft || State.controls.turnright || State.controls.boost ||
+                State.controls.primaryfire || State.controls.secondaryfire;
+            if (anyManualControl) {
+                const node = this.maneuverScheduler.activeBurnNode;
+                node.autoExecute = false;
+                this.maneuverScheduler.activeBurnNode = null;
+                pushMessage(`Maneuver #${node.id} auto-execute aborted by manual control.`);
+                return;
+            }
+        }
+        // Start a new burn if it's time
+        if (!this.maneuverScheduler.activeBurnNode) {
+            for (const node of this.maneuverScheduler.getSortedNodes()) {
+                if (!node.autoExecute) continue;
+                const burnDuration = node.dvMagnitude / Triangle.accel;
+                const burnStartTime = node.burnTime - burnDuration / 2;
+                if (State.globalTime >= burnStartTime) {
+                    node.startVelX = State.ownEntity.velX;
+                    node.startVelY = State.ownEntity.velY;
+                    node.burnHeading = node.computeHeading(State.ownEntity, resolveRefBody(node));
+                    this.maneuverScheduler.activeBurnNode = node;
+                    break;
+                }
+            }
+        }
+        // If burning, override controls
+        if (this.maneuverScheduler.activeBurnNode) {
+            const node = this.maneuverScheduler.activeBurnNode;
+            const ship = State.ownEntity;
+            const angleDiff = deltaAngleRad(ship.rotation * degToRad, node.burnHeading);
+            // Zero out all controls first — no slowrotate so the ship can
+            // rotate at full speed to align with the burn heading.
+            State.controls.forward = 0;
+            State.controls.backward = 0;
+            State.controls.turnleft = 0;
+            State.controls.turnright = 0;
+            State.controls.boost = 0;
+            State.controls.slowrotate = 0;
+            State.controls.primaryfire = 0;
+            State.controls.secondaryfire = 0;
+            if (Math.abs(angleDiff) > 0.02) {
+                if (angleDiff > 0) State.controls.turnright = 1;
+                else State.controls.turnleft = 1;
+            } else {
+                State.controls.forward = 1;
+                // Accumulate actual thrust delta-V for completion check.
+                // This accounts for rotation time and is not affected by
+                // gravity, so large burns always complete.
+                node.burnDVApplied += Triangle.accel * State.delta;
+            }
+            // Check if burn is complete (enough thrust delta-V applied)
+            if (node.burnDVApplied >= node.dvMagnitude) {
+                this.maneuverScheduler.removeNode(node);
+                this.maneuverScheduler.activeBurnNode = null;
+                pushMessage(`Maneuver #${node.id} executed.`);
+            }
+        }
+    }
+
     readKeyboardIntoControls() {
         if (this.menuUI.active) {
             State.controls.forward = 0;
@@ -445,6 +722,15 @@ export class Game {
     };
 
     step() {
+        // Apply maneuver auto-execute BEFORE controls are sent to server,
+        // so that burn overrides are communicated in multiplayer too.
+        this.applyManeuverAutoExecute();
+        // Clean up nodes whose burn time is far in the past (missed burns).
+        this.maneuverScheduler.cleanupPastNodes(State.globalTime);
+
+        // Process held maneuver dv buttons (hold-to-repeat)
+        this.processHeldManeuverButton(State.delta);
+
         const online = !!this.netClient && State.serverSocket !== null;
 
         if (online) {
@@ -525,8 +811,8 @@ export class Game {
                 tmass += e.mass;
             }
             if (tmass !== 0 && State.systemCenter) {
-                x /= State.updateGroup.length * tmass;
-                y /= State.updateGroup.length * tmass;
+                x /= tmass;
+                y /= tmass;
                 State.systemCenter.setPosition(x, y);
             }
         }
@@ -597,7 +883,7 @@ export class Game {
             ctx.scale(1 / g_camera.scale, 1 / g_camera.scale);
 
             for (let i = 0; i < State.ghostTrajectories.length; i++) {
-                drawTrajectory(ctx, State.ghostTrajectoryColors[i], State.ghostTrajectories[i]);
+                drawTrajectory(ctx, State.ghostTrajectoryColors[i], State.ghostTrajectories[i], State.ghostTrajectoryStarts[i]);
             }
 
             for (const e of State.updateGroup) {
@@ -704,6 +990,9 @@ export class Game {
                 ctx.fill();
             }
 
+            // Maneuver nodes and their button panels
+            this.drawManeuverUI(ctx, W, H, scale, w2sX, w2sY);
+
             this.miscUI.update(ctx);
             this.chatPanel.update(ctx);
             this.helpUI.update(ctx);
@@ -738,6 +1027,239 @@ export class Game {
                 ctx.textAlign = "left";
                 ctx.textBaseline = "top";
                 this.wrapText(ctx, "Loop error: " + this.loopError, 30, 30, W - 60);
+            }
+        }
+
+        // Check whether the mouse cursor is inside a panel rectangle.
+        isMouseInPanel(panel) {
+            return State.mousePos.x >= panel.x && State.mousePos.x <= panel.x + panel.w &&
+                   State.mousePos.y >= panel.y && State.mousePos.y <= panel.y + panel.h;
+        }
+
+        // Draw maneuver nodes on the trajectory and their button panels.
+        drawManeuverUI(ctx, W, H, scale, w2sX, w2sY) {
+            const nodes = this.maneuverScheduler.nodes;
+            this.hoveredManeuverNode = null;
+
+            // Clean up frozen panels for deleted nodes
+            const nodeIds = new Set(nodes.map(n => n.id));
+            for (const id of this.frozenPanels.keys()) {
+                if (!nodeIds.has(id)) this.frozenPanels.delete(id);
+            }
+
+            // Snap each node to the trajectory point matching its burnTime.
+            // We find the index by TIME (not spatial proximity): as the ship
+            // moves forward, the trajectory moves with it, so the same world
+            // position stays at the same index. Using time-based indexing
+            // ensures the index decreases as currentTime advances, so the
+            // node actually approaches the present and gets executed.
+            // Skip nodes that are being actively burned.
+            const traj = State.ownEntity ? State.ownEntity.trajectory : null;
+            const predictDelta = State.predictDelta;
+            const currentTime = State.globalTime;
+            // The ref body used for DRAWING position (aligns marker with the
+            // trajectory line, which is drawn relative to State.trajectoryRef).
+            const drawRef = State.trajectoryRef;
+            const drawRefTraj = drawRef ? drawRef.trajectory : null;
+            if (traj && traj.length > 0) {
+                for (const node of nodes) {
+                    if (node === this.maneuverScheduler.activeBurnNode) continue;
+                    if (node.burnTime <= currentTime) continue;
+                    // Find trajectory index by time: step i corresponds to
+                    // globalTime = currentTime + (i+1) * predictDelta
+                    const idx = Math.round((node.burnTime - currentTime) / predictDelta) - 1;
+                    if (idx < 0 || idx >= traj.length) continue;
+                    node.worldX = traj[idx].x;
+                    node.worldY = traj[idx].y;
+                    // burnTime stays as-is — it's the source of truth
+                    // Update stored ship velocity for burn heading
+                    if (idx > 0 && idx < traj.length - 1) {
+                        node.initialVelX = (traj[idx + 1].x - traj[idx - 1].x) / (2 * predictDelta);
+                        node.initialVelY = (traj[idx + 1].y - traj[idx - 1].y) / (2 * predictDelta);
+                    } else if (idx < traj.length - 1) {
+                        node.initialVelX = (traj[idx + 1].x - traj[idx].x) / predictDelta;
+                        node.initialVelY = (traj[idx + 1].y - traj[idx].y) / predictDelta;
+                    } else if (idx > 0) {
+                        node.initialVelX = (traj[idx].x - traj[idx - 1].x) / predictDelta;
+                        node.initialVelY = (traj[idx].y - traj[idx - 1].y) / predictDelta;
+                    }
+                    // Update the node's OWN ref body state (for burn heading).
+                    // This is the body the node was created with, which may
+                    // differ from State.trajectoryRef.
+                    let nodeRefTraj = null;
+                    if (node.refBodyIsSystemCenter && State.systemCenter) {
+                        nodeRefTraj = State.systemCenter.trajectory;
+                    } else if (node.refBodyId != null) {
+                        for (const e of State.updateGroup) {
+                            if (e.id === node.refBodyId) { nodeRefTraj = e.trajectory; break; }
+                        }
+                    }
+                    if (nodeRefTraj && idx < nodeRefTraj.length) {
+                        node.refX = nodeRefTraj[idx].x;
+                        node.refY = nodeRefTraj[idx].y;
+                        if (idx > 0 && idx < nodeRefTraj.length - 1) {
+                            node.refVelX = (nodeRefTraj[idx + 1].x - nodeRefTraj[idx - 1].x) / (2 * predictDelta);
+                            node.refVelY = (nodeRefTraj[idx + 1].y - nodeRefTraj[idx - 1].y) / (2 * predictDelta);
+                        } else if (idx < nodeRefTraj.length - 1) {
+                            node.refVelX = (nodeRefTraj[idx + 1].x - nodeRefTraj[idx].x) / predictDelta;
+                            node.refVelY = (nodeRefTraj[idx + 1].y - nodeRefTraj[idx].y) / predictDelta;
+                        } else if (idx > 0) {
+                            node.refVelX = (nodeRefTraj[idx].x - nodeRefTraj[idx - 1].x) / predictDelta;
+                            node.refVelY = (nodeRefTraj[idx].y - nodeRefTraj[idx - 1].y) / predictDelta;
+                        }
+                    }
+                }
+            }
+
+            // ---- Pass 1: compute screen positions and panel positions ----
+            // The trajectory line is drawn relative to State.trajectoryRef
+            // (see drawTrajectory in engine.js). To make the node marker
+            // align with the line, we apply the same ref-body transform:
+            //   screen_world = ref.x + (node.worldX - refTraj[idx].x)
+            const screenPositions = [];
+            const panelPositions = [];
+
+            for (let i = 0; i < nodes.length; i++) {
+                const node = nodes[i];
+                let drawWorldX = node.worldX;
+                let drawWorldY = node.worldY;
+                if (drawRef && drawRefTraj && drawRefTraj.length > 0) {
+                    const idx = Math.round((node.burnTime - currentTime) / predictDelta) - 1;
+                    if (idx >= 0 && idx < drawRefTraj.length) {
+                        drawWorldX = drawRef.x + (node.worldX - drawRefTraj[idx].x);
+                        drawWorldY = drawRef.y + (node.worldY - drawRefTraj[idx].y);
+                    }
+                }
+                const sx = w2sX(drawWorldX);
+                const sy = w2sY(drawWorldY);
+                screenPositions.push({ x: sx, y: sy });
+
+                // Check frozen panel: if the mouse is still inside the
+                // frozen rectangle, keep using it so the panel doesn't
+                // slide out from under the cursor.
+                const frozen = this.frozenPanels.get(node.id);
+                let panel;
+                if (frozen && this.isMouseInPanel(frozen)) {
+                    panel = frozen;
+                } else {
+                    panel = getManeuverPanelPos(sx, sy, W, H);
+                    this.frozenPanels.delete(node.id);
+                }
+                panelPositions.push(panel);
+            }
+
+            // ---- Pass 2: freeze panels that the mouse just entered ----
+            for (let i = 0; i < nodes.length; i++) {
+                const node = nodes[i];
+                if (this.frozenPanels.has(node.id)) continue;
+                const panel = panelPositions[i];
+                if (this.isMouseInPanel(panel)) {
+                    this.frozenPanels.set(node.id, { ...panel });
+                }
+            }
+
+            this.maneuverNodeScreenPositions = screenPositions;
+            this.maneuverPanelPositions = panelPositions;
+
+            // ---- Pass 3: draw everything ----
+
+            for (let i = 0; i < nodes.length; i++) {
+                const node = nodes[i];
+                const pos = screenPositions[i];
+                if (!pos) continue;
+                const sx = pos.x;
+                const sy = pos.y;
+
+                // Check if mouse is hovering near this node (for scroll-wheel Δv)
+                const mouseDist = dst(State.mousePos.x - sx, State.mousePos.y - sy);
+                if (mouseDist < 20) {
+                    this.hoveredManeuverNode = node;
+                }
+
+                // Draw the node marker — a small diamond
+                const isAuto = node.autoExecute;
+                const markerColor = isAuto ? "rgba(255,200,80,1)" : "rgba(200,220,255,1)";
+                drawPolygon(ctx, sx, sy, 6, 4, Math.PI / 4, null, markerColor, 2);
+
+                // Draw the burn direction arrow using the stored ship and ref
+                // body velocity at the node's trajectory step. The ref body
+                // is the one the node was created with (node.refBodyId).
+                const shipState = { x: node.worldX, y: node.worldY, velX: node.initialVelX, velY: node.initialVelY };
+                const refState = { x: node.refX, y: node.refY, velX: node.refVelX, velY: node.refVelY };
+                const heading = node.computeHeading(shipState, refState);
+                const arrowLen = Math.min(30, 10 + node.dvMagnitude * 0.3);
+                const ax = sx + Math.cos(heading) * arrowLen;
+                const ay = sy + Math.sin(heading) * arrowLen;
+                ctx.strokeStyle = markerColor;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(sx, sy);
+                ctx.lineTo(ax, ay);
+                ctx.stroke();
+                // Arrowhead
+                const headAngle = 0.4;
+                ctx.beginPath();
+                ctx.moveTo(ax, ay);
+                ctx.lineTo(ax - Math.cos(heading - headAngle) * 6, ay - Math.sin(heading - headAngle) * 6);
+                ctx.moveTo(ax, ay);
+                ctx.lineTo(ax - Math.cos(heading + headAngle) * 6, ay - Math.sin(heading + headAngle) * 6);
+                ctx.stroke();
+
+                // Node label
+                ctx.font = `10px ui-monospace, SFMono-Regular, "Menlo", monospace`;
+                ctx.fillStyle = "rgba(255,255,255,0.9)";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "bottom";
+                ctx.fillText(`#${node.id} Δv${Math.round(node.dvMagnitude)}`, sx, sy - 10);
+                ctx.textAlign = "left";
+                ctx.textBaseline = "top";
+
+                // Draw the button panel (using frozen or natural position)
+                const panel = panelPositions[i];
+                ctx.fillStyle = "rgba(15,15,25,0.88)";
+                ctx.strokeStyle = "rgba(140,140,200,0.7)";
+                ctx.lineWidth = 1;
+                ctx.fillRect(panel.x, panel.y, panel.w, panel.h);
+                ctx.strokeRect(panel.x, panel.y, panel.w, panel.h);
+
+                const btns = getManeuverButtons(node, panel.x, panel.y);
+                for (const b of btns) {
+                    const isActive = (b.action === 'orient' && b.value === node.orientation);
+                    const isHovered = (State.mousePos.x >= b.x && State.mousePos.x <= b.x + b.w &&
+                                       State.mousePos.y >= b.y && State.mousePos.y <= b.y + b.h);
+                    if (isActive) {
+                        ctx.fillStyle = "rgba(80,160,220,0.9)";
+                    } else if (isHovered) {
+                        ctx.fillStyle = "rgba(80,80,110,0.9)";
+                    } else {
+                        ctx.fillStyle = "rgba(50,50,70,0.9)";
+                    }
+                    ctx.strokeStyle = "rgba(160,160,200,0.6)";
+                    ctx.lineWidth = 1;
+                    ctx.fillRect(b.x, b.y, b.w, b.h);
+                    ctx.strokeRect(b.x, b.y, b.w, b.h);
+                    ctx.fillStyle = "rgba(255,255,255,0.95)";
+                    ctx.font = `9px ui-monospace, SFMono-Regular, "Menlo", monospace`;
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "middle";
+                    ctx.fillText(b.label, b.x + b.w / 2, b.y + b.h / 2 + 0.5);
+                }
+                ctx.textAlign = "left";
+                ctx.textBaseline = "top";
+            }
+
+            // Draw active burn indicator
+            if (this.maneuverScheduler.activeBurnNode) {
+                const node = this.maneuverScheduler.activeBurnNode;
+                const idx = nodes.indexOf(node);
+                if (idx >= 0 && screenPositions[idx]) {
+                    const pos = screenPositions[idx];
+                    ctx.strokeStyle = "rgba(255,200,80,0.8)";
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(pos.x, pos.y, 10, 0, TAU);
+                    ctx.stroke();
+                }
             }
         }
 

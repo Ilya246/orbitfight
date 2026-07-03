@@ -34,6 +34,7 @@ export const State = {
     updateGroup: [],
     simCleanupBuffer: [],
     ghostTrajectories: [],
+    ghostTrajectoryStarts: [],
     ghostTrajectoryColors: [],
     quadtree: [],
 
@@ -81,8 +82,8 @@ export const State = {
     sweepThreshold: 3.0e6 * 3.0e6,
 
     predictSpacing: 0.25,
-    predictDelta: 0.4,
-    predictBaseScale: 200.0,
+    predictDelta: 0.1,
+    predictBaseScale: 400.0,
 
     G: 6.67e-11,
     gravityAccuracy: 5.0,
@@ -100,7 +101,7 @@ export const State = {
 
     textCharacterSize: 18,
     nextID: 0,
-    predictSteps: Math.floor(90.0 / 0.4),
+    predictSteps: Math.floor(120.0 / 0.1),
     gen_baseMinPlanets: 10,
     gen_baseMaxPlanets: 15,
 
@@ -125,6 +126,8 @@ export const State = {
 
     trajectoryRef: null,
     systemCenter: null,
+
+    maneuverScheduler: null,
 
     kills: 0,
 
@@ -208,6 +211,7 @@ export class Entity {
         this.parent_id = Number.MAX_SAFE_INTEGER;
 
         this.trajectory = [];
+        this.trajectoryStartTime = null;
         this.collided = [];
 
         this.player = null;
@@ -987,12 +991,12 @@ export class Triangle extends Entity {
                     return dV / time;
                 }
 
-                export function drawTrajectory(ctx, color, traj) {
+                export function drawTrajectory(ctx, color, traj, offs) {
                     const to = traj.length;
                     if (!State.trajectoryRef || to === 0) return;
                     const ref = State.trajectoryRef;
                     const refTraj = ref.trajectory;
-                    
+
                     if (!refTraj || refTraj.length === 0) return;
                     const drawLen = Math.min(to, refTraj.length);
                     if (drawLen === 0) return;
@@ -1002,13 +1006,16 @@ export class Triangle extends Entity {
                     ctx.beginPath();
                     let pwx = 0;
                     let pwy = 0;
+                    let first = true;
                     for (let j = 0; j < drawLen; j++) {
                         const p = traj[j];
-                        const rp = refTraj[j];
+                        const rp = refTraj[j - ref.trajectoryStartTime + offs];
                         const wx = ref.x + (p.x - rp.x) + State.drawShiftX;
                         const wy = ref.y + (p.y - rp.y) + State.drawShiftY;
-                        if (j === 0) ctx.moveTo(wx, wy);
-                        else {
+                        if (first) {
+                            ctx.moveTo(wx, wy);
+                            first = false;
+                        } else {
                             const l = dst(wx - pwx, wy - pwy);
                             ctx.setLineDash([5 * l, 5 * l]);
                             ctx.lineTo(wx, wy);
@@ -1022,7 +1029,7 @@ export class Triangle extends Entity {
                 function drawEntityTrajectory(ctx, e) {
                     let color = [e.color[0], e.color[1], e.color[2]];
                     if (e instanceof CelestialBody && e.blackhole) color = [255, 255, 255];
-                    drawTrajectory(ctx, color, e.trajectory);
+                    drawTrajectory(ctx, color, e.trajectory, e.trajectoryStartTime);
                 }
 
                 // Draw an N-pointed regular polygon centered at (x,y) with rotation (radians).
