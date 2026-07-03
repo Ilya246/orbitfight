@@ -13,7 +13,8 @@ import { NetworkClient } from "./net.js";
 import { startPrediction, pollPrediction, isPredictionRunning } from "./prediction.js";
 import {
     ManeuverScheduler, ManeuverNode, ManeuverOrientation,
-    findClosestTrajectoryIndexDrawn, resolveRefBody,
+    findClosestTrajectoryIndexDrawn, findNodeTrajectory, findNodeRefTrajectory,
+    estimateVelocityAt, resolveRefBody,
     updateManeuverExecution, maneuverColor,
     getManeuverPanelPos, getManeuverButtons,
     hitTestManeuverButtons,
@@ -462,7 +463,8 @@ export class Game {
     // -------------------------------------------------------------------------
 
     // Place a maneuver node on the trajectory point closest to the mouse.
-    // Requires trajectory prediction to be active (State.trajectoryRef set).
+    // Searches all available trajectories (own + maneuver ghost trajectories)
+    // so nodes can chain onto the planned path. Requires trajectory prediction.
     placeManeuverNode() {
         if (!State.trajectoryRef) {
             pushMessage("Press Tab near a body first to enable trajectory prediction.");
@@ -472,48 +474,58 @@ export class Game {
             pushMessage("No trajectory available yet — wait for prediction.");
             return;
         }
-        // Convert mouse to draw-world coordinates. The trajectory is drawn
-        // relative to State.trajectoryRef (see drawTrajectory in engine.js),
-        // so we must search using the drawn (ref-relative) position, not the
-        // absolute world position. Otherwise the wrong trajectory point is
-        // selected when a non-system-center ref body is chosen.
+        // Convert mouse to draw-world coordinates.
         const drawX = State.ownX + (State.mousePos.x - g_camera.w * 0.5) * g_camera.scale;
         const drawY = State.ownY + (State.mousePos.y - g_camera.h * 0.5) * g_camera.scale;
-        const traj = State.ownEntity.trajectory;
         const ref = State.trajectoryRef;
         const refTraj = ref ? ref.trajectory : null;
-        const idx = findClosestTrajectoryIndexDrawn(
-            traj, refTraj,
-            ref ? ref.x : 0, ref ? ref.y : 0,
-            drawX, drawY,
-        );
-        if (idx < 0) {
+        const refX = ref ? ref.x : 0;
+        const refY = ref ? ref.y : 0;
+
+        // Build candidate trajectories: own + each maneuver ghost.
+        const candidates = [{ traj: State.ownEntity.trajectory, start: 0 }];
+        for (const g of State.maneuverGhostData) {
+            if (g.trajectory && g.trajectory.length > 0) {
+                candidates.push({ traj: g.trajectory, start: g.startIndex || 0 });
+            }
+        }
+
+        let bestD2 = Infinity;
+        let bestIdx = -1;
+        for (const c of candidates) {
+            const len = Math.min(c.traj.length, refTraj ? refTraj.length : c.traj.length);
+            for (let j = 0; j < len; j++) {
+                let px, py;
+                if (refTraj && j < refTraj.length) {
+                    px = refX + (c.traj[j].x - refTraj[j].x);
+                    py = refY + (c.traj[j].y - refTraj[j].y);
+                } else {
+                    px = c.traj[j].x;
+                    py = c.traj[j].y;
+                }
+                const d2 = dst2(px - drawX, py - drawY);
+                if (d2 < bestD2) { bestD2 = d2; bestIdx = j; }
+            }
+        }
+        if (bestIdx < 0) {
             pushMessage("Could not find a trajectory point near cursor.");
             return;
         }
-        // burnTime = current time + (idx+1) * predictDelta
-        const burnTime = State.globalTime + (idx + 1) * State.predictDelta;
+
+        // burnTime from the prediction stamp (when the trajectory was computed)
+        const stamp = State.trajectoryStamp || State.globalTime;
+        let burnTime = stamp + (bestIdx + 1) * State.predictDelta;
+        // Never schedule a burn in the past
+        burnTime = Math.max(burnTime, State.globalTime + State.predictDelta);
+
         const node = new ManeuverNode(burnTime);
         node.autoExecute = this.maneuverScheduler.defaultAutoExecute;
-        // Anchor the node to a fixed world position so it doesn't teleport
-        // as the trajectory is recomputed each prediction cycle.
-        node.worldX = traj[idx].x;
-        node.worldY = traj[idx].y;
-        // Store the ship's velocity at this trajectory point for a stable
-        // burn-direction arrow.
-        if (idx > 0 && idx < traj.length - 1) {
-            node.initialVelX = (traj[idx + 1].x - traj[idx - 1].x) / (2 * State.predictDelta);
-            node.initialVelY = (traj[idx + 1].y - traj[idx - 1].y) / (2 * State.predictDelta);
-        } else if (idx < traj.length - 1) {
-            node.initialVelX = (traj[idx + 1].x - traj[idx].x) / State.predictDelta;
-            node.initialVelY = (traj[idx + 1].y - traj[idx].y) / State.predictDelta;
-        } else if (idx > 0) {
-            node.initialVelX = (traj[idx].x - traj[idx - 1].x) / State.predictDelta;
-            node.initialVelY = (traj[idx].y - traj[idx - 1].y) / State.predictDelta;
-        }
-        // Remember which ref body this node was created with, so that
-        // prograde/retrograde/radial directions are computed relative to
-        // the correct body even if the player later switches ref bodies.
+        node.worldX = State.ownEntity.trajectory[bestIdx].x;
+        node.worldY = State.ownEntity.trajectory[bestIdx].y;
+        const vel = estimateVelocityAt(State.ownEntity.trajectory, bestIdx, State.predictDelta);
+        node.initialVelX = vel.velX;
+        node.initialVelY = vel.velY;
+        // Remember which ref body this node was created with
         if (State.trajectoryRef === State.systemCenter) {
             node.refBodyIsSystemCenter = true;
             node.refBodyId = null;
@@ -538,20 +550,26 @@ export class Game {
                 this.updateManualOrientation();
                 break;
             case 'dv_up':
-                node.dvMagnitude += 10;
-                this.startHoldingButton(node, button.action);
+                this.applyDvStep(node, 10);
+                this.startHoldingButton(node, button.action, 10);
                 break;
             case 'dv_down':
-                node.dvMagnitude = Math.max(0, node.dvMagnitude - 10);
-                this.startHoldingButton(node, button.action);
+                this.applyDvStep(node, -10);
+                this.startHoldingButton(node, button.action, 10);
                 break;
-            case 'dv_up_large':
-                node.dvMagnitude += 50;
-                this.startHoldingButton(node, button.action);
+            case 't_up':
+                this.applyTimeStep(node, 1);
+                this.startHoldingButton(node, button.action, 1);
                 break;
-            case 'dv_down_large':
-                node.dvMagnitude = Math.max(0, node.dvMagnitude - 50);
-                this.startHoldingButton(node, button.action);
+            case 't_down':
+                this.applyTimeStep(node, -1);
+                this.startHoldingButton(node, button.action, 1);
+                break;
+            case 'toggle_freeze':
+                node.frozen = !node.frozen;
+                if (node.frozen) {
+                    node.frozenOffset = Math.max(0, node.burnTime - State.globalTime);
+                }
                 break;
             case 'toggle_auto':
                 node.autoExecute = !node.autoExecute;
@@ -564,29 +582,46 @@ export class Game {
         }
     }
 
-    // Start holding a dv button for repeat adjustment.
-    startHoldingButton(node, action) {
-        this.heldManeuverButton = { node, action };
+    applyDvStep(node, step) {
+        node.dvMagnitude = Math.max(0, node.dvMagnitude + step);
+    }
+
+    applyTimeStep(node, stepSeconds) {
+        if (node.frozen) {
+            node.frozenOffset = Math.max(0, node.frozenOffset + stepSeconds);
+        } else {
+            node.burnTime = Math.max(node.burnTime + stepSeconds, State.globalTime + State.predictDelta);
+        }
+    }
+
+    // Start holding a button for repeat adjustment with ramp-up.
+    // Each consecutive repeat increases the step by baseStep.
+    startHoldingButton(node, action, baseStep) {
+        this.heldManeuverButton = { node, action, baseStep, currentStep: baseStep };
         this.heldButtonTimer = 0;
     }
 
     // Process held button repeat (called from step).
+    // Hold-press spacing is 120ms (50% longer than the old 80ms).
+    // Each repeat ramps up the step by baseStep.
     processHeldManeuverButton(dt) {
         if (!this.heldManeuverButton) return;
-        const { node, action } = this.heldManeuverButton;
+        const { node, action, baseStep } = this.heldManeuverButton;
         // Stop if node was deleted
         if (!this.maneuverScheduler.nodes.includes(node)) {
             this.heldManeuverButton = null;
             return;
         }
         this.heldButtonTimer += dt * 1000; // ms
-        if (this.heldButtonTimer >= 80) {
+        if (this.heldButtonTimer >= 120) {
             this.heldButtonTimer = 0;
+            this.heldManeuverButton.currentStep += baseStep; // ramp up
+            const step = this.heldManeuverButton.currentStep;
             switch (action) {
-                case 'dv_up':         node.dvMagnitude += 10; break;
-                case 'dv_down':       node.dvMagnitude = Math.max(0, node.dvMagnitude - 10); break;
-                case 'dv_up_large':   node.dvMagnitude += 50; break;
-                case 'dv_down_large': node.dvMagnitude = Math.max(0, node.dvMagnitude - 50); break;
+                case 'dv_up':   this.applyDvStep(node, step); break;
+                case 'dv_down': this.applyDvStep(node, -step); break;
+                case 't_up':    this.applyTimeStep(node, step); break;
+                case 't_down':  this.applyTimeStep(node, -step); break;
             }
         }
     }
@@ -987,77 +1022,67 @@ export class Game {
                 if (!nodeIds.has(id)) this.frozenPanels.delete(id);
             }
 
-            // Snap each node to the trajectory point matching its burnTime.
-            // We find the index by TIME (not spatial proximity): as the ship
-            // moves forward, the trajectory moves with it, so the same world
-            // position stays at the same index. Using time-based indexing
-            // ensures the index decreases as currentTime advances, so the
-            // node actually approaches the present and gets executed.
-            // When the node's time is in the past, clamp the index to 0 so
-            // the marker follows the player's current position instead of
-            // floating off. Skip nodes that are being actively burned.
-            const traj = State.ownEntity ? State.ownEntity.trajectory : null;
             const predictDelta = State.predictDelta;
             const currentTime = State.globalTime;
+            const stamp = State.trajectoryStamp || currentTime;
             // The ref body used for DRAWING position (aligns marker with the
             // trajectory line, which is drawn relative to State.trajectoryRef).
             const drawRef = State.trajectoryRef;
             const drawRefTraj = drawRef ? drawRef.trajectory : null;
-            if (traj && traj.length > 0) {
-                for (const node of nodes) {
-                    if (node === this.maneuverScheduler.activeBurnNode) continue;
-                    // Find trajectory index by time: step i corresponds to
-                    // globalTime = currentTime + (i+1) * predictDelta
-                    let idx = Math.round((node.burnTime - currentTime) / predictDelta) - 1;
-                    // Clamp to valid range. When in the past (idx < 0),
-                    // clamp to 0 so the marker follows the player.
-                    if (idx < 0) idx = 0;
-                    if (idx >= traj.length) continue;
-                    node.worldX = traj[idx].x;
-                    node.worldY = traj[idx].y;
-                    // burnTime stays as-is — it's the source of truth
-                    // Update stored ship velocity for burn heading
-                    if (idx > 0 && idx < traj.length - 1) {
-                        node.initialVelX = (traj[idx + 1].x - traj[idx - 1].x) / (2 * predictDelta);
-                        node.initialVelY = (traj[idx + 1].y - traj[idx - 1].y) / (2 * predictDelta);
-                    } else if (idx < traj.length - 1) {
-                        node.initialVelX = (traj[idx + 1].x - traj[idx].x) / predictDelta;
-                        node.initialVelY = (traj[idx + 1].y - traj[idx].y) / predictDelta;
-                    } else if (idx > 0) {
-                        node.initialVelX = (traj[idx].x - traj[idx - 1].x) / predictDelta;
-                        node.initialVelY = (traj[idx].y - traj[idx - 1].y) / predictDelta;
-                    }
-                    // Update the node's OWN ref body state (for burn heading).
-                    let nodeRefTraj = null;
-                    if (node.refBodyIsSystemCenter && State.systemCenter) {
-                        nodeRefTraj = State.systemCenter.trajectory;
-                    } else if (node.refBodyId != null) {
-                        for (const e of State.updateGroup) {
-                            if (e.id === node.refBodyId) { nodeRefTraj = e.trajectory; break; }
-                        }
-                    }
-                    if (nodeRefTraj && idx < nodeRefTraj.length) {
-                        node.refX = nodeRefTraj[idx].x;
-                        node.refY = nodeRefTraj[idx].y;
-                        if (idx > 0 && idx < nodeRefTraj.length - 1) {
-                            node.refVelX = (nodeRefTraj[idx + 1].x - nodeRefTraj[idx - 1].x) / (2 * predictDelta);
-                            node.refVelY = (nodeRefTraj[idx + 1].y - nodeRefTraj[idx - 1].y) / (2 * predictDelta);
-                        } else if (idx < nodeRefTraj.length - 1) {
-                            node.refVelX = (nodeRefTraj[idx + 1].x - nodeRefTraj[idx].x) / predictDelta;
-                            node.refVelY = (nodeRefTraj[idx + 1].y - nodeRefTraj[idx].y) / predictDelta;
-                        } else if (idx > 0) {
-                            node.refVelX = (nodeRefTraj[idx].x - nodeRefTraj[idx - 1].x) / predictDelta;
-                            node.refVelY = (nodeRefTraj[idx].y - nodeRefTraj[idx - 1].y) / predictDelta;
-                        }
-                    }
+
+            // Update frozen nodes: keep them a constant time in the future.
+            for (const node of nodes) {
+                if (node.frozen) {
+                    node.burnTime = currentTime + node.frozenOffset;
+                }
+            }
+
+            // Snap each node to the trajectory point matching its burnTime.
+            // Node k snaps to the ghost trajectory of node k-1 (or the ship's
+            // own trajectory for node 0). This makes the marker sit on the
+            // trajectory it was placed on, not the original trajectory.
+            // When the node's time is in the past, clamp the index to 0 so
+            // the marker follows the player's current position.
+            for (let i = 0; i < nodes.length; i++) {
+                const node = nodes[i];
+                if (node === this.maneuverScheduler.activeBurnNode) continue;
+
+                const nodeTraj = findNodeTrajectory(nodes, i);
+                if (!nodeTraj) continue;
+                const traj = nodeTraj.trajectory;
+                const trajStart = nodeTraj.startIndex;
+
+                // Find trajectory index by time. The trajectory array is
+                // indexed from 0, but the actual prediction step is
+                // trajStart + j. So absolute time for point j is:
+                //   stamp + (trajStart + j + 1) * predictDelta
+                // => j = (burnTime - stamp) / predictDelta - 1 - trajStart
+                let idx = Math.round((node.burnTime - stamp) / predictDelta) - 1 - trajStart;
+                if (idx < 0) idx = 0;
+                if (idx >= traj.length) continue;
+
+                node.worldX = traj[idx].x;
+                node.worldY = traj[idx].y;
+                const vel = estimateVelocityAt(traj, idx, predictDelta);
+                node.initialVelX = vel.velX;
+                node.initialVelY = vel.velY;
+
+                // Update the node's OWN ref body state (for burn heading).
+                const nodeRefTraj = findNodeRefTrajectory(node);
+                if (nodeRefTraj && idx < nodeRefTraj.length) {
+                    node.refX = nodeRefTraj[idx].x;
+                    node.refY = nodeRefTraj[idx].y;
+                    const refVel = estimateVelocityAt(nodeRefTraj, idx, predictDelta);
+                    node.refVelX = refVel.velX;
+                    node.refVelY = refVel.velY;
                 }
             }
 
             // ---- Pass 1: compute screen positions and panel positions ----
-            // The trajectory line is drawn relative to State.trajectoryRef
-            // (see drawTrajectory in engine.js). To make the node marker
-            // align with the line, we apply the same ref-body transform:
-            //   screen_world = ref.x + (node.worldX - refTraj[idx].x)
+            // The trajectory line is drawn relative to State.trajectoryRef.
+            // To make the node marker align with the line, we apply the same
+            // ref-body transform. For ghost trajectories, the ref trajectory
+            // index must be offset by the ghost's startIndex.
             const screenPositions = [];
             const panelPositions = [];
 
@@ -1066,11 +1091,15 @@ export class Game {
                 let drawWorldX = node.worldX;
                 let drawWorldY = node.worldY;
                 if (drawRef && drawRefTraj && drawRefTraj.length > 0) {
-                    let idx = Math.round((node.burnTime - currentTime) / predictDelta) - 1;
+                    const nodeTraj = findNodeTrajectory(nodes, i);
+                    const trajStart = nodeTraj ? nodeTraj.startIndex : 0;
+                    let idx = Math.round((node.burnTime - stamp) / predictDelta) - 1 - trajStart;
                     if (idx < 0) idx = 0;
-                    if (idx >= 0 && idx < drawRefTraj.length) {
-                        drawWorldX = drawRef.x + (node.worldX - drawRefTraj[idx].x);
-                        drawWorldY = drawRef.y + (node.worldY - drawRefTraj[idx].y);
+                    // The ref trajectory index is trajStart + idx
+                    const refIdx = trajStart + idx;
+                    if (refIdx >= 0 && refIdx < drawRefTraj.length) {
+                        drawWorldX = drawRef.x + (node.worldX - drawRefTraj[refIdx].x);
+                        drawWorldY = drawRef.y + (node.worldY - drawRefTraj[refIdx].y);
                     }
                 }
                 const sx = w2sX(drawWorldX);
@@ -1080,10 +1109,10 @@ export class Game {
                 // Check frozen panel: if the mouse is still inside the
                 // frozen rectangle, keep using it so the panel doesn't
                 // slide out from under the cursor.
-                const frozen = this.frozenPanels.get(node.id);
+                const frozenPanel = this.frozenPanels.get(node.id);
                 let panel;
-                if (frozen && this.isMouseInPanel(frozen)) {
-                    panel = frozen;
+                if (frozenPanel && this.isMouseInPanel(frozenPanel)) {
+                    panel = frozenPanel;
                 } else {
                     panel = getManeuverPanelPos(sx, sy, W, H);
                     this.frozenPanels.delete(node.id);
@@ -1172,7 +1201,9 @@ export class Game {
                     [ManeuverOrientation.RadialOut]: "ROUT",
                     [ManeuverOrientation.Manual]: "MAN",
                 }[node.orientation] || "?";
-                const label = `${tLabel} · ${modeLabel} Δv${Math.round(node.dvMagnitude)}${node.autoExecute ? " · auto" : ""}`;
+                let label = `${tLabel} · ${modeLabel} Δv${Math.round(node.dvMagnitude)}`;
+                if (node.autoExecute) label += " · auto";
+                if (node.frozen) label += " · frz";
                 ctx.font = `10px ui-monospace, SFMono-Regular, "Menlo", monospace`;
                 const tw = ctx.measureText(label).width;
                 ctx.fillStyle = "rgba(0,0,0,0.55)";
@@ -1194,7 +1225,8 @@ export class Game {
 
                 const btns = getManeuverButtons(node, panel.x, panel.y);
                 for (const b of btns) {
-                    const isActive = (b.action === 'orient' && b.value === node.orientation);
+                    const isActive = (b.action === 'orient' && b.value === node.orientation) ||
+                                     (b.action === 'toggle_freeze' && node.frozen);
                     const isHovered = (State.mousePos.x >= b.x && State.mousePos.x <= b.x + b.w &&
                                        State.mousePos.y >= b.y && State.mousePos.y <= b.y + b.h);
                     if (isActive) {

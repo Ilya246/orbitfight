@@ -82,6 +82,10 @@ export class ManeuverNode {
         this.refY = 0;
         this.refVelX = 0;
         this.refVelY = 0;
+        // Frozen mode: node stays a constant time in the future. When frozen,
+        // burnTime is updated each frame to currentTime + frozenOffset.
+        this.frozen = false;
+        this.frozenOffset = 0.0;
 
         // Transient state for auto-execution (not serialized)
         this.startVelX = 0;
@@ -127,15 +131,6 @@ export class ManeuverNode {
         }
     }
 
-    // Compute the delta-V vector (dvX, dvY) at the given ship state.
-    computeDeltaV(shipState, refBody) {
-        const heading = this.computeHeading(shipState, refBody);
-        return {
-            x: this.dvMagnitude * Math.cos(heading),
-            y: this.dvMagnitude * Math.sin(heading),
-        };
-    }
-
     serialize() {
         return {
             id: this.id,
@@ -151,6 +146,8 @@ export class ManeuverNode {
             refBodyId: this.refBodyId,
             refBodyIsSystemCenter: this.refBodyIsSystemCenter,
             burnDVApplied: this.burnDVApplied,
+            frozen: this.frozen,
+            frozenOffset: this.frozenOffset,
         };
     }
 
@@ -168,6 +165,8 @@ export class ManeuverNode {
         node.refBodyId = data.refBodyId ?? null;
         node.refBodyIsSystemCenter = data.refBodyIsSystemCenter ?? false;
         node.burnDVApplied = data.burnDVApplied ?? 0;
+        node.frozen = data.frozen ?? false;
+        node.frozenOffset = data.frozenOffset ?? 0;
         return node;
     }
 }
@@ -235,21 +234,6 @@ export class ManeuverScheduler {
 // Trajectory helpers
 // ---------------------------------------------------------------------------
 
-// Find the trajectory index closest to the given world position.
-export function findClosestTrajectoryIndex(trajectory, worldX, worldY) {
-    if (!trajectory || trajectory.length === 0) return -1;
-    let minDist = Infinity;
-    let minIdx = -1;
-    for (let i = 0; i < trajectory.length; i++) {
-        const d = dst2(trajectory[i].x - worldX, trajectory[i].y - worldY);
-        if (d < minDist) {
-            minDist = d;
-            minIdx = i;
-        }
-    }
-    return minIdx;
-}
-
 // Find the trajectory index whose DRAWN position (after applying the
 // ref-body transform) is closest to the given draw-world position.
 export function findClosestTrajectoryIndexDrawn(trajectory, refTrajectory, refX, refY, drawX, drawY) {
@@ -274,9 +258,62 @@ export function findClosestTrajectoryIndexDrawn(trajectory, refTrajectory, refX,
     return minIdx;
 }
 
-// Compute the trajectory step index for a maneuver node.
-export function nodeStepIndex(node, currentTime, predictDelta) {
-    return Math.round((node.burnTime - currentTime) / predictDelta) - 1;
+// Estimate velocity at trajectory index `idx` by finite differencing.
+// Returns { velX, velY }.
+export function estimateVelocityAt(trajectory, idx, predictDelta) {
+    if (idx > 0 && idx < trajectory.length - 1) {
+        return {
+            velX: (trajectory[idx + 1].x - trajectory[idx - 1].x) / (2 * predictDelta),
+            velY: (trajectory[idx + 1].y - trajectory[idx - 1].y) / (2 * predictDelta),
+        };
+    } else if (idx < trajectory.length - 1) {
+        return {
+            velX: (trajectory[idx + 1].x - trajectory[idx].x) / predictDelta,
+            velY: (trajectory[idx + 1].y - trajectory[idx].y) / predictDelta,
+        };
+    } else if (idx > 0) {
+        return {
+            velX: (trajectory[idx].x - trajectory[idx - 1].x) / predictDelta,
+            velY: (trajectory[idx].y - trajectory[idx - 1].y) / predictDelta,
+        };
+    }
+    return { velX: 0, velY: 0 };
+}
+
+// Find the ref body trajectory for a node (the body the node was created with).
+// Returns the trajectory array, or null if not available.
+export function findNodeRefTrajectory(node) {
+    if (node.refBodyIsSystemCenter && State.systemCenter) {
+        return State.systemCenter.trajectory;
+    }
+    if (node.refBodyId != null) {
+        for (const e of State.updateGroup) {
+            if (e.id === node.refBodyId) return e.trajectory;
+        }
+    }
+    return null;
+}
+
+// Find the trajectory that node `k` should snap to: the ship's own trajectory
+// for node 0, or the preceding node's ghost trajectory for subsequent nodes.
+// Returns { trajectory, startIndex } where startIndex is the prediction step
+// at which the trajectory begins recording (0 for the ship's own trajectory,
+// or the ghost's trajectoryStartTime for ghost trajectories).
+export function findNodeTrajectory(nodes, nodeIndex) {
+    if (nodeIndex === 0) {
+        const own = State.ownEntity;
+        if (!own || !own.trajectory || own.trajectory.length === 0) return null;
+        return { trajectory: own.trajectory, startIndex: 0 };
+    }
+    const prevNode = nodes[nodeIndex - 1];
+    const rec = ghostRecordFor(prevNode.id);
+    if (!rec || !rec.trajectory || rec.trajectory.length === 0) {
+        // Fallback to own trajectory if ghost data isn't available yet
+        const own = State.ownEntity;
+        if (!own || !own.trajectory || own.trajectory.length === 0) return null;
+        return { trajectory: own.trajectory, startIndex: 0 };
+    }
+    return { trajectory: rec.trajectory, startIndex: rec.startIndex || 0 };
 }
 
 // ---------------------------------------------------------------------------
@@ -403,7 +440,7 @@ function ghostRecordFor(nodeId) {
 
 export function getManeuverPanelPos(nodeScreenX, nodeScreenY, canvasW, canvasH) {
     const panelW = 128;
-    const panelH = 78;
+    const panelH = 96;  // 5 rows
     let px = nodeScreenX + 20;
     let py = nodeScreenY - panelH / 2;
     if (px + panelW > canvasW - 4) px = nodeScreenX - panelW - 20;
@@ -416,23 +453,29 @@ export function getManeuverPanelPos(nodeScreenX, nodeScreenY, canvasW, canvasH) 
 export function getManeuverButtons(node, panelX, panelY) {
     const btns = [];
     const w = 38, h = 16;
+    // Row 1: orientation
     btns.push({ label: 'Pro',  action: 'orient', value: ManeuverOrientation.Prograde,   x: panelX + 4,  y: panelY + 4,  w, h });
     btns.push({ label: 'Ret',  action: 'orient', value: ManeuverOrientation.Retrograde, x: panelX + 44, y: panelY + 4,  w, h });
     btns.push({ label: 'Nrm',  action: 'orient', value: ManeuverOrientation.Normal,     x: panelX + 84, y: panelY + 4,  w, h });
+    // Row 2: orientation
     btns.push({ label: 'Anti', action: 'orient', value: ManeuverOrientation.Antinormal, x: panelX + 4,  y: panelY + 22, w, h });
     btns.push({ label: 'RIn',  action: 'orient', value: ManeuverOrientation.RadialIn,   x: panelX + 44, y: panelY + 22, w, h });
     btns.push({ label: 'ROut', action: 'orient', value: ManeuverOrientation.RadialOut,  x: panelX + 84, y: panelY + 22, w, h });
-    btns.push({ label: 'Man',  action: 'manual',     x: panelX + 4,  y: panelY + 40, w, h });
-    btns.push({ label: '--',   action: 'dv_down_large', x: panelX + 44, y: panelY + 40, w: 18, h });
-    btns.push({ label: '-',    action: 'dv_down',       x: panelX + 64, y: panelY + 40, w: 18, h });
-    btns.push({ label: '+',    action: 'dv_up',         x: panelX + 84, y: panelY + 40, w: 18, h });
-    btns.push({ label: '++',   action: 'dv_up_large',   x: panelX + 104,y: panelY + 40, w: 18, h });
+    // Row 3: manual + Δv adjust
+    btns.push({ label: 'Man',  action: 'manual',   x: panelX + 4,  y: panelY + 40, w, h });
+    btns.push({ label: '-',    action: 'dv_down',  x: panelX + 44, y: panelY + 40, w, h });
+    btns.push({ label: '+',    action: 'dv_up',    x: panelX + 84, y: panelY + 40, w, h });
+    // Row 4: time adjust + freeze
+    btns.push({ label: '-t',   action: 't_down',   x: panelX + 4,  y: panelY + 58, w, h });
+    btns.push({ label: '+t',   action: 't_up',     x: panelX + 44, y: panelY + 58, w, h });
+    btns.push({ label: node.frozen ? 'FRZ✓' : 'FRZ', action: 'toggle_freeze', x: panelX + 84, y: panelY + 58, w, h });
+    // Row 5: auto-execute + delete
     btns.push({
         label: node.autoExecute ? 'Auto:ON' : 'Auto:OFF',
         action: 'toggle_auto',
-        x: panelX + 4,  y: panelY + 58, w: 60, h,
+        x: panelX + 4,  y: panelY + 76, w: 60, h,
     });
-    btns.push({ label: 'Del', action: 'delete', x: panelX + 68, y: panelY + 58, w: 54, h });
+    btns.push({ label: 'Del', action: 'delete', x: panelX + 68, y: panelY + 76, w: 54, h });
     return btns;
 }
 

@@ -5,7 +5,8 @@ import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import {
     ManeuverNode, ManeuverScheduler, ManeuverOrientation,
-    findClosestTrajectoryIndex, findClosestTrajectoryIndexDrawn,
+    findClosestTrajectoryIndexDrawn,
+    estimateVelocityAt, findNodeRefTrajectory,
     getManeuverPanelPos, getManeuverButtons, hitTestManeuverButtons,
     spawnManeuverGhosts, stepManeuverGhosts, collectManeuverGhosts,
     resolveRefBody, maneuverColor,
@@ -41,14 +42,13 @@ describe("ManeuverNode", () => {
         assert.ok(Math.abs(heading - 1.5) < 0.001, `manual heading should be 1.5, got ${heading}`);
     });
 
-    test("computeDeltaV", () => {
+    test("computeDeltaV removed — heading tested directly", () => {
         const node = new ManeuverNode(100);
         node.dvMagnitude = 50;
         node.orientation = ManeuverOrientation.Prograde;
         const shipState = { x: 0, y: 0, velX: 10, velY: 0 };
-        const dv = node.computeDeltaV(shipState, null);
-        assert.ok(Math.abs(dv.x - 50) < 0.001);
-        assert.ok(Math.abs(dv.y - 0) < 0.001);
+        const heading = node.computeHeading(shipState, null);
+        assert.ok(Math.abs(Math.cos(heading) - 1) < 0.001);
     });
 
     test("computeHeading prograde relative to ref body velocity", () => {
@@ -81,6 +81,8 @@ describe("ManeuverNode", () => {
         node.initialVelY = -20.5;
         node.refBodyId = 42;
         node.refBodyIsSystemCenter = true;
+        node.frozen = true;
+        node.frozenOffset = 30.0;
         const s = node.serialize();
         const restored = ManeuverNode.deserialize(s);
         assert.equal(restored.burnTime, 100);
@@ -94,6 +96,8 @@ describe("ManeuverNode", () => {
         assert.equal(restored.initialVelY, -20.5);
         assert.equal(restored.refBodyId, 42);
         assert.equal(restored.refBodyIsSystemCenter, true);
+        assert.equal(restored.frozen, true);
+        assert.equal(restored.frozenOffset, 30.0);
     });
 });
 
@@ -160,16 +164,6 @@ describe("ManeuverScheduler", () => {
 });
 
 describe("trajectory helpers", () => {
-    test("findClosestTrajectoryIndex", () => {
-        const traj = [
-            { x: 0, y: 0 },
-            { x: 10, y: 0 },
-            { x: 20, y: 0 },
-        ];
-        assert.equal(findClosestTrajectoryIndex(traj, 12, 0), 1);
-        assert.equal(findClosestTrajectoryIndex(traj, 25, 0), 2);
-    });
-
     test("findClosestTrajectoryIndexDrawn with no ref body", () => {
         const traj = [
             { x: 0, y: 0 },
@@ -196,6 +190,28 @@ describe("trajectory helpers", () => {
         assert.equal(findClosestTrajectoryIndexDrawn(traj, refTraj, refX, refY, 100, 0), 0);
         assert.equal(findClosestTrajectoryIndexDrawn(traj, refTraj, refX, refY, 110, 0), 2);
     });
+
+    test("estimateVelocityAt central difference", () => {
+        const traj = [
+            { x: 0, y: 0 },
+            { x: 10, y: 0 },
+            { x: 20, y: 0 },
+        ];
+        const v = estimateVelocityAt(traj, 1, 0.5);
+        // (20 - 0) / (2 * 0.5) = 20
+        assert.ok(Math.abs(v.velX - 20) < 0.001);
+        assert.ok(Math.abs(v.velY - 0) < 0.001);
+    });
+
+    test("estimateVelocityAt forward difference at start", () => {
+        const traj = [
+            { x: 0, y: 0 },
+            { x: 10, y: 0 },
+        ];
+        const v = estimateVelocityAt(traj, 0, 0.5);
+        // (10 - 0) / 0.5 = 20
+        assert.ok(Math.abs(v.velX - 20) < 0.001);
+    });
 });
 
 describe("UI layout", () => {
@@ -214,12 +230,15 @@ describe("UI layout", () => {
     test("getManeuverButtons returns all buttons", () => {
         const node = new ManeuverNode(100);
         const btns = getManeuverButtons(node, 100, 100);
-        // 6 orientation + 1 manual + 4 dv + 1 auto + 1 delete = 13
-        assert.equal(btns.length, 13);
+        // 6 orient + 1 manual + 2 dv + 2 time + 1 freeze + 1 auto + 1 delete = 14
+        assert.equal(btns.length, 14);
         const orientBtns = btns.filter(b => b.action === 'orient');
         assert.equal(orientBtns.length, 6);
         const dvBtns = btns.filter(b => b.action.startsWith('dv_'));
-        assert.equal(dvBtns.length, 4);
+        assert.equal(dvBtns.length, 2);
+        const timeBtns = btns.filter(b => b.action.startsWith('t_'));
+        assert.equal(timeBtns.length, 2);
+        assert.ok(btns.some(b => b.action === 'toggle_freeze'));
     });
 
     test("hitTestManeuverButtons uses pre-computed panel positions", () => {
