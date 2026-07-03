@@ -306,7 +306,7 @@ describe("maneuver ghosts", () => {
             id: 1, burnTime: burnTime, dvMagnitude: 50,
             orientation: 'prograde', manualAngle: 0, autoExecute: false,
         }];
-        const ghost = createManeuverGhost(ship, 'preview', nodes);
+        const ghost = createManeuverGhost(ship, nodes);
         const zeroControls = { forward:0, backward:0, turnleft:0, turnright:0, boost:0, slowrotate:0, primaryfire:0, secondaryfire:0 };
 
         // Before burn step: recording should be false
@@ -343,7 +343,7 @@ describe("maneuver ghosts", () => {
             id: 1, burnTime: burnTime, dvMagnitude: dvMag,
             orientation: 'prograde', manualAngle: 0, autoExecute: false,
         }];
-        const ghost = createManeuverGhost(ship, 'executing', nodes);
+        const ghost = createManeuverGhost(ship, nodes);
         const zeroControls = { forward:0, backward:0, turnleft:0, turnright:0, boost:0, slowrotate:0, primaryfire:0, secondaryfire:0 };
 
         // Burn starts at burnTime - burnDuration/2 = burnTime - 0.5

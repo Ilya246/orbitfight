@@ -141,7 +141,7 @@ export function runPredictionCore(data) {
         // ghosts that haven't started their burn yet — they would overlap
         // the real trajectory and cause visual flicker)
         for (const e of State.updateGroup) {
-            if (e.maneuverType && !e.recording) continue;
+            if (e.recording != null && !e.recording) continue;
             if (e.trajectory.length == 0)
                 e.trajectoryStartTime = i;
             e.trajectory.push({ x: e.x, y: e.y });
@@ -178,13 +178,7 @@ export function runPredictionCore(data) {
     for (const en of State.simCleanupBuffer) {
         ghostTraj.push(en.trajectory);
         ghostStarts.push(en.trajectoryStartTime);
-        if (en.maneuverType === 'preview') {
-            ghostColors.push([...GHOST_PREVIEW_COLOR]);
-        } else if (en.maneuverType === 'executing') {
-            ghostColors.push([...GHOST_EXECUTING_COLOR]);
-        } else {
-            ghostColors.push([en.color[0] * 0.7, en.color[1] * 0.7, en.color[2] * 0.7]);
-        }
+        ghostColors.push([...GHOST_EXECUTING_COLOR]);
     }
 
     return {
