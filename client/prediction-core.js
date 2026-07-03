@@ -12,8 +12,7 @@ import {
 } from "./engine.js";
 import { Entities } from "./types.js";
 import {
-    createManeuverGhost, updateManeuverGhost,
-    GHOST_PREVIEW_COLOR, GHOST_EXECUTING_COLOR,
+    spawnManeuverGhosts, stepManeuverGhosts, collectManeuverGhosts,
 } from "./maneuver.js";
 
 export function runPredictionCore(data) {
@@ -86,15 +85,10 @@ export function runPredictionCore(data) {
         Object.assign(ghost, State.ownEntity);
         ghost.id = ghostId;
         ghost.ghost = true;
+        ghost.phantom = true;
         ghost.parent_id = State.ownEntity.id;
+        ghost.trajectory = [];
         State.simCleanupBuffer.push(ghost);
-    }
-
-    // Maneuver ghosts: one preview (instant delta-V) and one executing
-    // (physical turn + thrust). Both run regardless of auto-execute.
-    const maneuverGhosts = [];
-    if (State.ownEntity && data.maneuverNodes && data.maneuverNodes.length > 0) {
-        maneuverGhosts.push(createManeuverGhost(State.ownEntity, data.maneuverNodes));
     }
 
     // ---- Initialize trajectory arrays ----
@@ -107,6 +101,9 @@ export function runPredictionCore(data) {
         State.systemCenter.trajectory = [];
     }
 
+    // Maneuver ghosts: one phantom ghost per node; ghost k executes nodes 0..k.
+    spawnManeuverGhosts(data.maneuverNodes || [], State.ownEntity);
+
     const startGlobalTime = data.globalTime;
 
     // ---- Run prediction loop ----
@@ -117,10 +114,8 @@ export function runPredictionCore(data) {
         buildQuadtree();
         updateEntities();
 
-        // Update maneuver ghosts (apply delta-V / controls) after physics
-        for (const ghost of maneuverGhosts) {
-            updateManeuverGhost(ghost, i, startGlobalTime, State.predictDelta, State.controls);
-        }
+        // Update maneuver ghosts (apply burns) after physics
+        stepManeuverGhosts(State.globalTime, State.predictDelta);
 
         // Update system center (center of mass of all entities)
         if (State.updateGroup.length > 0 && State.trajectoryRef) {
@@ -137,13 +132,11 @@ export function runPredictionCore(data) {
             }
         }
 
-        // Record trajectory positions in world coordinates (skip maneuver
-        // ghosts that haven't started their burn yet — they would overlap
-        // the real trajectory and cause visual flicker)
+        // Record trajectory positions in world coordinates.
+        // Maneuver ghosts record from their first burn onward (recording flag).
         for (const e of State.updateGroup) {
-            if (e.recording != null && !e.recording) continue;
-            if (e.trajectory.length == 0)
-                e.trajectoryStartTime = i;
+            if (e.maneuverNodeId != null && !e.recording) continue;
+            if (e.trajectory.length === 0) e.trajectoryStartTime = i;
             e.trajectory.push({ x: e.x, y: e.y });
         }
         if (State.systemCenter) {
@@ -162,6 +155,9 @@ export function runPredictionCore(data) {
         }
     }
 
+    // ---- Collect maneuver ghost results ----
+    const maneuverGhosts = collectManeuverGhosts(startGlobalTime, State.predictDelta);
+
     // ---- Collect results ----
     const trajectories = {};
     const trajectoryStarts = {};
@@ -176,9 +172,11 @@ export function runPredictionCore(data) {
     const ghostStarts = [];
     const ghostColors = [];
     for (const en of State.simCleanupBuffer) {
+        // Skip maneuver ghosts — they're returned separately
+        if (en.maneuverNodeId != null) continue;
         ghostTraj.push(en.trajectory);
         ghostStarts.push(en.trajectoryStartTime);
-        ghostColors.push([...GHOST_EXECUTING_COLOR]);
+        ghostColors.push([en.color[0] * 0.7, en.color[1] * 0.7, en.color[2] * 0.7]);
     }
 
     return {
@@ -188,5 +186,7 @@ export function runPredictionCore(data) {
         ghostTrajectories: ghostTraj,
         ghostTrajectoryStarts: ghostStarts,
         ghostTrajectoryColors: ghostColors,
+        maneuverGhosts,
+        predStartTime: startGlobalTime,
     };
 }

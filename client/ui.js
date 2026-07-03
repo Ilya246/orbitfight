@@ -27,6 +27,12 @@ export class MiscInfoUI {
                 info += `Velocity: ${v}\n`;
             }
         }
+        if (State.maneuverScheduler && State.maneuverScheduler.nodes.length > 0) {
+            const n = State.maneuverScheduler.nodes[0];
+            const dt = n.burnTime - State.globalTime;
+            const tl = dt >= 0 ? `T-${dt.toFixed(1)}` : `T+${(-dt).toFixed(1)}`;
+            info += `Next burn: ${tl}s (Δv${Math.round(n.dvMagnitude)}${n.autoExecute ? ", auto" : ""})\n`;
+        }
 
         const lines = info.split("\n");
         ctx.font = `${State.textCharacterSize}px ui-monospace, SFMono-Regular, "Menlo", monospace`;

@@ -14,6 +14,7 @@ import { startPrediction, pollPrediction, isPredictionRunning } from "./predicti
 import {
     ManeuverScheduler, ManeuverNode, ManeuverOrientation,
     findClosestTrajectoryIndexDrawn, resolveRefBody,
+    updateManeuverExecution, maneuverColor,
     getManeuverPanelPos, getManeuverButtons,
     hitTestManeuverButtons,
 } from "./maneuver.js";
@@ -605,83 +606,6 @@ export class Game {
         node.manualAngle = Math.atan2(dy, dx);
     }
 
-    // Apply auto-execute: if a maneuver node's burn time has arrived and
-    // auto-execute is on, override the ship's controls to perform the burn.
-    // Called at the start of step(), before controls are sent to the server.
-    applyManeuverAutoExecute() {
-        if (!State.ownEntity) {
-            this.maneuverScheduler.activeBurnNode = null;
-            return;
-        }
-        // Cancel burn if the node was removed
-        if (this.maneuverScheduler.activeBurnNode &&
-            !this.maneuverScheduler.nodes.includes(this.maneuverScheduler.activeBurnNode)) {
-            this.maneuverScheduler.activeBurnNode = null;
-        }
-        // Abort auto-execute if the player presses any manual movement control.
-        // We check State.controls which was just populated by
-        // readKeyboardIntoControls() from the raw keyboard state.
-        if (this.maneuverScheduler.activeBurnNode) {
-            const anyManualControl = State.controls.forward || State.controls.backward ||
-                State.controls.turnleft || State.controls.turnright || State.controls.boost ||
-                State.controls.primaryfire || State.controls.secondaryfire;
-            if (anyManualControl) {
-                const node = this.maneuverScheduler.activeBurnNode;
-                node.autoExecute = false;
-                this.maneuverScheduler.activeBurnNode = null;
-                pushMessage(`Maneuver #${node.id} auto-execute aborted by manual control.`);
-                return;
-            }
-        }
-        // Start a new burn if it's time
-        if (!this.maneuverScheduler.activeBurnNode) {
-            for (const node of this.maneuverScheduler.getSortedNodes()) {
-                if (!node.autoExecute) continue;
-                const burnDuration = node.dvMagnitude / Triangle.accel;
-                const burnStartTime = node.burnTime - burnDuration / 2;
-                if (State.globalTime >= burnStartTime) {
-                    node.startVelX = State.ownEntity.velX;
-                    node.startVelY = State.ownEntity.velY;
-                    node.burnHeading = node.computeHeading(State.ownEntity, resolveRefBody(node));
-                    this.maneuverScheduler.activeBurnNode = node;
-                    break;
-                }
-            }
-        }
-        // If burning, override controls
-        if (this.maneuverScheduler.activeBurnNode) {
-            const node = this.maneuverScheduler.activeBurnNode;
-            const ship = State.ownEntity;
-            const angleDiff = deltaAngleRad(ship.rotation * degToRad, node.burnHeading);
-            // Zero out all controls first — no slowrotate so the ship can
-            // rotate at full speed to align with the burn heading.
-            State.controls.forward = 0;
-            State.controls.backward = 0;
-            State.controls.turnleft = 0;
-            State.controls.turnright = 0;
-            State.controls.boost = 0;
-            State.controls.slowrotate = 0;
-            State.controls.primaryfire = 0;
-            State.controls.secondaryfire = 0;
-            if (Math.abs(angleDiff) > 0.02) {
-                if (angleDiff > 0) State.controls.turnright = 1;
-                else State.controls.turnleft = 1;
-            } else {
-                State.controls.forward = 1;
-                // Accumulate actual thrust delta-V for completion check.
-                // This accounts for rotation time and is not affected by
-                // gravity, so large burns always complete.
-                node.burnDVApplied += Triangle.accel * State.delta;
-            }
-            // Check if burn is complete (enough thrust delta-V applied)
-            if (node.burnDVApplied >= node.dvMagnitude) {
-                this.maneuverScheduler.removeNode(node);
-                this.maneuverScheduler.activeBurnNode = null;
-                pushMessage(`Maneuver #${node.id} executed.`);
-            }
-        }
-    }
-
     readKeyboardIntoControls() {
         if (this.menuUI.active) {
             State.controls.forward = 0;
@@ -724,7 +648,8 @@ export class Game {
     step() {
         // Apply maneuver auto-execute BEFORE controls are sent to server,
         // so that burn overrides are communicated in multiplayer too.
-        this.applyManeuverAutoExecute();
+        // updateManeuverExecution also prunes finished/expired nodes.
+        updateManeuverExecution(this.maneuverScheduler, State.controls);
         // Clean up nodes whose burn time is far in the past (missed burns).
         this.maneuverScheduler.cleanupPastNodes(State.globalTime);
 
@@ -771,6 +696,9 @@ export class Game {
                 this.autoSelectSystemCenter();
             }
             if (d === State.ownEntity) {
+                // The plan was anchored to the old ship's orbit.
+                this.maneuverScheduler.clear();
+                State.maneuverGhostData = [];
                 if (State.authority) {
                     const tri = new Triangle();
                     tri.name = State.name;
@@ -884,6 +812,18 @@ export class Game {
 
             for (let i = 0; i < State.ghostTrajectories.length; i++) {
                 drawTrajectory(ctx, State.ghostTrajectoryColors[i], State.ghostTrajectories[i], State.ghostTrajectoryStarts[i]);
+            }
+
+            // Maneuver plan: each node's post-burn trajectory, drawn from the
+            // node onward in that node's accent color.
+            if (State.maneuverGhostData.length > 0 && State.maneuverScheduler) {
+                const nodes = State.maneuverScheduler.nodes;
+                for (let i = 0; i < nodes.length; i++) {
+                    const rec = State.maneuverGhostData.find(g => g.nodeId === nodes[i].id);
+                    if (!rec || !rec.trajectory || rec.trajectory.length === 0) continue;
+                    const color = maneuverColor(i);
+                    drawTrajectory(ctx, color, rec.trajectory, rec.startIndex || 0);
+                }
             }
 
             for (const e of State.updateGroup) {
@@ -1053,7 +993,9 @@ export class Game {
             // position stays at the same index. Using time-based indexing
             // ensures the index decreases as currentTime advances, so the
             // node actually approaches the present and gets executed.
-            // Skip nodes that are being actively burned.
+            // When the node's time is in the past, clamp the index to 0 so
+            // the marker follows the player's current position instead of
+            // floating off. Skip nodes that are being actively burned.
             const traj = State.ownEntity ? State.ownEntity.trajectory : null;
             const predictDelta = State.predictDelta;
             const currentTime = State.globalTime;
@@ -1064,11 +1006,13 @@ export class Game {
             if (traj && traj.length > 0) {
                 for (const node of nodes) {
                     if (node === this.maneuverScheduler.activeBurnNode) continue;
-                    if (node.burnTime <= currentTime) continue;
                     // Find trajectory index by time: step i corresponds to
                     // globalTime = currentTime + (i+1) * predictDelta
-                    const idx = Math.round((node.burnTime - currentTime) / predictDelta) - 1;
-                    if (idx < 0 || idx >= traj.length) continue;
+                    let idx = Math.round((node.burnTime - currentTime) / predictDelta) - 1;
+                    // Clamp to valid range. When in the past (idx < 0),
+                    // clamp to 0 so the marker follows the player.
+                    if (idx < 0) idx = 0;
+                    if (idx >= traj.length) continue;
                     node.worldX = traj[idx].x;
                     node.worldY = traj[idx].y;
                     // burnTime stays as-is — it's the source of truth
@@ -1084,8 +1028,6 @@ export class Game {
                         node.initialVelY = (traj[idx].y - traj[idx - 1].y) / predictDelta;
                     }
                     // Update the node's OWN ref body state (for burn heading).
-                    // This is the body the node was created with, which may
-                    // differ from State.trajectoryRef.
                     let nodeRefTraj = null;
                     if (node.refBodyIsSystemCenter && State.systemCenter) {
                         nodeRefTraj = State.systemCenter.trajectory;
@@ -1124,7 +1066,8 @@ export class Game {
                 let drawWorldX = node.worldX;
                 let drawWorldY = node.worldY;
                 if (drawRef && drawRefTraj && drawRefTraj.length > 0) {
-                    const idx = Math.round((node.burnTime - currentTime) / predictDelta) - 1;
+                    let idx = Math.round((node.burnTime - currentTime) / predictDelta) - 1;
+                    if (idx < 0) idx = 0;
                     if (idx >= 0 && idx < drawRefTraj.length) {
                         drawWorldX = drawRef.x + (node.worldX - drawRefTraj[idx].x);
                         drawWorldY = drawRef.y + (node.worldY - drawRefTraj[idx].y);
@@ -1176,48 +1119,75 @@ export class Game {
                     this.hoveredManeuverNode = node;
                 }
 
-                // Draw the node marker — a small diamond
-                const isAuto = node.autoExecute;
-                const markerColor = isAuto ? "rgba(255,200,80,1)" : "rgba(200,220,255,1)";
-                drawPolygon(ctx, sx, sy, 6, 4, Math.PI / 4, null, markerColor, 2);
+                // Per-node accent color
+                const color = maneuverColor(i);
+                const rgba = (a) => `rgba(${color[0]},${color[1]},${color[2]},${a})`;
 
                 // Draw the burn direction arrow using the stored ship and ref
-                // body velocity at the node's trajectory step. The ref body
-                // is the one the node was created with (node.refBodyId).
+                // body velocity at the node's trajectory step.
                 const shipState = { x: node.worldX, y: node.worldY, velX: node.initialVelX, velY: node.initialVelY };
                 const refState = { x: node.refX, y: node.refY, velX: node.refVelX, velY: node.refVelY };
                 const heading = node.computeHeading(shipState, refState);
+                const hx = Math.cos(heading);
+                const hy = Math.sin(heading);
                 const arrowLen = Math.min(30, 10 + node.dvMagnitude * 0.3);
-                const ax = sx + Math.cos(heading) * arrowLen;
-                const ay = sy + Math.sin(heading) * arrowLen;
-                ctx.strokeStyle = markerColor;
-                ctx.lineWidth = 2;
+                const ax = sx + hx * arrowLen;
+                const ay = sy + hy * arrowLen;
+                ctx.strokeStyle = rgba(0.95);
+                ctx.lineWidth = 1.5;
                 ctx.beginPath();
-                ctx.moveTo(sx, sy);
+                ctx.moveTo(sx + hx * 8, sy + hy * 8);
                 ctx.lineTo(ax, ay);
                 ctx.stroke();
                 // Arrowhead
-                const headAngle = 0.4;
+                const headAngle = PI * 0.82;
                 ctx.beginPath();
                 ctx.moveTo(ax, ay);
-                ctx.lineTo(ax - Math.cos(heading - headAngle) * 6, ay - Math.sin(heading - headAngle) * 6);
+                ctx.lineTo(ax + Math.cos(heading + headAngle) * 7, ay + Math.sin(heading + headAngle) * 7);
                 ctx.moveTo(ax, ay);
-                ctx.lineTo(ax - Math.cos(heading + headAngle) * 6, ay - Math.sin(heading + headAngle) * 6);
+                ctx.lineTo(ax + Math.cos(heading - headAngle) * 7, ay + Math.sin(heading - headAngle) * 7);
                 ctx.stroke();
 
-                // Node label
+                // Ghost-ship glyph at the node, facing the burn heading
+                drawPolygon(ctx, sx, sy, 11, 3, heading, null, rgba(0.5), 1.2);
+
+                // Node marker — a small circle
+                ctx.fillStyle = rgba(0.9);
+                ctx.strokeStyle = rgba(1.0);
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.arc(sx, sy, 6, 0, TAU);
+                ctx.fill();
+                ctx.stroke();
+
+                // Node label with T-minus countdown
+                const dt = node.burnTime - currentTime;
+                const tLabel = dt >= 0 ? `T-${dt.toFixed(1)}s` : `T+${(-dt).toFixed(1)}s`;
+                const modeLabel = {
+                    [ManeuverOrientation.Prograde]: "PRO",
+                    [ManeuverOrientation.Retrograde]: "RET",
+                    [ManeuverOrientation.Normal]: "NRM",
+                    [ManeuverOrientation.Antinormal]: "ANTI",
+                    [ManeuverOrientation.RadialIn]: "RIN",
+                    [ManeuverOrientation.RadialOut]: "ROUT",
+                    [ManeuverOrientation.Manual]: "MAN",
+                }[node.orientation] || "?";
+                const label = `${tLabel} · ${modeLabel} Δv${Math.round(node.dvMagnitude)}${node.autoExecute ? " · auto" : ""}`;
                 ctx.font = `10px ui-monospace, SFMono-Regular, "Menlo", monospace`;
-                ctx.fillStyle = "rgba(255,255,255,0.9)";
-                ctx.textAlign = "center";
-                ctx.textBaseline = "bottom";
-                ctx.fillText(`#${node.id} Δv${Math.round(node.dvMagnitude)}`, sx, sy - 10);
+                const tw = ctx.measureText(label).width;
+                ctx.fillStyle = "rgba(0,0,0,0.55)";
+                ctx.fillRect(sx + 10, sy - 22, tw + 8, 14);
+                ctx.fillStyle = rgba(1.0);
+                ctx.textAlign = "left";
+                ctx.textBaseline = "middle";
+                ctx.fillText(label, sx + 14, sy - 15);
                 ctx.textAlign = "left";
                 ctx.textBaseline = "top";
 
                 // Draw the button panel (using frozen or natural position)
                 const panel = panelPositions[i];
                 ctx.fillStyle = "rgba(15,15,25,0.88)";
-                ctx.strokeStyle = "rgba(140,140,200,0.7)";
+                ctx.strokeStyle = `rgba(${color[0]},${color[1]},${color[2]},0.7)`;
                 ctx.lineWidth = 1;
                 ctx.fillRect(panel.x, panel.y, panel.w, panel.h);
                 ctx.strokeRect(panel.x, panel.y, panel.w, panel.h);
@@ -1228,17 +1198,17 @@ export class Game {
                     const isHovered = (State.mousePos.x >= b.x && State.mousePos.x <= b.x + b.w &&
                                        State.mousePos.y >= b.y && State.mousePos.y <= b.y + b.h);
                     if (isActive) {
-                        ctx.fillStyle = "rgba(80,160,220,0.9)";
+                        ctx.fillStyle = rgba(0.85);
                     } else if (isHovered) {
                         ctx.fillStyle = "rgba(80,80,110,0.9)";
                     } else {
                         ctx.fillStyle = "rgba(50,50,70,0.9)";
                     }
-                    ctx.strokeStyle = "rgba(160,160,200,0.6)";
+                    ctx.strokeStyle = `rgba(${color[0]},${color[1]},${color[2]},0.6)`;
                     ctx.lineWidth = 1;
                     ctx.fillRect(b.x, b.y, b.w, b.h);
                     ctx.strokeRect(b.x, b.y, b.w, b.h);
-                    ctx.fillStyle = "rgba(255,255,255,0.95)";
+                    ctx.fillStyle = isActive ? "rgba(10,10,16,0.95)" : "rgba(255,255,255,0.95)";
                     ctx.font = `9px ui-monospace, SFMono-Regular, "Menlo", monospace`;
                     ctx.textAlign = "center";
                     ctx.textBaseline = "middle";
@@ -1254,7 +1224,8 @@ export class Game {
                 const idx = nodes.indexOf(node);
                 if (idx >= 0 && screenPositions[idx]) {
                     const pos = screenPositions[idx];
-                    ctx.strokeStyle = "rgba(255,200,80,0.8)";
+                    const c = maneuverColor(idx);
+                    ctx.strokeStyle = `rgba(${c[0]},${c[1]},${c[2]},0.8)`;
                     ctx.lineWidth = 2;
                     ctx.beginPath();
                     ctx.arc(pos.x, pos.y, 10, 0, TAU);

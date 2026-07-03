@@ -5,21 +5,21 @@
 // orientation (prograde, retrograde, normal, antinormal, radial in/out, or
 // manual toward mouse), and optionally have the ship auto-execute the burn.
 //
-// During trajectory prediction, two ghost ships are spawned per maneuver
-// chain:
-//   - Ghost A ("preview"): applies an instant delta-V at each node, showing
-//     the resulting post-burn trajectory. This shows what would happen if
-//     the burn is executed perfectly.
-//   - Ghost B ("executing"): physically turns and thrusts to perform the
-//     burns, demonstrating that they are achievable. This ghost runs
-//     regardless of the auto-execute setting.
+// Prediction integration: for every node k, the prediction sim spawns a
+// phantom ghost ship that executes nodes 0..k at their scheduled times —
+// regardless of the nodes' auto-execute flags — so the post-burn trajectory
+// of the whole plan (and of every intermediate step) is always visible
+// without the real ship doing anything. Ghost k's trajectory is drawn from
+// node k onward; before that it coincides with the previous plan segment.
+// Node k's marker also sits on ghost k's trajectory, which by construction
+// passes through the node.
 //
 // The auto-execute setting on a node controls whether the REAL player ship
 // also performs the burn when it reaches the node's time. The setting
 // carries over as the default for newly placed nodes.
 
-import { State, Triangle } from "./engine.js";
-import { PI, TAU, degToRad, deltaAngleRad, dst, dst2 } from "./math.js";
+import { State, Triangle, pushMessage } from "./engine.js";
+import { PI, TAU, degToRad, radToDeg, deltaAngle, deltaAngleRad, dst, dst2 } from "./math.js";
 
 // ---------------------------------------------------------------------------
 // Burn orientation modes
@@ -35,29 +35,24 @@ export const ManeuverOrientation = {
     Manual: "manual",
 };
 
-export const ORIENTATION_LABELS = {
-    [ManeuverOrientation.Prograde]: "Pro",
-    [ManeuverOrientation.Retrograde]: "Ret",
-    [ManeuverOrientation.Normal]: "Nrm",
-    [ManeuverOrientation.Antinormal]: "Anti",
-    [ManeuverOrientation.RadialIn]: "RIn",
-    [ManeuverOrientation.RadialOut]: "ROut",
-    [ManeuverOrientation.Manual]: "Man",
-};
-
-export const ORIENTATION_ORDER = [
-    ManeuverOrientation.Prograde,
-    ManeuverOrientation.Retrograde,
-    ManeuverOrientation.Normal,
-    ManeuverOrientation.Antinormal,
-    ManeuverOrientation.RadialIn,
-    ManeuverOrientation.RadialOut,
-    ManeuverOrientation.Manual,
+// Per-node accent colors (cycled). Also used for the ghost trajectory lines.
+const NODE_COLORS = [
+    [120, 200, 255],   // cyan
+    [255, 170, 70],    // orange
+    [190, 130, 255],   // purple
+    [130, 255, 170],   // green
+    [255, 120, 190],   // pink
+    [255, 235, 100],   // yellow
 ];
 
-// Distinct colors for maneuver ghost trajectories.
-export const GHOST_PREVIEW_COLOR = [120, 200, 255];   // cyan — instant delta-V
-export const GHOST_EXECUTING_COLOR = [120, 255, 170]; // green — physical burn
+export function maneuverColor(i) {
+    return NODE_COLORS[i % NODE_COLORS.length];
+}
+
+// Autopilot tuning
+const ALIGN_LEAD = 4.0;          // s before burn start the autopilot begins turning
+const STEER_DEADBAND = 0.75;     // deg — no turn input inside this error band
+const BURN_ANGLE_TOL = 15.0;     // deg — only thrust when pointed this close
 
 let nextNodeId = 1;
 
@@ -155,7 +150,7 @@ export class ManeuverNode {
             initialVelY: this.initialVelY,
             refBodyId: this.refBodyId,
             refBodyIsSystemCenter: this.refBodyIsSystemCenter,
-            burnDVApplied: this.burnDVApplied, 
+            burnDVApplied: this.burnDVApplied,
         };
     }
 
@@ -257,13 +252,6 @@ export function findClosestTrajectoryIndex(trajectory, worldX, worldY) {
 
 // Find the trajectory index whose DRAWN position (after applying the
 // ref-body transform) is closest to the given draw-world position.
-// The trajectory is drawn relative to a ref body:
-//   drawX = refX + (traj[i].x - refTraj[i].x)
-//   drawY = refY + (traj[i].y - refTraj[i].y)
-// This is used for node placement: the user clicks at a screen position,
-// which corresponds to a draw-world position, and we need to find which
-// trajectory point is drawn there. Using absolute coordinates would be
-// wrong when a non-system-center ref body is selected.
 export function findClosestTrajectoryIndexDrawn(trajectory, refTrajectory, refX, refY, drawX, drawY) {
     if (!trajectory || trajectory.length === 0) return -1;
     let minDist = Infinity;
@@ -287,164 +275,132 @@ export function findClosestTrajectoryIndexDrawn(trajectory, refTrajectory, refX,
 }
 
 // Compute the trajectory step index for a maneuver node.
-// Returns -1 if the node is in the past or beyond the trajectory.
 export function nodeStepIndex(node, currentTime, predictDelta) {
-    const stepIndex = Math.round((node.burnTime - currentTime) / predictDelta) - 1;
-    return stepIndex;
-}
-
-// Get the world position of a maneuver node on the current trajectory.
-export function getManeuverNodePosition(node, trajectory, currentTime, predictDelta) {
-    if (!trajectory || trajectory.length === 0) return null;
-    const stepIndex = nodeStepIndex(node, currentTime, predictDelta);
-    if (stepIndex < 0 || stepIndex >= trajectory.length) return null;
-    return trajectory[stepIndex];
-}
-
-// Estimate the ship's state (position + velocity) at a maneuver node's position.
-// Velocity is estimated by finite differencing the trajectory.
-export function getShipStateAtNode(node, trajectory, currentTime, predictDelta) {
-    if (!trajectory || trajectory.length === 0) return null;
-    const stepIndex = nodeStepIndex(node, currentTime, predictDelta);
-    if (stepIndex < 0 || stepIndex >= trajectory.length) return null;
-    const pos = trajectory[stepIndex];
-    let velX = 0, velY = 0;
-    if (stepIndex > 0 && stepIndex < trajectory.length - 1) {
-        velX = (trajectory[stepIndex + 1].x - trajectory[stepIndex - 1].x) / (2 * predictDelta);
-        velY = (trajectory[stepIndex + 1].y - trajectory[stepIndex - 1].y) / (2 * predictDelta);
-    } else if (stepIndex < trajectory.length - 1) {
-        velX = (trajectory[stepIndex + 1].x - trajectory[stepIndex].x) / predictDelta;
-        velY = (trajectory[stepIndex + 1].y - trajectory[stepIndex].y) / predictDelta;
-    } else if (stepIndex > 0) {
-        velX = (trajectory[stepIndex].x - trajectory[stepIndex - 1].x) / predictDelta;
-        velY = (trajectory[stepIndex].y - trajectory[stepIndex - 1].y) / predictDelta;
-    }
-    return { x: pos.x, y: pos.y, velX, velY };
-}
-
-// Get the reference body's position at a maneuver node's burn time.
-export function getRefBodyStateAtNode(node, refTrajectory, currentTime, predictDelta) {
-    if (!refTrajectory || refTrajectory.length === 0) return null;
-    const stepIndex = nodeStepIndex(node, currentTime, predictDelta);
-    if (stepIndex < 0 || stepIndex >= refTrajectory.length) return null;
-    return { x: refTrajectory[stepIndex].x, y: refTrajectory[stepIndex].y };
+    return Math.round((node.burnTime - currentTime) / predictDelta) - 1;
 }
 
 // ---------------------------------------------------------------------------
-// Ghost ship management for prediction
+// Ref body resolution
 // ---------------------------------------------------------------------------
 
 // Resolve the reference body entity for a maneuver node. Each node stores
 // which ref body it was created with (by entity ID, or a flag for system
-// center). This function looks up the entity in the current State — which
-// may be the real game state or the prediction sim's state.
+// center). This function looks up the entity in the current State.
 export function resolveRefBody(node) {
     if (!node) return null;
     if (node.refBodyIsSystemCenter) return State.systemCenter;
     if (node.refBodyId == null) return State.trajectoryRef;
-    // Linear search (updateGroup may not be sorted by ID in prediction sim)
     for (const e of State.updateGroup) {
         if (e.id === node.refBodyId) return e;
     }
     return State.trajectoryRef;
 }
 
-// Create a ghost ship for maneuver prediction.
-// type: 'preview' (instant delta-V) or 'executing' (physical burn)
-// nodes: array of serialized maneuver node data (plain objects)
-export function createManeuverGhost(ownEntity, serializedNodes) {
-    const ghost = new Triangle();
-    const ghostId = ghost.id;
-    Object.assign(ghost, ownEntity);
-    ghost.id = ghostId;
-    ghost.ghost = true;
-    ghost.parent_id = ownEntity.id;
-    ghost.trajectory = [];
-    // Deserialize nodes into ManeuverNode instances
-    ghost.maneuverQueue = serializedNodes
+// ---------------------------------------------------------------------------
+// Prediction-side ghosts (per-node, with chaining)
+// ---------------------------------------------------------------------------
+
+let simGhosts = [];
+
+// Spawn one phantom ghost per node. Ghost k executes nodes 0..k, so its
+// trajectory shows the plan up to and including node k — even when the node
+// is not set to auto-execute. Must be called while the prediction sim state
+// is active (entities go into the sim's updateGroup).
+export function spawnManeuverGhosts(serializedNodes, ownEntity) {
+    simGhosts = [];
+    if (!ownEntity || !serializedNodes || serializedNodes.length === 0) return simGhosts;
+    const sorted = [...serializedNodes]
         .map(n => ManeuverNode.deserialize(n))
         .sort((a, b) => a.burnTime - b.burnTime);
-    ghost.currentBurn = null;
-    ghost.burnHeading = 0;
-    ghost.burnDVApplied = serializedNodes[0].burnDVApplied;
-    ghost.recording = false;
-    ghost.color = [...GHOST_EXECUTING_COLOR];
-    State.simCleanupBuffer.push(ghost);
-    return ghost;
+    for (let k = 0; k < sorted.length; k++) {
+        const ghost = new Triangle();
+        const ghostId = ghost.id;
+        Object.assign(ghost, ownEntity);
+        ghost.id = ghostId;
+        ghost.ghost = true;
+        ghost.phantom = true;
+        ghost.parent_id = ownEntity.id;
+        ghost.target = null;
+        ghost.trajectory = [];
+        ghost.trajectoryStartTime = null;
+        ghost.planNodes = sorted.slice(0, k + 1);
+        ghost.maneuverNodeId = sorted[k].id;
+        ghost.burnHeading = null;
+        ghost.recording = false;
+        simGhosts.push(ghost);
+        State.simCleanupBuffer.push(ghost);
+    }
+    return simGhosts;
 }
 
-// Update a maneuver ghost during one prediction step.
-//   ghost: the ghost entity
-//   stepIndex: current step index (0-based)
-//   startGlobalTime: the global time at the start of prediction
-//   predictDelta: time per step
-//   controls: the real ship's controls (ghost follows these before burn)
-// This is called AFTER updateEntities() and BEFORE trajectory recording.
-//
-// The ghost only starts recording its trajectory when the first burn begins,
-// so it visually "spawns" at the maneuver node rather than overlapping the
-// real ship's trajectory from the current time.
-//
-// Each node's ref body is resolved per-node via resolveRefBody(), so
-// prograde/retrograde/radial directions use the correct reference body.
-export function updateManeuverGhost(ghost, stepIndex, startGlobalTime, predictDelta, controls) {
-    const stepGlobalTime = startGlobalTime + (stepIndex + 1) * predictDelta;
-
-    // Physical burn: turn toward heading, then thrust until delta-V achieved.
-    if (!ghost.currentBurn && ghost.maneuverQueue.length > 0) {
-        const node = ghost.maneuverQueue[0];
-        const burnDuration = node.dvMagnitude / Triangle.accel;
-        const burnStartTime = node.burnTime - burnDuration / 2;
-        if (stepGlobalTime >= burnStartTime) {
-            const shipState = { x: ghost.x, y: ghost.y, velX: ghost.velX, velY: ghost.velY };
-            const refBody = resolveRefBody(node);
-            ghost.currentBurn = node;
-            ghost.burnHeading = node.computeHeading(shipState, refBody);
-            if (burnStartTime > State.globalTime)
-                ghost.burnDVApplied = 0;
-            ghost.recording = true;
-            ghost.maneuverQueue.shift();
+// Advance every maneuver ghost one prediction step. Ghost burns are
+// idealized: during a burn window the ghost snaps its facing to the (live)
+// burn heading and thrusts via the normal ship control path, so the imparted
+// dV matches what the real autopilot achieves without simulating the coarse
+// bang-bang steering at prediction timestep resolution.
+export function stepManeuverGhosts(simTime, predictDelta) {
+    if (simGhosts.length === 0) return;
+    for (const ghost of simGhosts) {
+        if (!ghost.active) continue;
+        let burning = false;
+        for (const node of ghost.planNodes) {
+            const burnDuration = node.dvMagnitude / Triangle.accel;
+            if (simTime >= node.burnTime && simTime < node.burnTime + burnDuration) {
+                const refBody = resolveRefBody(node);
+                const shipState = { x: ghost.x, y: ghost.y, velX: ghost.velX, velY: ghost.velY };
+                const heading = node.computeHeading(shipState, refBody);
+                ghost.rotation = heading * radToDeg;
+                ghost.rotateVel = 0.0;
+                const cont = {
+                    forward: 1, backward: 0, turnleft: 0, turnright: 0,
+                    boost: 0, slowrotate: 0, primaryfire: 0, secondaryfire: 0,
+                };
+                ghost.control(cont);
+                if (node.id === ghost.maneuverNodeId && ghost.burnHeading === null) {
+                    ghost.burnHeading = heading;
+                }
+                ghost.recording = true;
+                burning = true;
+                break;
+            }
+        }
+        if (!burning && !ghost.recording) {
+            // Before first burn: no controls (coast)
         }
     }
+}
 
-    if (ghost.currentBurn) {
-        const node = ghost.currentBurn;
-        const angleDiff = deltaAngleRad(ghost.rotation * degToRad, ghost.burnHeading);
-        const burnControls = {
-            forward: 0, backward: 0, turnleft: 0, turnright: 0,
-            boost: 0, slowrotate: 0, primaryfire: 0, secondaryfire: 0,
-        };
-        if (Math.abs(angleDiff) > 0.02) {
-            if (angleDiff > 0) burnControls.turnright = 1;
-            else burnControls.turnleft = 1;
-        } else {
-            burnControls.forward = 1;
-            // Accumulate actual thrust delta-V for completion check.
-            // This accounts for rotation time and is not affected by gravity.
-            ghost.burnDVApplied += Triangle.accel * predictDelta;
-        }
-        ghost.control(burnControls);
-        if (ghost.burnDVApplied >= node.dvMagnitude) {
-            ghost.currentBurn = null;
-        }
-    } else if (!ghost.recording && controls) {
-        // Before first burn: follow real ship controls (minus weapons)
-        ghost.control({
-            forward: controls.forward, backward: controls.backward,
-            turnleft: controls.turnleft, turnright: controls.turnright,
-            boost: controls.boost, slowrotate: controls.slowrotate,
-            primaryfire: 0, secondaryfire: 0,
+// Package ghost results for transfer back to the main thread.
+export function collectManeuverGhosts(predStartTime, predictDelta) {
+    const out = [];
+    for (const ghost of simGhosts) {
+        const node = ghost.planNodes[ghost.planNodes.length - 1];
+        let startIndex = ghost.trajectoryStartTime;
+        if (!isFinite(startIndex)) startIndex = 0;
+        startIndex = Math.max(0, startIndex);
+        out.push({
+            nodeId: ghost.maneuverNodeId,
+            startIndex,
+            trajectory: ghost.trajectory,
+            burnHeading: ghost.burnHeading,
         });
     }
+    simGhosts = [];
+    return out;
+}
+
+// Find the ghost record for a given node ID.
+function ghostRecordFor(nodeId) {
+    for (const g of State.maneuverGhostData) {
+        if (g.nodeId === nodeId) return g;
+    }
+    return null;
 }
 
 // ---------------------------------------------------------------------------
 // UI layout and hit-testing
 // ---------------------------------------------------------------------------
 
-// Compute the panel position for a maneuver node, in screen coordinates.
-// The panel is placed to the right of the node, or to the left if there
-// isn't enough space on the right.
 export function getManeuverPanelPos(nodeScreenX, nodeScreenY, canvasW, canvasH) {
     const panelW = 128;
     const panelH = 78;
@@ -457,26 +413,20 @@ export function getManeuverPanelPos(nodeScreenX, nodeScreenY, canvasW, canvasH) 
     return { x: px, y: py, w: panelW, h: panelH };
 }
 
-// Compute button rectangles for a maneuver node's UI panel.
-// Returns an array of { label, action, value, x, y, w, h } objects.
 export function getManeuverButtons(node, panelX, panelY) {
     const btns = [];
     const w = 38, h = 16;
-    // Orientation row 1
     btns.push({ label: 'Pro',  action: 'orient', value: ManeuverOrientation.Prograde,   x: panelX + 4,  y: panelY + 4,  w, h });
     btns.push({ label: 'Ret',  action: 'orient', value: ManeuverOrientation.Retrograde, x: panelX + 44, y: panelY + 4,  w, h });
     btns.push({ label: 'Nrm',  action: 'orient', value: ManeuverOrientation.Normal,     x: panelX + 84, y: panelY + 4,  w, h });
-    // Orientation row 2
     btns.push({ label: 'Anti', action: 'orient', value: ManeuverOrientation.Antinormal, x: panelX + 4,  y: panelY + 22, w, h });
     btns.push({ label: 'RIn',  action: 'orient', value: ManeuverOrientation.RadialIn,   x: panelX + 44, y: panelY + 22, w, h });
     btns.push({ label: 'ROut', action: 'orient', value: ManeuverOrientation.RadialOut,  x: panelX + 84, y: panelY + 22, w, h });
-    // Manual + 4 magnitude adjust buttons (--, -, +, ++)
     btns.push({ label: 'Man',  action: 'manual',     x: panelX + 4,  y: panelY + 40, w, h });
     btns.push({ label: '--',   action: 'dv_down_large', x: panelX + 44, y: panelY + 40, w: 18, h });
     btns.push({ label: '-',    action: 'dv_down',       x: panelX + 64, y: panelY + 40, w: 18, h });
     btns.push({ label: '+',    action: 'dv_up',         x: panelX + 84, y: panelY + 40, w: 18, h });
     btns.push({ label: '++',   action: 'dv_up_large',   x: panelX + 104,y: panelY + 40, w: 18, h });
-    // Auto-execute toggle + delete
     btns.push({
         label: node.autoExecute ? 'Auto:ON' : 'Auto:OFF',
         action: 'toggle_auto',
@@ -486,10 +436,6 @@ export function getManeuverButtons(node, panelX, panelY) {
     return btns;
 }
 
-// Hit-test a mouse position against maneuver node buttons.
-// Takes pre-computed panel positions (which may be frozen) so that
-// hit-testing matches what the user sees on screen.
-// Returns { node, button } if hit, or null.
 export function hitTestManeuverButtons(scheduler, mouseState, panelPositions) {
     for (let i = 0; i < scheduler.nodes.length; i++) {
         const node = scheduler.nodes[i];
@@ -504,4 +450,69 @@ export function hitTestManeuverButtons(scheduler, mouseState, panelPositions) {
         }
     }
     return null;
+}
+
+// ---------------------------------------------------------------------------
+// Real-ship execution (autopilot)
+// ---------------------------------------------------------------------------
+
+// Called once per frame from Game.step BEFORE controls are networked and
+// applied. Prunes finished/expired nodes and, if the earliest node is set to
+// auto-execute, writes steering + thrust into `controls`. Any player steering
+// input overrides the autopilot for that frame.
+export function updateManeuverExecution(scheduler, controls) {
+    const nodes = scheduler.nodes;
+    if (nodes.length === 0) return;
+    const own = State.ownEntity;
+    if (!own || own.type() !== 1 /* Entities.Triangle */) return;
+    const now = State.globalTime;
+
+    // Prune nodes whose burn window has fully passed.
+    for (let i = 0; i < nodes.length; i++) {
+        const burnDuration = nodes[i].dvMagnitude / Triangle.accel;
+        if (now >= nodes[i].burnTime + burnDuration) {
+            if (nodes[i].autoExecute && scheduler.activeBurnNode === nodes[i]) {
+                pushMessage(`Maneuver #${nodes[i].id} executed.`);
+            } else {
+                pushMessage(`Maneuver #${nodes[i].id} expired.`);
+            }
+            scheduler.removeNode(nodes[i]);
+            i--;
+        }
+    }
+    if (nodes.length === 0) return;
+
+    const node = nodes[0]; // nodes are kept sorted by burnTime
+    if (!node.autoExecute) return;
+    if (now < node.burnTime - ALIGN_LEAD) return;
+    if (State.lockControls) return;
+
+    // The pilot always wins: any manual steering input suspends the autopilot.
+    if (controls.forward || controls.backward || controls.turnleft ||
+        controls.turnright || controls.boost) {
+        return;
+    }
+
+    const refBody = resolveRefBody(node);
+    const headingDeg = node.computeHeading(own, refBody) * radToDeg;
+
+    // Bang-bang steering with stopping-angle prediction (same idea as the
+    // missile guidance). Braking angular decel is rotateSpeed * (1 + damping).
+    const rs = Triangle.rotateSpeed * (controls.slowrotate ? Triangle.slowRotateSpeed : 1.0);
+    const brake = rs * (1.0 + Triangle.rotateSlowSpeedMult);
+    const stopAngle = own.rotateVel * Math.abs(own.rotateVel) / (2.0 * brake);
+    const err = deltaAngle(own.rotation + stopAngle, headingDeg);
+    if (err > STEER_DEADBAND) controls.turnright = 1;
+    else if (err < -STEER_DEADBAND) controls.turnleft = 1;
+
+    const trueErr = Math.abs(deltaAngle(own.rotation, headingDeg));
+    if (now >= node.burnTime && trueErr < BURN_ANGLE_TOL) {
+        controls.forward = 1;
+        // Accumulate thrust delta-V for completion check
+        node.burnDVApplied += Triangle.accel * State.delta;
+        if (node.burnDVApplied >= node.dvMagnitude) {
+            scheduler.removeNode(node);
+            pushMessage(`Maneuver #${node.id} executed.`);
+        }
+    }
 }

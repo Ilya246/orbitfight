@@ -233,5 +233,7 @@ export function applyResult(result) {
     State.ghostTrajectories = result.ghostTrajectories || [];
     State.ghostTrajectoryStarts = result.ghostTrajectoryStarts || [];
     State.ghostTrajectoryColors = result.ghostTrajectoryColors || [];
+    State.maneuverGhostData = result.maneuverGhosts || [];
+    State.trajectoryStamp = result.predStartTime != null ? result.predStartTime : State.globalTime;
     State.lastPredict = State.globalTime;
 }

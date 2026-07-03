@@ -128,6 +128,10 @@ export const State = {
     systemCenter: null,
 
     maneuverScheduler: null,
+    // Per-node prediction ghost data: [{ nodeId, startIndex, trajectory, burnHeading }]
+    maneuverGhostData: [],
+    // globalTime at which the currently-applied prediction was started.
+    trajectoryStamp: 0.0,
 
     kills: 0,
 
@@ -203,6 +207,13 @@ export class Entity {
         this.synced = false;
         this.active = true;
         this.gravitates = false;
+
+        // Phantom entities are excluded from the quadtree: they receive
+        // gravity and collide INTO the world (they query the tree), but
+        // nothing collides into them and they exert no gravity. Used for
+        // prediction ghosts so multiple ghosts spawned at the same position
+        // don't collide with each other or break quadtree insertion.
+        this.phantom = false;
 
         this.simRelBody = null;
 
@@ -484,6 +495,7 @@ export function buildQuadtree() {
     root.xsize = x2 - x1;
     root.ysize = y2 - y1;
     for (let i = 0; i < State.updateGroup.length; i++) {
+        if (State.updateGroup[i].phantom) continue;
         Quad.put(0, State.updateGroup[i], 0);
     }
     if (State.updateGroup.length !== 0) {
@@ -1006,15 +1018,14 @@ export class Triangle extends Entity {
                     ctx.beginPath();
                     let pwx = 0;
                     let pwy = 0;
-                    let first = true;
                     for (let j = 0; j < drawLen; j++) {
                         const p = traj[j];
-                        const rp = refTraj[j - ref.trajectoryStartTime + offs];
+                        const refJ = j - ref.trajectoryStartTime + offs;
+                        const rp = refTraj[refJ];
                         const wx = ref.x + (p.x - rp.x) + State.drawShiftX;
                         const wy = ref.y + (p.y - rp.y) + State.drawShiftY;
-                        if (first) {
+                        if (j == 0) {
                             ctx.moveTo(wx, wy);
-                            first = false;
                         } else {
                             const l = dst(wx - pwx, wy - pwy);
                             ctx.setLineDash([5 * l, 5 * l]);
@@ -1174,6 +1185,9 @@ export class Triangle extends Entity {
                         State.updateGroup = triangles;
                     }
                     State.trajectoryRef = null;
+                    // A cleared world invalidates any planned maneuvers.
+                    if (State.maneuverScheduler) State.maneuverScheduler.clear();
+                    State.maneuverGhostData = [];
                 }
 
                 export function updateEntities() {
